@@ -44,3 +44,18 @@ research_extensions/RE005:.github/workflows/static-analysis-gate.yml
 # .github/workflows/actions.lock + scripts/check-lock-sync.sh + GitHub's native
 # lockfile verifier on every workflow run.
 workflow_audit/wrong_sha_pin:.github/workflows/
+# ─── Estate-generic reference docs that describe the RSR ABI/FFI seam ─────────
+#
+# SD022 flags references to src/interface/ (and the template's other optional
+# directories) in these estate-wide reference documents. They describe the
+# standard RSR seam layout for every repository; idris2x was minted with the
+# rust-cli archetype, which prunes src/interface/ on purpose (ADR 0011 plans a
+# real Idris 2 contract there). The fix at source belongs in
+# hyperpolymath/rsr-template-repo (the rust-cli archetype should prune or
+# rewrite these docs); tracked in docs/status/BEYOND-REPO.adoc. Repo-specific
+# status docs were rewritten instead of exempted (TEST-NEEDS, READINESS).
+structural_drift/SD022:docs/practice/AI-CONVENTIONS.adoc
+structural_drift/SD022:docs/onboarding/llm-warmup-dev.adoc
+structural_drift/SD022:docs/onboarding/QUICKSTART-DEV.adoc
+structural_drift/SD022:docs/governance/CRG-AUDIT-TEMPLATE.adoc
+structural_drift/SD022:docs/developer/ABI-FFI-README.adoc

@@ -3,7 +3,8 @@
 name: Project labels
 
 # Applies the idris2x project labels from .github/labels-idris2x.toml (create or update, never delete).
-# The estate label set stays with labels.yml. NO `uses:` (see labels.yml for why).
+# The estate label set stays with labels.yml. Runs only on main or by hand, never on pull requests.
+# NO `uses:` (see labels.yml for why). The token reaches git as a masked header, never in a URL.
 
 on:
   workflow_dispatch:
@@ -20,14 +21,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Fetch the commit (plain git, no actions)
+      - name: Fetch the commit (plain git, token as a masked header)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); echo "::add-mask::$auth"
           git init -q src && cd src
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch -q --depth 1 origin "$GITHUB_SHA" && git checkout -q FETCH_HEAD
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
       - name: Apply project labels
         working-directory: src
         env:

@@ -445,7 +445,12 @@ echo "=== 7. Isolated runner and lock portability regressions ==="
 assert_rc 0 'runner outcome and benchmark output contracts' bash "$REPO_ROOT/tests/run_proven_suite_test.sh"
 assert_rc 0 'actions.lock guards on POSIX mawk' bash "$REPO_ROOT/tests/workflows/check_lock_sync_test.sh"
 assert_rc 0 'lock-sync-fix repairs Dependabot lock drift' bash "$REPO_ROOT/tests/workflows/lock_sync_fix_test.sh"
-if command -v zig >/dev/null 2>&1; then
+# Same rule as the Zig lane in scripts/run-proven-suite.sh: with no src/interface/ffi (an
+# archetype such as rust-cli pruned the seam on purpose) there is no subject, so the check
+# is reported NOT APPLICABLE, visibly, and is neither a pass nor a failure.
+if [ ! -d "$REPO_ROOT/src/interface/ffi" ]; then
+  echo "  NOT APPLICABLE: FFI string ownership and sentinel regressions (src/interface/ffi absent, pruned by archetype)"
+elif command -v zig >/dev/null 2>&1; then
   assert_rc 0 'FFI string ownership and sentinel regressions' bash "$REPO_ROOT/tests/ffi_strings_test.sh"
 fi
 

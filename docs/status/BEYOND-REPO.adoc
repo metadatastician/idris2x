@@ -16,6 +16,7 @@ Collected from the Phase 0 audit (five fact-checking passes, primary sources cit
 
 == RSR template (`hyperpolymath/rsr-template-repo`)
 
+* *Mint defects found minting idris2x (fix at source):* (1) `tests/proven_suite_test.sh` runs the FFI string test whenever Zig is present, even when an archetype pruned `src/interface/ffi`; the Zig lane in `run-proven-suite.sh` already treats that as NOT APPLICABLE, the self-test does not (patched locally in idris2x). (2) The `rust-cli` archetype prunes `src/interface/` but leaves estate docs that cite it (AI-CONVENTIONS, llm-warmup-dev, QUICKSTART-DEV, CRG-AUDIT-TEMPLATE, ABI-FFI-README), so Hypatia SD022 fires in every rust-cli child (exempted locally with reasons). (3) `docs/status/TEST-NEEDS.adoc` ships the template's own CRG grade and Zig test counts into children, an overclaim. (4) The deed's `(manifest :purpose)` is not substituted by the mint. (5) The mint needs `just` >= 1.4x (module dependencies) and `yq` 4.53.3, which only `mise install` provides.
 * `proven-tests.yml` never installs Idris 2; `run-proven-suite.sh` degrades to Static-Checked; `check-proofs.sh` is unwired; 5 of 6 Idris 2 proofs quarantined. idris2x is the obvious fix once it exists.
 * `oracle-segfault-diag.yml` ("TEMPORARY DIAGNOSTIC … must never reach main") is on main @2be7b88; remove before minting children.
 * `mise.toml` references `launch-scaffolder provision-set realign` (hyperpolymath/launch-scaffolder) as the re-minter of `mise.toml`/`launcher.sh`; track it for the launcher standard.
