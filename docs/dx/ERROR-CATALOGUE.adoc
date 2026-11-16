@@ -200,7 +200,7 @@ Rendered text: link:ERROR-CATALOGUE-RENDERED.adoc[generated page].
 | `E-HASH-MISMATCH` `store-modified`
 | An installed capsule fails its own checksums
 | The store entry's path
-| `rm -rf '<entry>' && idris2x install --locked` (none)
+| `rm -rf <entry> && idris2x install --locked`, the path quoted when it needs it (none)
 | Fix was `idris2x gc --purge sha256:…`. *That flag does not exist.* `sha256sum` output also leaked to the terminal.
   The new fix is tested end to end: chaos runs the printed command and then `verify` passes.
 
@@ -365,7 +365,7 @@ they fail on a copy with the fault put back.
 | Passes: 44 cases, 5 renderings each, compared character for character.
 
 | `scripts/proto/chaos.sh`, Chez and Idris 2 0.8.0 capsule, style A and style B
-| 113 passed, 0 failed, in each style. Twenty-eight of the passes compare a live failure's whole output with the
+| 116 passed, 0 failed, in each style. Twenty-eight of the passes compare a live failure's whole output with the
   expected text, covering 25 of the 44 cases.
 
 | `scripts/check-advice-review.sh`

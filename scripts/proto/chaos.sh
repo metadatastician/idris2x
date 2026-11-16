@@ -163,6 +163,12 @@ t "modified store entry -> E-HASH-MISMATCH" 11 "$X" verify
 says "  exact text: store-modified"  E-HASH-MISMATCH store-modified digest="sha256:$DIG" dir="$IDRIS2X_CACHE/store/sha256-$DIG"
 t "the printed fix command repairs it" 0 bash -c "$(IDRIS2X_JSON=1 "$X" verify 2>&1 | jq -r .fix.command | sed "s|idris2x |'$X' |")"
 t "verify passes after the fix"      0 "$X" verify
+HOSTILE="$W/h'; touch '$W/pwned'; echo '"; mkdir -p "$HOSTILE"
+FIXCMD=$("$X" __render json E-HASH-MISMATCH store-modified digest="sha256:$DIG" dir="$HOSTILE" | jq -r .fix.command)
+t "a fix command built from a hostile path runs as one rm, nothing more" 0 bash -c "${FIXCMD% && *}"
+assert "  the path's embedded command did not run, and the directory is gone" test ! -e "$W/pwned" -a ! -e "$HOSTILE"
+assert "  a path with a space is quoted in the fix command" test "$("$X" __render json E-HASH-MISMATCH store-modified digest=d dir="/a b/c" | jq -r .fix.command)" = "rm -rf '/a b/c' && idris2x install --locked"
+
 
 if [ -n "$IDRIS2_PREFIX" ]; then echo "== T14 idris2 canaries (space-free cache)"; fresh t14; pin; "$X" install --locked >/dev/null 2>&1
   t "exec -- idris2 --version"       0 "$X" exec -- --version

@@ -315,7 +315,7 @@ idris2x: error[E-HASH-MISMATCH]: an installed capsule was modified after install
     store-entry: /home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
   state: The capsule was left in place so that you can inspect it.
   why: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
-  fix: rm -rf '/home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1' && idris2x install --locked
+  fix: rm -rf /home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1 && idris2x install --locked
   note: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
   see: idris2x explain E-HASH-MISMATCH
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc

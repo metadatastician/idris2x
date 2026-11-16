@@ -1155,7 +1155,7 @@ through disk corruption. The store is meant to be read-only.
 
 Remove this capsule and install it again:
 
-    rm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21' && idris2x install --locked
+    rm -rf /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21 && idris2x install --locked
 
 Programs compiled with this capsule keep working once it is reinstalled, because
 the store path stays the same.
@@ -1181,7 +1181,7 @@ through disk corruption. The store is meant to be read-only.
 
 Remove this capsule and install it again:
 
-    <ESC>[1mrm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21' && idris2x install --locked<ESC>[0m
+    <ESC>[1mrm -rf /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21 && idris2x install --locked<ESC>[0m
 
 Programs compiled with this capsule keep working once it is reinstalled, because
 the store path stays the same.
@@ -1198,7 +1198,7 @@ idris2x: error[E-HASH-MISMATCH]: an installed capsule was modified after install
     store-entry: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
   state: The capsule was left in place so that you can inspect it.
   why: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
-  fix: rm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21' && idris2x install --locked
+  fix: rm -rf /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21 && idris2x install --locked
   note: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
   see: idris2x explain E-HASH-MISMATCH
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
@@ -1212,7 +1212,7 @@ idris2x: <ESC>[1;31merror[E-HASH-MISMATCH]<ESC>[0m: an installed capsule was mod
     store-entry: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
   <ESC>[1mstate<ESC>[0m: The capsule was left in place so that you can inspect it.
   <ESC>[1mwhy<ESC>[0m: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
-  <ESC>[1mfix<ESC>[0m: <ESC>[1mrm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21' && idris2x install --locked<ESC>[0m
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mrm -rf /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21 && idris2x install --locked<ESC>[0m
   <ESC>[1mnote<ESC>[0m: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
   <ESC>[1msee<ESC>[0m: idris2x explain E-HASH-MISMATCH
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
@@ -1221,7 +1221,7 @@ idris2x: <ESC>[1;31merror[E-HASH-MISMATCH]<ESC>[0m: an installed capsule was mod
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-HASH-MISMATCH","case":"store-modified","exit":11,"title":"capsule bytes do not match the lock","summary":"an installed capsule was modified after installation","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","dir":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"The capsule was left in place so that you can inspect it.","why":"Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.","fix":{"command":"rm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21' && idris2x install --locked","note":"Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.","auto":"none"},"explain":"idris2x explain E-HASH-MISMATCH","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-HASH-MISMATCH","case":"store-modified","exit":11,"title":"capsule bytes do not match the lock","summary":"an installed capsule was modified after installation","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","dir":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"The capsule was left in place so that you can inspect it.","why":"Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.","fix":{"command":"rm -rf /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21 && idris2x install --locked","note":"Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.","auto":"none"},"explain":"idris2x explain E-HASH-MISMATCH","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc"}
 ----
 
 == E-SIG-INVALID

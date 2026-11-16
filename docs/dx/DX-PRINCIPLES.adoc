@@ -50,7 +50,8 @@ pages, so check each one against its URL before quoting it outside this reposito
 | tested
 
 | A4
-| At most one fix command, on its own line, pasteable as printed. Paths inside it are quoted. If no command is
+| At most one fix command, on its own line, pasteable as printed. Any value placed in it (a path, a version) is
+  shell-quoted unless it is a plain word, so a hostile path cannot add a command. If no command is
   honest, there is no command and the note says what to do.
 | git prints the command in a hint on its own indented line. uv: "A hint will not be available for all build failures." †
 | tested

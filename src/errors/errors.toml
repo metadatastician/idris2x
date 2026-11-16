@@ -232,7 +232,7 @@ facts = "capsule=digest store-entry=dir"
 state = "The capsule was left in place so that you can inspect it."
 why = "Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only."
 fix_lead = "Remove this capsule and install it again:"
-fix_cmd = "rm -rf '{dir}' && idris2x install --locked"
+fix_cmd = "rm -rf {dir} && idris2x install --locked"
 fix_note = "Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same."
 auto = "none"
 
