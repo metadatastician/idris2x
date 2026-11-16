@@ -39,7 +39,7 @@ t "pin 0.8.0"                        0 "$X" pin 0.8.0
 t "install --locked (cold)"          0 "$X" install --locked
 DIG=$(jq -r '.capsules[].sha256' idris2x.lock); STORE="$IDRIS2X_CACHE/store/sha256-$DIG"
 assert "store/.complete present"     test -f "$STORE/.complete"
-assert "no staging leftovers in tmp" test -z "$(ls -A "$IDRIS2X_CACHE/tmp" | grep -v fetch.log)"
+assert "no staging leftovers in tmp" test -z "$(find "$IDRIS2X_CACHE/staging" -mindepth 1 -maxdepth 1 ! -name fetch.log -print -quit)"
 t "install --locked (warm, no-op)"   0 "$X" install --locked
 assert "run -- chez evaluates 42"    test "$(echo '(display (+ 40 2))' | "$X" run -- -q)" = 42
 t "verify (sha256sums + probes)"     0 "$X" verify
@@ -50,10 +50,10 @@ t "404 primary -> mirror succeeds"   0 "$X" install --locked
 echo "== T3 flipped byte"; fresh t3; pin; with_urls "[\"$U/corrupt.tar.gz\"]"
 t "flipped byte -> E-HASH-MISMATCH"  11 "$X" install --locked
 assert "store absent after mismatch" test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG"
-assert "no .part left behind"        test ! -e "$IDRIS2X_CACHE/tmp/sha256-$DIG.part"
+assert "no .part left behind"        test ! -e "$IDRIS2X_CACHE/staging/sha256-$DIG.part"
 echo "== T4 truncated, then resume"; fresh t4; pin; with_urls "[\"$U/trunc.tar.gz\"]"
 t "truncated -> E-HASH-MISMATCH"     11 "$X" install --locked
-mkdir -p "$IDRIS2X_CACHE/tmp"; cp "$OUT/trunc.tar.gz" "$IDRIS2X_CACHE/tmp/sha256-$DIG.part"; with_urls "[\"$U/$NAME\"]"
+mkdir -p "$IDRIS2X_CACHE/staging"; cp "$OUT/trunc.tar.gz" "$IDRIS2X_CACHE/staging/sha256-$DIG.part"; with_urls "[\"$U/$NAME\"]"
 t "resume from partial .part"        0 "$X" install --locked
 assert "server answered the resume with 206 (Range)" grep -q "^206 " "$W/http.log"
 echo "== T5 four concurrent installs"; fresh t5; pin; pids=()
@@ -61,7 +61,7 @@ for i in 1 2 3 4; do "$X" install --locked >"$W/c$i.out" 2>&1 & pids+=($!); done
 okc=0; for p in "${pids[@]}"; do wait "$p" && okc=$((okc+1)); done
 assert "all 4 concurrent installs exit 0 ($okc/4)" test "$okc" = 4
 assert "exactly one store dir"       test "$(ls -1 "$IDRIS2X_CACHE/store" | wc -l)" = 1
-assert "no stage leftovers"          test -z "$(ls -A "$IDRIS2X_CACHE/tmp" | grep -v fetch.log)"
+assert "no stage leftovers"          test -z "$(find "$IDRIS2X_CACHE/staging" -mindepth 1 -maxdepth 1 ! -name fetch.log -print -quit)"
 echo "== T6 disk-full analogue (ulimit -f)"; fresh t6; pin
 t "write limit -> typed E- error"    14 bash -c 'ulimit -f 200; exec "$0" install --locked' "$X"
 assert "store has no half-capsule"   test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG"
@@ -89,7 +89,7 @@ IDRIS2X_LOCK_TIMEOUT=1 t "lock held -> E-LOCK-TIMEOUT" 15 "$X" install --locked;
 echo "== T11 unsafe tar member"; fresh t11; pin
 jq --arg s "$UNSAFE_SHA" --arg u "$U/unsafe.tar.gz" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=100)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "'../' member -> E-CAPSULE-INVALID" 21 "$X" install --locked
-assert "nothing escaped the staging dir" test ! -e "$IDRIS2X_CACHE/tmp/evil.txt" -a ! -e "$IDRIS2X_CACHE/evil.txt"
+assert "nothing escaped the staging dir" test ! -e "$IDRIS2X_CACHE/staging/evil.txt" -a ! -e "$IDRIS2X_CACHE/evil.txt"
 echo "== T12 cache path with spaces + unsupported-target lock"; fresh "t12 with spaces"; pin
 t "install into path with spaces"    0 "$X" install --locked
 assert "chez runs from spaced path"  test "$(echo '(display (+ 40 2))' | "$X" run -- -q)" = 42

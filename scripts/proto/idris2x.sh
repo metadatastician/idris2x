@@ -51,7 +51,7 @@ resolve() { # prints: digest size urls... for this host, from the lock only (no 
 
 # ---------- verification primitives ----------
 verify_sig() { # verify_sig MESSAGE SIGFILE PUBFILE   (signify / minisign-legacy format, pure Ed25519 over bytes)
-  local msg=$1 sig=$2 pub=$3 tmp; tmp=$(mktemp -d "${TMPDIR:-/tmp}/idris2x-sig.XXXXXX")   # failures below exit the process
+  local msg=$1 sig=$2 pub=$3 tmp; tmp=$(mktemp -d -t idris2x-sig.XXXXXX)   # failures below exit the process
   sed -n 2p "$pub" | base64 -d > "$tmp/pub.bin" 2>/dev/null || die E-SIG-INVALID "pinned public key is not base64"
   sed -n 2p "$sig" | base64 -d > "$tmp/sig.bin" 2>/dev/null || die E-SIG-INVALID "signature file is not base64"
   [ "$(head -c2 "$tmp/pub.bin")" = Ed ] && [ "$(head -c2 "$tmp/sig.bin")" = Ed ] \
@@ -67,8 +67,8 @@ verify_sig() { # verify_sig MESSAGE SIGFILE PUBFILE   (signify / minisign-legacy
 fetch_to() { # fetch_to OUT URL...  -> 0 on success; resumes partial downloads
   local out=$1; shift; local u
   for u in "$@"; do
-    if curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -C - -o "$out" "$u" 2>>"$CACHE/tmp/fetch.log" \
-       || { rm -f "$out"; curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -o "$out" "$u" 2>>"$CACHE/tmp/fetch.log"; }; then return 0
+    if curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -C - -o "$out" "$u" 2>>"$CACHE/staging/fetch.log" \
+       || { rm -f "$out"; curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -o "$out" "$u" 2>>"$CACHE/staging/fetch.log"; }; then return 0
     else note "fetch failed from $u (trying next mirror)"; fi
   done; return 1
 }
@@ -93,7 +93,7 @@ store_dir() { echo "$CACHE/store/sha256-$1"; }
 install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
   local digest=$1 size=$2; shift 2; local dir; dir=$(store_dir "$digest")
   [ -f "$dir/.complete" ] && { echo "$dir"; return 0; }
-  mkdir -p "$CACHE/locks" "$CACHE/tmp" "$CACHE/store" 2>/dev/null || die E-STORE-IO "cannot create store at $CACHE" "check permissions/disk; set IDRIS2X_CACHE"
+  mkdir -p "$CACHE/locks" "$CACHE/staging" "$CACHE/store" 2>/dev/null || die E-STORE-IO "cannot create store at $CACHE" "check permissions/disk; set IDRIS2X_CACHE"
   exec 9>"$CACHE/locks/sha256-$digest.lock"
   flock -w "$LOCK_TIMEOUT" 9 || die E-LOCK-TIMEOUT "another idris2x has held the lock for sha256:$digest for over ${LOCK_TIMEOUT}s" "wait; if no idris2x is running: rm $CACHE/locks/sha256-$digest.lock"
   [ -f "$dir/.complete" ] && { echo "$dir"; return 0; }      # finished by someone else while we waited
@@ -101,15 +101,15 @@ install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
   if [ -z "$tarball" ]; then
     [ "$OFFLINE" = 1 ] && die E-OFFLINE "capsule sha256:$digest is not in the store and IDRIS2X_OFFLINE=1" "idris2x fetch -o bundle.tar.gz (on a connected machine), then idris2x install --from bundle.tar.gz"
     [ $# -gt 0 ] || die E-PIN-NOT-FOUND "lock has no URLs for sha256:$digest" "idris2x pin <version>"
-    tarball="$CACHE/tmp/sha256-$digest.part"
+    tarball="$CACHE/staging/sha256-$digest.part"
     [ -f "$tarball" ] && [ "$(stat -c%s "$tarball")" -ge "$size" ] && rm -f "$tarball"
-    fetch_to "$tarball" "$@" || { rm -f "$tarball"; die E-NETWORK "all $# mirror(s) failed for sha256:$digest" "retry; check proxy/network; details: $CACHE/tmp/fetch.log"; }
+    fetch_to "$tarball" "$@" || { rm -f "$tarball"; die E-NETWORK "all $# mirror(s) failed for sha256:$digest" "retry; check proxy/network; details: $CACHE/staging/fetch.log"; }
   fi
   local got; got=$(sha_of "$tarball")
   [ "$got" = "$digest" ] || { [ -z "${IDRIS2X_FROM:-}" ] && rm -f "$tarball"; die E-HASH-MISMATCH "capsule bytes do not match the lock: got sha256:$got ($(stat -c%s "$tarball") bytes), expected sha256:$digest" "idris2x gc && idris2x install --locked ; if it repeats, a mirror is serving a bad file: see runbook"; }
   safe_tar_list "$tarball" || { rm -f "$tarball"; die E-CAPSULE-INVALID "capsule contains unsafe paths (absolute, '..', or escaping links); refusing to unpack" "report this capsule digest upstream"; }
-  local stage; stage=$(mktemp -d "$CACHE/tmp/stage.XXXXXX") || die E-STORE-IO "cannot create staging dir" "check disk space in $CACHE"
-  tar -xzf "$tarball" -C "$stage" --no-same-owner 2>>"$CACHE/tmp/fetch.log" || { rm -rf "$stage"; die E-STORE-IO "unpacking failed (disk full or corrupt gzip)" "check disk space in $CACHE; idris2x gc"; }
+  local stage; stage=$(mktemp -d "$CACHE/staging/stage.XXXXXX") || die E-STORE-IO "cannot create staging dir" "check disk space in $CACHE"
+  tar -xzf "$tarball" -C "$stage" --no-same-owner 2>>"$CACHE/staging/fetch.log" || { rm -rf "$stage"; die E-STORE-IO "unpacking failed (disk full or corrupt gzip)" "check disk space in $CACHE; idris2x gc"; }
   [ -f "$stage/capsule.json" ] || { rm -rf "$stage"; die E-CAPSULE-INVALID "capsule has no capsule.json" "report this capsule digest upstream"; }
   (cd "$stage" && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || { rm -rf "$stage"; die E-CAPSULE-INVALID "unpacked tree does not match sha256sums.txt" "idris2x gc && idris2x install --locked"; }
   probe_capsule "$stage" || { rm -rf "$stage"; exit "${EXIT[E-PROBE-CODEGEN]}"; }
@@ -149,7 +149,7 @@ probe_capsule() { # embedded canaries 1 (pure_eval) and 12 (version_match); loud
 cmd_pin() { # pin VERSION: fetch + verify channel, write lock for all targets of that version
   local ver=${1:-}; [ -n "$ver" ] || die E-USAGE "usage: idris2x pin <idris2-version>"
   [ -n "$CHANNEL_URL" ] || die E-USAGE "set IDRIS2X_CHANNEL_URL (prototype)"; [ -f "$PUBKEY_FILE" ] || die E-USAGE "set IDRIS2X_PUBKEY_FILE (prototype)"
-  mkdir -p "$CACHE/manifests" "$CACHE/tmp"
+  mkdir -p "$CACHE/manifests" "$CACHE/staging"
   local m="$CACHE/manifests/v1.json"
   if [ "$OFFLINE" != 1 ]; then
     rm -f "$m.tmp" "$m.sig.tmp"    # never resume a MUTABLE document: a Range resume splices new bytes onto a stale partial (found by the chaos drills)
@@ -185,14 +185,14 @@ cmd_verify() { local res; res=$(resolve) || exit $?; read -r digest _ <<< "${res
   (cd "$dir" && sha256sum --quiet -c sha256sums.txt) || die E-HASH-MISMATCH "store tree for sha256:$digest has been modified" "idris2x gc --purge sha256:$digest && idris2x install --locked"
   probe_capsule "$dir" || exit "${EXIT[E-PROBE-CODEGEN]}"; note "OK sha256:$digest verified ($(cap .name "$dir"))"; }
 cmd_gc() { local keep=3; [ "${1:-}" = --keep-last ] && keep=$2
-  mkdir -p "$CACHE/store" "$CACHE/tmp"; local d n=0
+  mkdir -p "$CACHE/store" "$CACHE/staging"; local d n=0
   for d in "$CACHE"/store/*/; do [ -d "$d" ] || continue; [ -f "$d/.complete" ] || { note "gc: removing incomplete $d"; rm -rf "$d"; }; done
-  find "$CACHE/tmp" -mindepth 1 -mmin +1440 -exec rm -rf {} + 2>/dev/null || true
+  find "$CACHE/staging" -mindepth 1 -mmin +1440 -exec rm -rf {} + 2>/dev/null || true
   mapfile -t dirs < <(ls -1dt "$CACHE"/store/*/ 2>/dev/null)
   for d in "${dirs[@]}"; do n=$((n+1)); if [ $n -gt "$keep" ]; then note "gc: removing old $d"; rm -rf "$d"; fi; done
   return 0; }   # a trailing false '&&' would otherwise become the function's status and trip set -e
 cmd_fetch() { local out=; [ "${1:-}" = -o ] && out=$2; [ -n "$out" ] || die E-USAGE "usage: idris2x fetch -o bundle.tar.gz"
-  local res; res=$(resolve) || exit $?; read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res"); mkdir -p "$CACHE/tmp"
+  local res; res=$(resolve) || exit $?; read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res"); mkdir -p "$CACHE/staging"
   fetch_to "$out.part" "${urls[@]}" || die E-NETWORK "all mirrors failed" "retry"
   [ "$(sha_of "$out.part")" = "$digest" ] || { rm -f "$out.part"; die E-HASH-MISMATCH "fetched bytes do not match lock" "retry"; }
   mv -f "$out.part" "$out"; note "fetched sha256:$digest -> $out ($size bytes); copy it with $LOCK to the air-gapped host"; }
@@ -206,7 +206,11 @@ cmd_doctor() { local t; t=$(target); echo "[info] idris2x $PROTO_VERSION  target
   else echo "[..] no $LOCK here (idris2x pin <version>)"; fi; }
 cmd_selftest() { local root; root=$(cmd_install --locked); compose_env "$root"
   [ -n "$(cap '.idris2 // empty' "$root")" ] || die E-PIN-NOT-FOUND "selftest needs an idris2 capsule" ""
-  local w; w=$(mktemp -d); trap "rm -rf '$w'" EXIT; cd "$w"     # expand now: locals are gone when EXIT fires
+  local w; w=$(mktemp -d)
+  # Expand $w now, not at exit: locals are gone when the EXIT trap fires.
+  # shellcheck disable=SC2064
+  trap "rm -rf '$w'" EXIT
+  cd "$w"
   local hint="" fix=""
   case "$root" in *[[:space:]]*) hint=" (programs compiled with --cg chez embed '#!$root/bin/scheme --program' and the kernel splits shebang lines at spaces; the store path contains whitespace)"; fix="set IDRIS2X_CACHE to a path without spaces (the launcher itself works, compiled programs do not)";; esac
   printf 'module Main\nmain : IO ()\nmain = putStrLn "chez_codegen ok"\n' > Main.idr

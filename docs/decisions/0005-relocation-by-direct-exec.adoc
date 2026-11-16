@@ -12,9 +12,9 @@ Accepted (Phase 0 spike, measured: 11 of 12 canaries pass on a tree copied into 
 
 Idris 2's installed `bin/idris2` is a POSIX sh script that execs `bin/idris2_app/idris2.so`, whose first line is
 `#!<absolute path of the Chez used at build time> --program`. Three facts make that fragile for a relocatable capsule:
-the baked path (`src/Compiler/Scheme/Chez.idr:87-91`), the Linux shebang limit (256 bytes since kernel 5.1, 128 before; a
+the baked path (upstream `Idris2:Compiler/Scheme/Chez.idr:87-91`), the Linux shebang limit (256 bytes since kernel 5.1, 128 before; a
 `~/.cache/idris2x/store/sha256-<64 hex>/bin/scheme --program` line is ~125 bytes), and macOS SIP stripping `DYLD_LIBRARY_PATH`
-when passing through `/bin/sh`. The compiler's own prefix is baked into `src/IdrisPaths.idr` but overridden at runtime by `IDRIS2_PREFIX`.
+when passing through `/bin/sh`. The compiler's own prefix is baked into upstream `Idris2:IdrisPaths.idr` but overridden at runtime by `IDRIS2_PREFIX`.
 
 == Decision
 

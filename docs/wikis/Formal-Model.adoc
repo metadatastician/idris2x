@@ -12,7 +12,7 @@ For a digest `d`, the store directory `S(d)` is in exactly one of three observab
 |===
 | State | Definition
 | Absent | no directory, or a directory without `.complete` (garbage by definition)
-| Staged | a private staging directory exists under `tmp/`; invisible to readers
+| Staged | a private staging directory exists under `staging/`; invisible to readers
 | Complete | `S(d)/.complete` exists and `sha256sums.txt` verifies
 |===
 

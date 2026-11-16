@@ -8,7 +8,7 @@
 #        --target TRIPLE --machine ta6le --out DIR --key key.sec --pub key.pub --base-url URL
 #        [--chez-src DIR] [--idris2-src DIR] [--channel-version N]
 set -euo pipefail
-CHEZ= IDRIS2= CV= IV= TARGET= MACHINE= OUT= KEY= PUB= BASE= CHEZ_SRC= IDRIS2_SRC= CHV=
+CHEZ='' IDRIS2='' CV='' IV='' TARGET='' MACHINE='' OUT='' KEY='' PUB='' BASE='' CHEZ_SRC='' IDRIS2_SRC='' CHV=''
 while [ $# -gt 0 ]; do case "$1" in
   --chez) CHEZ=$2;; --idris2) IDRIS2=$2;; --chez-version) CV=$2;; --idris2-version) IV=$2;;
   --target) TARGET=$2;; --machine) MACHINE=$2;; --out) OUT=$2;; --key) KEY=$2;; --pub) PUB=$2;;
@@ -17,7 +17,7 @@ while [ $# -gt 0 ]; do case "$1" in
 for v in CHEZ CV IV TARGET MACHINE OUT KEY PUB BASE; do [ -n "${!v}" ] || { echo "missing --$(echo $v | tr A-Z a-z)" >&2; exit 2; }; done
 mkdir -p "$OUT"
 NAME="idris2-$IV-$TARGET-chez$CV"
-STAGE=$(mktemp -d "${TMPDIR:-/tmp}/capsule.XXXXXX"); trap 'rm -rf "$STAGE"' EXIT
+STAGE=$(mktemp -d -t capsule.XXXXXX); trap 'rm -rf "$STAGE"' EXIT
 
 cp -a "$CHEZ"/. "$STAGE"/
 rm -rf "$STAGE"/lib/csv*/examples
