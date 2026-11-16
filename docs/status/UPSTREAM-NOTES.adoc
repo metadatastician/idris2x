@@ -5,11 +5,13 @@
 
 Findings from the Phase 0 spike that belong upstream, with repro and citation. Check the upstream tracker before filing.
 
+NOTE: Upstream paths written `Idris2:<path>` are relative to `src/` in idris-lang/Idris2 at tag v0.8.0 (commit 15a3e4e7).
+
 == Idris 2 v0.8.0 — Chez backend fails when the project path contains non-ASCII characters
 
 * Repro (Linux, Chez 10.4.1): put a `Main.idr` under a directory named `ünïcödé/` and run `idris2 -o m Main.idr`.
 * Observed: `Exception in read: invalid string character \23 at line 1, char 105 of build/exec/m_app/compileChez`.
-* Cause: `src/Compiler/Scheme/Chez.idr:536-537` builds the Chez compile script with `"(compile-program " ++ show outSsAbs ++ "))"`. Idris's `show` on `String` emits Idris-style decimal escapes (`\252n\239c\246d\233`), which the Chez reader does not accept. Paths with spaces or `'` work; locale (`LANG=C.UTF-8`) makes no difference.
+* Cause: upstream `Idris2:Compiler/Scheme/Chez.idr:536-537` builds the Chez compile script with `"(compile-program " ++ show outSsAbs ++ "))"`. Idris's `show` on `String` emits Idris-style decimal escapes (`\252n\239c\246d\233`), which the Chez reader does not accept. Paths with spaces or `'` work; locale (`LANG=C.UTF-8`) makes no difference.
 * Suggested fix: emit the path with a Scheme string escaper (hex `\xHH;` escapes or raw UTF-8), as `support/chez` already does elsewhere.
 * idris2x stance: documented limitation; the `unicode_paths` canary stays *expected-fail* for `idris2@0.8.0` and is recorded in the channel's `compat` notes.
 
@@ -22,7 +24,7 @@ Findings from the Phase 0 spike that belong upstream, with repro and citation. C
 == Idris 2 — INSTALL.md and envvars.rst
 
 * INSTALL.md still tells source builders to pass `./configure --threads` (Chez 10 defaults to threaded on supported platforms) and points Apple Silicon users at the Racket fork; Chez >= 10.0.0 upstream supports `tarm64osx` natively.
-* `docs/source/reference/envvars.rst` lists `IDRIS2_PREFIX` as build-time only, but `src/Idris/Driver.idr` honours it at runtime (this is what makes relocation possible).
+* `docs/source/reference/envvars.rst` lists `IDRIS2_PREFIX` as build-time only, but upstream `Idris2:Idris/Driver.idr` honours it at runtime (this is what makes relocation possible).
 
 == Chez Scheme 10.4.1
 

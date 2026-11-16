@@ -31,8 +31,8 @@ E-SIG-INVALID|wrong-key|url=https://channel.example.org/v1.json|signer=key id 5b
 E-SIG-INVALID|malformed|what=the signature is not base64|file=/home/ada/.cache/idris2x/manifests/v1.json.sig.tmp
 E-PLATFORM-UNSUPPORTED|unknown-arch|arch=riscv64|supported=x86_64, aarch64
 E-PLATFORM-UNSUPPORTED|unknown-os|os=FreeBSD|supported=Linux, macOS
-E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net|log=/home/ada/.cache/idris2x/tmp/fetch.log
-E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/tmp/fetch.log|version=0.8.0
+E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net|log=/home/ada/.cache/idris2x/staging/fetch.log
+E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/staging/fetch.log|version=0.8.0
 E-LOCK-TIMEOUT|held|digest=sha256:$A|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/sha256-$A.lock|holder=process 48213 (still running)
 E-GLIBC-FLOOR|too-old|host=2.17|needs=2.28|digest=sha256:$A
 E-PROBE-CODEGEN|chez-failed|probe=pure_eval|output=error while loading shared libraries: libtinfo.so.6: cannot open shared object file

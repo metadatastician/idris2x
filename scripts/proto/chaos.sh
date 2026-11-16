@@ -59,7 +59,7 @@ t "install --locked (cold)"          0 "$X" install --locked
 DIG=$(jq -r '.capsules[].sha256' idris2x.lock); STORE="$IDRIS2X_CACHE/store/sha256-$DIG"
 assert "  a successful install prints the store path and nothing else" test "$(cat "$W/out.txt")" = "$STORE"
 assert "store/.complete present"     test -f "$STORE/.complete"
-assert "no staging leftovers in tmp" test -z "$(ls -A "$IDRIS2X_CACHE/tmp" | grep -v fetch.log)"
+assert "no staging leftovers in tmp" test -z "$(find "$IDRIS2X_CACHE/staging" -mindepth 1 -maxdepth 1 ! -name fetch.log -print -quit)"
 t "install --locked (warm, no-op)"   0 "$X" install --locked
 assert "run -- chez evaluates 42"    test "$(echo '(display (+ 40 2))' | "$X" run -- -q)" = 42
 t "verify (sha256sums + probes)"     0 "$X" verify
@@ -79,11 +79,11 @@ assert "  colour form carries escape sequences" grep -q $'\x1b\\[' "$W/out.txt"
 NO_COLOR=1 t "same failure, NO_COLOR=1" 11 "$X" install --locked
 assert "  NO_COLOR output has no escape byte" test -z "$(grep $'\x1b' "$W/out.txt")"
 assert "store absent after mismatch" test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG"
-assert "no .part left behind"        test ! -e "$IDRIS2X_CACHE/tmp/sha256-$DIG.part"
+assert "no .part left behind"        test ! -e "$IDRIS2X_CACHE/staging/sha256-$DIG.part"
 echo "== T4 truncated, then resume"; fresh t4; pin; with_urls "[\"$U/trunc.tar.gz\"]"
 t "truncated -> E-HASH-MISMATCH"     11 "$X" install --locked
 says "  exact text: download (size shows the truncation)" E-HASH-MISMATCH download lock=idris2x.lock want="sha256:$DIG" got="sha256:$(sha256sum "$OUT/trunc.tar.gz" | cut -d' ' -f1)" bytes="$((SIZE/2)) bytes (the lock says $SIZE)" source="$U/trunc.tar.gz"
-mkdir -p "$IDRIS2X_CACHE/tmp"; cp "$OUT/trunc.tar.gz" "$IDRIS2X_CACHE/tmp/sha256-$DIG.part"; with_urls "[\"$U/$NAME\"]"
+mkdir -p "$IDRIS2X_CACHE/staging"; cp "$OUT/trunc.tar.gz" "$IDRIS2X_CACHE/staging/sha256-$DIG.part"; with_urls "[\"$U/$NAME\"]"
 t "resume from partial .part"        0 "$X" install --locked
 assert "server answered the resume with 206 (Range)" grep -q "^206 " "$W/http.log"
 echo "== T5 four concurrent installs"; fresh t5; pin; pids=()
@@ -91,13 +91,13 @@ for i in 1 2 3 4; do "$X" install --locked >"$W/c$i.out" 2>&1 & pids+=($!); done
 okc=0; for p in "${pids[@]}"; do wait "$p" && okc=$((okc+1)); done
 assert "all 4 concurrent installs exit 0 ($okc/4)" test "$okc" = 4
 assert "exactly one store dir"       test "$(ls -1 "$IDRIS2X_CACHE/store" | wc -l)" = 1
-assert "no stage leftovers"          test -z "$(ls -A "$IDRIS2X_CACHE/tmp" | grep -v fetch.log)"
+assert "no stage leftovers"          test -z "$(find "$IDRIS2X_CACHE/staging" -mindepth 1 -maxdepth 1 ! -name fetch.log -print -quit)"
 echo "== T6 disk-full analogue (ulimit -f)"; fresh t6; pin
 t "write limit -> E-STORE-IO (the disk, not the network)" 24 bash -c 'ulimit -f 200; exec "$0" install --locked' "$X"
 says "  exact text: write-failed"    E-STORE-IO write-failed detail="downloading the capsule (the file size limit was reached)" path="$IDRIS2X_CACHE"
 with_urls "[\"$U/missing.tar.gz\",\"http://127.0.0.1:1/none.tar.gz\"]"
 t "every mirror fails -> E-NETWORK"  14 "$X" install --locked
-says "  exact text: all-mirrors-failed (each address with its own reason)" E-NETWORK all-mirrors-failed digest="sha256:$DIG" tried="$U/missing.tar.gz: (22) The requested URL returned error: 404; http://127.0.0.1:1/none.tar.gz: (7) Failed to connect to 127.0.0.1 port 1 after 0 ms: Couldn't connect to server" log="$IDRIS2X_CACHE/tmp/fetch.log"
+says "  exact text: all-mirrors-failed (each address with its own reason)" E-NETWORK all-mirrors-failed digest="sha256:$DIG" tried="$U/missing.tar.gz: (22) The requested URL returned error: 404; http://127.0.0.1:1/none.tar.gz: (7) Failed to connect to 127.0.0.1 port 1 after 0 ms: Couldn't connect to server" log="$IDRIS2X_CACHE/staging/fetch.log"
 assert "store has no half-capsule"   test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG"
 echo "== T7 trust: tamper, wrong key, rollback, expiry"; fresh t7
 cp "$OUT/v1.json" "$W/v1.good"; jq '.channel_version=999' "$W/v1.good" > "$OUT/v1.json"
@@ -143,7 +143,7 @@ echo "== T11 unsafe tar member"; fresh t11; pin
 jq --arg s "$UNSAFE_SHA" --arg u "$U/unsafe.tar.gz" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=100)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "'../' member -> E-CAPSULE-INVALID" 21 "$X" install --locked
 says "  exact text: unsafe-path"     E-CAPSULE-INVALID unsafe-path digest="sha256:$UNSAFE_SHA"
-assert "nothing escaped the staging dir" test ! -e "$IDRIS2X_CACHE/tmp/evil.txt" -a ! -e "$IDRIS2X_CACHE/evil.txt"
+assert "nothing escaped the staging dir" test ! -e "$IDRIS2X_CACHE/staging/evil.txt" -a ! -e "$IDRIS2X_CACHE/evil.txt"
 mkdir -p "$W/esc"; ln -sfn /etc "$W/esc/out"; echo x > "$W/esc/file"; tar -czf "$OUT/escape.tar.gz" -C "$W/esc" out file; ESC_SHA=$(sha256sum "$OUT/escape.tar.gz" | cut -d' ' -f1)
 jq --arg s "$ESC_SHA" --arg u "$U/escape.tar.gz" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=100)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "symlink pointing outside the tree -> E-CAPSULE-INVALID" 21 "$X" install --locked
@@ -188,7 +188,7 @@ says "  exact text: not-installed"   E-PIN-NOT-FOUND not-installed digest="sha25
 cp idris2x.lock lock.keep; jq '.capsules[].min_glibc = "9.99"' lock.keep > idris2x.lock
 t "host glibc below the capsule's floor -> E-GLIBC-FLOOR" 16 "$X" install --locked
 says "  exact text: too-old"         E-GLIBC-FLOOR too-old host="$(getconf GNU_LIBC_VERSION | cut -d' ' -f2)" needs=9.99 digest="sha256:$DIG"
-assert "  refused before any download" test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG" -a ! -e "$IDRIS2X_CACHE/tmp/sha256-$DIG.part"
+assert "  refused before any download" test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG" -a ! -e "$IDRIS2X_CACHE/staging/sha256-$DIG.part"
 jq '.schema = 2' lock.keep > idris2x.lock
 t "lock from a newer idris2x -> E-CHANNEL-SCHEMA" 18 "$X" install --locked
 says "  exact text: lock-newer"      E-CHANNEL-SCHEMA lock-newer file=idris2x.lock found=2 supports=1 version=0.0.0-proto

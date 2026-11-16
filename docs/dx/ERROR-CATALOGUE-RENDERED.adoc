@@ -1649,7 +1649,7 @@ I could not download the pinned capsule from any mirror.
 
     capsule   sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
     tried     https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net
-    full-log  /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log  /home/ada/.cache/idris2x/staging/fetch.log
 
 Nothing was installed. The store is unchanged.
 
@@ -1676,7 +1676,7 @@ I could not download the pinned capsule from any mirror.
 
     capsule   sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
     tried     https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net
-    full-log  /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log  /home/ada/.cache/idris2x/staging/fetch.log
 
 Nothing was installed. The store is unchanged.
 
@@ -1700,7 +1700,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.ado
 idris2x: error[E-NETWORK]: every mirror failed for the pinned capsule
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
     tried: https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net
-    full-log: /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log: /home/ada/.cache/idris2x/staging/fetch.log
   state: Nothing was installed. The store is unchanged.
   why: Each address in the lock was tried in turn and each one failed for the reason shown after it.
   fix: idris2x install --locked
@@ -1715,7 +1715,7 @@ idris2x: error[E-NETWORK]: every mirror failed for the pinned capsule
 idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: every mirror failed for the pinned capsule
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
     tried: https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net
-    full-log: /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log: /home/ada/.cache/idris2x/staging/fetch.log
   <ESC>[1mstate<ESC>[0m: Nothing was installed. The store is unchanged.
   <ESC>[1mwhy<ESC>[0m: Each address in the lock was tried in turn and each one failed for the reason shown after it.
   <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x install --locked<ESC>[0m
@@ -1727,7 +1727,7 @@ idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: every mirror failed for the pinned
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"all-mirrors-failed","exit":14,"title":"the download could not be completed","summary":"every mirror failed for the pinned capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","tried":"https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net","log":"/home/ada/.cache/idris2x/tmp/fetch.log"},"state":"Nothing was installed. The store is unchanged.","why":"Each address in the lock was tried in turn and each one failed for the reason shown after it.","fix":{"command":"idris2x install --locked","note":"If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"all-mirrors-failed","exit":14,"title":"the download could not be completed","summary":"every mirror failed for the pinned capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","tried":"https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net","log":"/home/ada/.cache/idris2x/staging/fetch.log"},"state":"Nothing was installed. The store is unchanged.","why":"Each address in the lock was tried in turn and each one failed for the reason shown after it.","fix":{"command":"idris2x install --locked","note":"If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
 ----
 
 === E-NETWORK, case `manifest-unreachable`
@@ -1741,7 +1741,7 @@ I could not fetch the channel manifest.
 
     manifest  https://channel.example.org/v1.json
     tried     https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds
-    full-log  /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log  /home/ada/.cache/idris2x/staging/fetch.log
 
 The lock file was not changed. Everything already pinned still runs.
 
@@ -1768,7 +1768,7 @@ I could not fetch the channel manifest.
 
     manifest  https://channel.example.org/v1.json
     tried     https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds
-    full-log  /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log  /home/ada/.cache/idris2x/staging/fetch.log
 
 The lock file was not changed. Everything already pinned still runs.
 
@@ -1792,7 +1792,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.ado
 idris2x: error[E-NETWORK]: cannot fetch the channel manifest
     manifest: https://channel.example.org/v1.json
     tried: https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds
-    full-log: /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log: /home/ada/.cache/idris2x/staging/fetch.log
   state: The lock file was not changed. Everything already pinned still runs.
   why: pin needs a fresh copy of the signed manifest, and the address above did not provide one.
   fix: idris2x pin 0.8.0
@@ -1807,7 +1807,7 @@ idris2x: error[E-NETWORK]: cannot fetch the channel manifest
 idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: cannot fetch the channel manifest
     manifest: https://channel.example.org/v1.json
     tried: https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds
-    full-log: /home/ada/.cache/idris2x/tmp/fetch.log
+    full-log: /home/ada/.cache/idris2x/staging/fetch.log
   <ESC>[1mstate<ESC>[0m: The lock file was not changed. Everything already pinned still runs.
   <ESC>[1mwhy<ESC>[0m: pin needs a fresh copy of the signed manifest, and the address above did not provide one.
   <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.0<ESC>[0m
@@ -1819,7 +1819,7 @@ idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: cannot fetch the channel manifest
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"manifest-unreachable","exit":14,"title":"the download could not be completed","summary":"cannot fetch the channel manifest","context":{"url":"https://channel.example.org/v1.json","tried":"https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds","log":"/home/ada/.cache/idris2x/tmp/fetch.log","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"pin needs a fresh copy of the signed manifest, and the address above did not provide one.","fix":{"command":"idris2x pin 0.8.0","note":"Running an already pinned toolchain does not need the network once its capsule is installed.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"manifest-unreachable","exit":14,"title":"the download could not be completed","summary":"cannot fetch the channel manifest","context":{"url":"https://channel.example.org/v1.json","tried":"https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds","log":"/home/ada/.cache/idris2x/staging/fetch.log","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"pin needs a fresh copy of the signed manifest, and the address above did not provide one.","fix":{"command":"idris2x pin 0.8.0","note":"Running an already pinned toolchain does not need the network once its capsule is installed.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
 ----
 
 == E-LOCK-TIMEOUT

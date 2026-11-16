@@ -50,7 +50,7 @@ idris2x doctor        # store writable, network or offline mode, platform, probe
 | What | Where
 | Launcher binary | wherever you put it
 | Capsules (content-addressed, immutable) | `$XDG_CACHE_HOME/idris2x/store/` (default `~/.cache/idris2x/store/`)
-| Cached channel manifest, locks, staging | `~/.cache/idris2x/{manifests,locks,tmp}/`
+| Cached channel manifest, locks, staging | `~/.cache/idris2x/{manifests,locks,staging}/`
 | Your project's pins | `idris2x.toml`, `idris2x.lock` in the project
 |===
 

@@ -77,7 +77,7 @@ resolve() { # prints: digest size urls... for this host, from the lock only (no 
 
 # ---------- verification primitives ----------
 verify_sig() { # verify_sig MESSAGE SIGFILE PUBFILE   (signify / minisign-legacy format, pure Ed25519 over bytes)
-  local msg=$1 sig=$2 pub=$3 tmp; tmp=$(mktemp -d "${TMPDIR:-/tmp}/idris2x-sig.XXXXXX")   # failures below exit the process
+  local msg=$1 sig=$2 pub=$3 tmp; tmp=$(mktemp -d -t idris2x-sig.XXXXXX)   # failures below exit the process
   sed -n 2p "$pub" | base64 -d > "$tmp/pub.bin" 2>/dev/null || fail E-SIG-INVALID malformed what="the trusted public key is not base64" file="$pub"
   sed -n 2p "$sig" | base64 -d > "$tmp/sig.bin" 2>/dev/null || fail E-SIG-INVALID malformed what="the signature is not base64" file="$sig"
   [ "$(head -c2 "$tmp/pub.bin")" = Ed ] || fail E-SIG-INVALID malformed what="the trusted public key is not an Ed25519 (Ed) key" file="$pub"
@@ -95,7 +95,7 @@ fetch_to() { # fetch_to OUT URL...  -> 0 on success; resumes partial downloads; 
   for u in "$@"; do
     err=$(curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -C - -o "$out" "$u" 2>&1) && { LAST_URL=$u; return 0; }; rc=$?
     if [ "$rc" != 23 ] && [ "$rc" != 153 ]; then rm -f "$out"; err=$(curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -o "$out" "$u" 2>&1) && { LAST_URL=$u; return 0; }; rc=$?; fi
-    echo "$u: $err" >> "$CACHE/tmp/fetch.log"; err=${err##*$'\n'}; err=${err#curl: }; TRIED="${TRIED:+$TRIED; }$u: ${err:-curl exit $rc}"
+    echo "$u: $err" >> "$CACHE/staging/fetch.log"; err=${err##*$'\n'}; err=${err#curl: }; TRIED="${TRIED:+$TRIED; }$u: ${err:-curl exit $rc}"
     [ "$rc" = 153 ] && err="the file size limit was reached"   # 128 + SIGXFSZ
     if [ "$rc" = 23 ] || [ "$rc" = 153 ]; then FETCH_WRITE_ERR=$err; return 1; fi     # could not write: the disk, not the network
     note "fetch failed from $u (trying next mirror)"
@@ -122,7 +122,7 @@ store_dir() { echo "$CACHE/store/sha256-$1"; }
 install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
   local digest=$1 size=$2; shift 2; local dir; dir=$(store_dir "$digest")
   [ -f "$dir/.complete" ] && { echo "$dir"; return 0; }
-  mkdir -p "$CACHE/locks" "$CACHE/tmp" "$CACHE/store" 2>/dev/null || fail E-STORE-IO cannot-create path="$CACHE"
+  mkdir -p "$CACHE/locks" "$CACHE/staging" "$CACHE/store" 2>/dev/null || fail E-STORE-IO cannot-create path="$CACHE"
   exec 9>"$CACHE/locks/sha256-$digest.lock"
   local holder="$CACHE/locks/sha256-$digest.holder" hp who="unknown (the holder left no record)"
   if ! flock -w "$LOCK_TIMEOUT" 9; then     # only claim a holder we can see running; never advise deleting a held lock
@@ -135,11 +135,11 @@ install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
   if [ -z "$tarball" ]; then
     [ "$OFFLINE" = 1 ] && fail E-OFFLINE capsule-missing digest="sha256:$digest" store="$CACHE/store" mode="IDRIS2X_OFFLINE=1" lock="$LOCK"
     [ $# -gt 0 ] || fail E-PIN-NOT-FOUND no-urls lock="$LOCK" digest="sha256:$digest" version="$(lock_get .toolchain.idris2)"
-    tarball="$CACHE/tmp/sha256-$digest.part"
+    tarball="$CACHE/staging/sha256-$digest.part"
     [ -f "$tarball" ] && [ "$(stat -c%s "$tarball")" -ge "$size" ] && rm -f "$tarball"
     if ! fetch_to "$tarball" "$@"; then rm -f "$tarball"
       [ -n "$FETCH_WRITE_ERR" ] && fail E-STORE-IO write-failed detail="downloading the capsule ($FETCH_WRITE_ERR)" path="$CACHE"
-      fail E-NETWORK all-mirrors-failed digest="sha256:$digest" tried="$TRIED" log="$CACHE/tmp/fetch.log"; fi
+      fail E-NETWORK all-mirrors-failed digest="sha256:$digest" tried="$TRIED" log="$CACHE/staging/fetch.log"; fi
   fi
   local got; got=$(sha_of "$tarball")
   if [ "$got" != "$digest" ]; then local n; n="$(stat -c%s "$tarball") bytes (the lock says $size)"
@@ -147,8 +147,8 @@ install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
     rm -f "$tarball"; fail E-HASH-MISMATCH download lock="$LOCK" want="sha256:$digest" got="sha256:$got" bytes="$n" source="${LAST_URL:-unknown}"
   fi
   safe_tar_list "$tarball" || { rm -f "$tarball"; fail E-CAPSULE-INVALID unsafe-path digest="sha256:$digest"; }
-  local stage; stage=$(mktemp -d "$CACHE/tmp/stage.XXXXXX") || fail E-STORE-IO cannot-create path="$CACHE/tmp"
-  tar -xzf "$tarball" -C "$stage" --no-same-owner 2>>"$CACHE/tmp/fetch.log" || { rm -rf "$stage"; fail E-STORE-IO write-failed detail="unpacking the capsule" path="$CACHE"; }
+  local stage; stage=$(mktemp -d "$CACHE/staging/stage.XXXXXX") || fail E-STORE-IO cannot-create path="$CACHE/staging"
+  tar -xzf "$tarball" -C "$stage" --no-same-owner 2>>"$CACHE/staging/fetch.log" || { rm -rf "$stage"; fail E-STORE-IO write-failed detail="unpacking the capsule" path="$CACHE"; }
   [ -f "$stage/capsule.json" ] || { rm -rf "$stage"; fail E-CAPSULE-INVALID no-metadata digest="sha256:$digest"; }
   (cd "$stage" && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || { rm -rf "$stage"; fail E-CAPSULE-INVALID tree-mismatch digest="sha256:$digest"; }
   probe_capsule "$stage" || { rm -rf "$stage"; exit "${EXIT[E-PROBE-CODEGEN]}"; }
@@ -190,11 +190,11 @@ cmd_pin() { # pin VERSION: fetch + verify channel, write lock for all targets of
   local ver=${1:-}; [ -n "$ver" ] || fail E-USAGE missing-argument command=pin what="a version to pin" usage="idris2x pin <version>"
   [ -n "$CHANNEL_URL" ] || fail E-USAGE prototype-setting variable=IDRIS2X_CHANNEL_URL what="the address of the channel manifest"
   [ -f "$PUBKEY_FILE" ] || fail E-USAGE prototype-setting variable=IDRIS2X_PUBKEY_FILE what="the path of the trusted signify public key"
-  mkdir -p "$CACHE/manifests" "$CACHE/tmp"
+  mkdir -p "$CACHE/manifests" "$CACHE/staging"
   local m="$CACHE/manifests/v1.json"; SIG_URL=$CHANNEL_URL; PIN_VER=$ver
   if [ "$OFFLINE" != 1 ]; then
     rm -f "$m.tmp" "$m.sig.tmp"    # never resume a MUTABLE document: a Range resume splices new bytes onto a stale partial (found by the chaos drills)
-    fetch_to "$m.tmp" "$CHANNEL_URL" && fetch_to "$m.sig.tmp" "$CHANNEL_URL.sig" || fail E-NETWORK manifest-unreachable url="$CHANNEL_URL" tried="$TRIED" log="$CACHE/tmp/fetch.log" version="$ver"
+    fetch_to "$m.tmp" "$CHANNEL_URL" && fetch_to "$m.sig.tmp" "$CHANNEL_URL.sig" || fail E-NETWORK manifest-unreachable url="$CHANNEL_URL" tried="$TRIED" log="$CACHE/staging/fetch.log" version="$ver"
     verify_sig "$m.tmp" "$m.sig.tmp" "$PUBKEY_FILE"; mv -f "$m.tmp" "$m"; mv -f "$m.sig.tmp" "$m.sig"
   else [ -f "$m" ] || fail E-OFFLINE no-manifest cache="$m" mode="IDRIS2X_OFFLINE=1" version="$ver"; verify_sig "$m" "$m.sig" "$PUBKEY_FILE"; fi
   [ "$(jq -r .schema "$m")" = 1 ] || fail E-CHANNEL-SCHEMA channel-newer url="$CHANNEL_URL" found="$(jq -r .schema "$m")" supports=1 version="$PROTO_VERSION"
@@ -226,17 +226,17 @@ cmd_verify() { local res; res=$(resolve) || exit $?; read -r digest _ <<< "${res
   (cd "$dir" && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || fail E-HASH-MISMATCH store-modified digest="sha256:$digest" dir="$dir"
   probe_capsule "$dir" || exit "${EXIT[E-PROBE-CODEGEN]}"; note "OK sha256:$digest verified ($(cap .name "$dir"))"; }
 cmd_gc() { local keep=3; [ "${1:-}" = --keep-last ] && keep=$2
-  mkdir -p "$CACHE/store" "$CACHE/tmp"; local d n=0
+  mkdir -p "$CACHE/store" "$CACHE/staging"; local d n=0
   for d in "$CACHE"/store/*/; do [ -d "$d" ] || continue; [ -f "$d/.complete" ] || { note "gc: removing incomplete $d"; rm -rf "$d"; }; done
-  find "$CACHE/tmp" -mindepth 1 -mmin +1440 -exec rm -rf {} + 2>/dev/null || true
+  find "$CACHE/staging" -mindepth 1 -mmin +1440 -exec rm -rf {} + 2>/dev/null || true
   mapfile -t dirs < <(ls -1dt "$CACHE"/store/*/ 2>/dev/null)
   for d in "${dirs[@]}"; do n=$((n+1)); if [ $n -gt "$keep" ]; then note "gc: removing old $d"; rm -rf "$d"; fi; done
   return 0; }   # a trailing false '&&' would otherwise become the function's status and trip set -e
 cmd_fetch() { local out=; [ "${1:-}" = -o ] && out=${2:-}; [ -n "$out" ] || fail E-USAGE missing-argument command=fetch what="a file to write, after -o" usage="idris2x fetch -o <bundle>"
-  local res; res=$(resolve) || exit $?; read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res"); mkdir -p "$CACHE/tmp"
+  local res; res=$(resolve) || exit $?; read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res"); mkdir -p "$CACHE/staging"
   if ! fetch_to "$out.part" "${urls[@]}"; then rm -f "$out.part"
     [ -n "$FETCH_WRITE_ERR" ] && fail E-STORE-IO write-failed detail="writing the bundle ($FETCH_WRITE_ERR)" path="$(dirname "$out")"
-    fail E-NETWORK all-mirrors-failed digest="sha256:$digest" tried="$TRIED" log="$CACHE/tmp/fetch.log"; fi
+    fail E-NETWORK all-mirrors-failed digest="sha256:$digest" tried="$TRIED" log="$CACHE/staging/fetch.log"; fi
   local got; got=$(sha_of "$out.part")
   [ "$got" = "$digest" ] || { local n; n="$(stat -c%s "$out.part") bytes (the lock says $size)"; rm -f "$out.part"; fail E-HASH-MISMATCH download lock="$LOCK" want="sha256:$digest" got="sha256:$got" bytes="$n" source="${LAST_URL:-unknown}"; }
   mv -f "$out.part" "$out"; note "fetched sha256:$digest -> $out ($size bytes); copy it with $LOCK to the air-gapped host"; }
@@ -261,7 +261,11 @@ advice() { # advice ID key=value... — a note that is not an error; text, silen
     '(reduce ($ctx | to_entries[]) as $e (.text; gsub("\\{" + $e.key + "\\}"; $e.value))) as $t | "note: " + $t, "note: silence this note with " + .silence + "=0"' <<< "$j"; }
 cmd_selftest() { local root; root=$(cmd_install --locked); compose_env "$root"
   [ -n "$(cap '.idris2 // empty' "$root")" ] || fail E-PIN-NOT-FOUND no-idris2 name="$(cap .name "$root")"
-  local w; w=$(mktemp -d); trap "rm -rf '$w'" EXIT; cd "$w"     # expand now: locals are gone when EXIT fires
+  local w; w=$(mktemp -d)
+  # Expand $w now, not at exit: locals are gone when the EXIT trap fires.
+  # shellcheck disable=SC2064
+  trap "rm -rf '$w'" EXIT
+  cd "$w"
   local kind=codegen-failed; case "$root" in *[[:space:]]*) kind=path-has-spaces;; esac    # the kernel splits a #! line at spaces
   printf 'module Main\nmain : IO ()\nmain = putStrLn "chez_codegen ok"\n' > Main.idr
   "$root/bin/scheme" --program "$root/bin/idris2_app/idris2.so" -o hello Main.idr >/dev/null 2>&1 || fail E-PROBE-CODEGEN $kind probe="chez_codegen (compile)" store="$root"

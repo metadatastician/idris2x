@@ -80,11 +80,8 @@ Only if this repo builds a container; otherwise skip.
 
 ## ABI/FFI
 
-Only if this repo has a `src/interface/` seam; otherwise skip.
-
-- ABI definitions in Idris2 (`src/interface/Abi/`).
-- FFI implementations in Zig (`src/interface/ffi/`).
-- Generated C headers in `src/interface/generated/`.
+This repository has no ABI/FFI seam yet: the `rust-cli` mint pruned the template's Idris 2 + Zig seam. ADR 0011 plans an
+Idris 2 contract for `idris2x.lock` and `capsule.json` instead. Until it exists, do not create Zig FFI code here.
 
 ## State Files
 

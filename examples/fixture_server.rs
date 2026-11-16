@@ -101,7 +101,13 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let root = PathBuf::from(args.get(1).map(String::as_str).unwrap_or("."));
     let port = args.get(2).map(String::as_str).unwrap_or("8099");
-    let l = TcpListener::bind(format!("127.0.0.1:{port}")).expect("bind");
+    let l = match TcpListener::bind(format!("127.0.0.1:{port}")) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("fixture_server: cannot bind 127.0.0.1:{port}: {e}");
+            std::process::exit(2);
+        }
+    };
     println!("listening 127.0.0.1 {port}");
     for s in l.incoming().flatten() {
         let r = root.clone();
