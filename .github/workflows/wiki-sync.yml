@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+name: Wiki sync
+
+# Publishes docs/wikis/*.adoc to the GitHub wiki after merge to main, and checks on pull
+# requests that generated wiki pages, runbooks and the error-report form are not stale.
+#
+# NO `uses:` ANYWHERE, deliberately (same reason as labels.yml): .github/workflows/actions.lock
+# is keyed by workflow path, and a workflow that pulls an unlisted action fails before any step.
+# The repository is fetched with plain git instead of actions/checkout.
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/wikis/**', 'src/errors/errors.toml', 'scripts/sync-wiki.sh']
+  pull_request:
+    paths: ['docs/wikis/**', 'src/errors/errors.toml', 'scripts/**', '.github/ISSUE_TEMPLATE/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wiki-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  wiki:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write   # the wiki repository is written with the workflow token
+    steps:
+      - name: Fetch the commit (plain git, no actions)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init -q src && cd src
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA" && git checkout -q FETCH_HEAD
+      - name: Check generated sources are current
+        working-directory: src
+        run: |
+          set -euo pipefail
+          scripts/gen-runbooks.sh --check
+          scripts/gen-issue-forms.sh --check
+          scripts/sync-wiki.sh --check
+      - name: Publish to the wiki
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        working-directory: src
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          scripts/sync-wiki.sh --publish "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"

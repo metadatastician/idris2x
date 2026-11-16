@@ -1,0 +1,10 @@
+# idris2x.toml — the only file humans edit. Everything else is derived (idris2x.lock) or data (the channel).
+# Resolution order: CLI flag → IDRIS2X_VERSION → this file → *.ipkg hint → idris2x.lock (no network in resolve).
+[toolchain]
+idris2 = "0.8.0"          # the only required key; chez version comes from the channel's compat table
+
+# [overlay]                # Phase 2: content-addressed micropatches, verified like capsules
+# patches = ["sha256:...:fix-example.overlay"]
+
+# [channel]                # self-hosted channel (company mirror); defaults to the embedded URL list
+# url = "https://capsules.example.org/v1.json"

@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Prototype and chaos suite
+
+`scripts/proto/` holds the Phase 0 bash prototype: `idris2x.sh` (launcher), `make-capsule.sh` (factory), `chaos.sh` (drills).
+The Rust launcher must pass the same drills; `chaos.sh` is its executable specification.
+
+== Run it (Linux)
+
+[source,bash]
+----
+apt-get install jq zstd signify-openbsd libgmp-dev
+cargo build --example fixture_server        # Range-capable test server, std only
+FIXTURE_SERVER=target/debug/examples/fixture_server \
+  scripts/proto/chaos.sh <chez-prefix> <idris2-prefix> <chez-src> <idris2-src>
+----
+
+== What is drilled (43 checks, all passing)
+
+404 on the primary mirror, flipped byte, truncation and resume (asserting a 206), four concurrent installs, a disk-full analogue,
+tampered manifest, wrong key, rollback, expiry with and without override, offline cache miss, air-gap bundle, lock contention,
+unsafe tar members, paths with spaces, garbage collection, and the canaries via `selftest`.
+
+== Lessons the drills taught
+
+* Never raise a typed error inside a subshell: its exit code is lost.
+* Never resume a mutable document: a range resume spliced new bytes onto a stale manifest.
+* Relative symlinks inside the tree are legitimate (Chez's `bin/scheme`); only escaping links are unsafe.

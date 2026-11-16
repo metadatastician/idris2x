@@ -1,0 +1,133 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Phase 0 report: assumptions tested on a fresh Linux x86_64 host (2026-11-09)
+:toc: macro
+
+Host: Ubuntu 24.04.5, glibc 2.39, 4 vCPU, 15 GB RAM, no Chez/Idris 2/Go deps preinstalled beyond gcc, make, Go 1.24.7.
+Everything below was executed, not estimated. Scripts: `scripts/proto/` (prototype launcher, factory, chaos drills), `tests/canaries/`.
+
+toc::[]
+
+== Verdicts on the plan's load-bearing assumptions
+
+[cols="3,1,4",options="header"]
+|===
+| Plan assumption | Verdict | What is true (source)
+| Idris 2 "0.8.1" is the current release | Refuted | Newest tag is v0.8.0 (2025-10-31). No binary assets upstream; capsules must be built from source.
+| Pair Idris 2 with Chez 9.6.4 | Refuted | 9.6.4 exists but has no arm64 boot files and refuses Apple Silicon; Idris 2 needs threaded Chez and >= 10.0 on AArch64. Pin 10.4.1 (ADR 0004).
+| Reuse upstream Chez release binaries | Refuted (Linux/macOS) | Upstream publishes only a Windows installer plus the source tarball. Build from tarball: 2 min 44 s on 4 cores, 6 MB installed.
+| Relocation needs `CHEZSCHEMELIBDIRS` | Refuted | That variable only affects R6RS library import paths. Boot files use `SCHEMEHEAPDIRS`; Chez 10's compiled-in default is executable-relative, so a copied tree works with *no* variables.
+| Idris 2 is relocatable via `IDRIS2_PREFIX` | Confirmed | Prefix baked in `src/IdrisPaths.idr`, overridden at runtime (`src/Idris/Driver.idr`). 11/12 canaries pass on a tree copied into a path with spaces.
+| The `idris2` wrapper is relocatable | Partially | `bin/idris2` is sh; `bin/idris2_app/idris2.so` carries `#!<absolute chez path> --program`. Solved by direct exec (ADR 0005).
+| glibc 2.28 floor | Partially | A build on ubuntu-24.04 needs `GLIBC_2.38`; the floor requires building inside manylinux_2_28 containers (ADR 0006).
+| Go stdlib only + zstd + blake3 + TOML + minisign | Contradictory | Go 1.24 stdlib has no zstd, no blake2b/blake3, no TOML; minisign's default pre-hash is BLAKE2b. Resolved in ADR 0007/0008 (gzip or vendored decoder; sha256; signify-format Ed25519; JSON or TOML-subset lock).
+| Bundle size 40–120 MB compressed | Confirmed (low end) | Linux x86_64 capsule: 137 MB unpacked; 35.4 MB gzip -9, 28.3 MB zstd -19, 19.5 MB xz -9 (before pruning ~30 MB of bootstrap `.ss`/`-boot.so` files).
+| Warm path < 20 ms | Confirmed | Go skeleton: 1.7 ms no-op, 2.8 ms with lock parse + flock + execve (200-run loops). Bash prototype: ~40 ms.
+| Launcher written in Go, repo scaffolded from rsr-template-repo | Refuted (Go) / Confirmed (template) | Estate LANGUAGE-POLICY §3 bans Go and Python for new work and the template's CI gates enforce it; `rust-cli` is the only CLI archetype; mint = `just repo-init rust-cli` (ADR 0011).
+| Nothing already provides hermetic Idris 2 + Chez pairs | Confirmed | pack builds from source with BYO Chez; Homebrew bakes paths; no asdf/mise plugin, no setup action, no upstream binaries (PRIOR-ART.adoc).
+| 12 canaries are implementable in ~10 lines each | Confirmed | All 12 written and run; `unicode_paths` fails because of an upstream Idris 2 bug (see UPSTREAM-NOTES.adoc), kept as expected-fail for 0.8.0.
+|===
+
+== Measured numbers
+
+[cols="3,2",options="header"]
+|===
+| Measurement | Value
+| Chez 10.4.1 configure + make -j4 + install | 164 s
+| Idris 2 v0.8.0 `make bootstrap` (Chez) | 604 s; `make install` 6 s
+| Installed Idris 2 tree | 127 MB (bin 40 MB incl. 30 MB of removable bootstrap artifacts; libs 87 MB)
+| Installed Chez tree | 6.0 MB (bin symlinks → lib/csv10.4.1/ta6le)
+| Merged capsule tar | 136,980,480 bytes
+| gzip -9 / zstd -19 / xz -9 | 35,374,302 / 28,341,143 / 19,480,036 bytes
+| Unpack wall time, best of 3 (gzip / zstd / xz) | 674 ms / 196 ms / 1,425 ms
+| Cold `install --locked` from a local HTTP mirror (download, sha256, unpack, sha256sums -c, probes) | 3.3 s
+| Warm `install --locked` no-op (bash prototype) | 40 ms
+| Go launcher skeleton (audit): static binary / warm overhead | 5.98 MB linux-amd64 (5.6–6.2 MB over 5 targets) / 1.7–2.8 ms
+| GLIBC symbol floor of a native ubuntu-24.04 Chez build | 2.38 (libm, libc, libtinfo only)
+| Chez built with `--disable-curses --disable-x11` | 181 s; runtime deps reduced to libm + libc (no libtinfo); `(threaded?)` = #t by default
+|===
+
+== Chaos drills (prototype launcher, full capsule)
+
+Prototype launcher against the full Linux x86_64 capsule served by a local Range-capable fixture server (Node); 43 checks, 0 failures (final run, 2026-11-16).
+
+[cols="2,4,1,1,2",options="header"]
+|===
+| Drill | Check | Exit | ms | Error ID
+| T1 | pin 0.8.0 | 0 | 84 | 
+|  | install --locked (cold) | 0 | 4358 | 
+|  | store/.complete present |  |  | 
+|  | no staging leftovers in tmp |  |  | 
+|  | install --locked (warm, no-op) | 0 | 32 | 
+|  | run -- chez evaluates 42 |  |  | 
+|  | verify (sha256sums + probes) | 0 | 691 | 
+|  | doctor | 0 | 709 | 
+|  | env --json | 0 | 39 | 
+| T2 | 404 primary -> mirror succeeds | 0 | 4423 | 
+| T3 | flipped byte -> E-HASH-MISMATCH | 11 | 169 | `E-HASH-MISMATCH`
+|  | store absent after mismatch |  |  | 
+|  | no .part left behind |  |  | 
+| T4 | truncated -> E-HASH-MISMATCH | 11 | 108 | `E-HASH-MISMATCH`
+|  | resume from partial .part | 0 | 3907 | 
+|  | server answered the resume with 206 (Range) |  |  | 
+| T5 | all 4 concurrent installs exit 0 (4/4) |  |  | 
+|  | exactly one store dir |  |  | 
+|  | no stage leftovers |  |  | 
+| T6 | write limit -> typed E- error | 14 | 51 | `E-NETWORK`
+|  | store has no half-capsule |  |  | 
+| T7 | tampered manifest -> E-SIG-INVALID | 12 | 43 | `E-SIG-INVALID`
+|  | wrong pinned key -> E-SIG-INVALID | 12 | 35 | `E-SIG-INVALID`
+|  | channel rollback -> E-CHANNEL-ROLLBACK exit=22    64ms E-CHANNEL-ROLLBACK |  |  | 
+|  | expired manifest -> E-CHANNEL-EXPIRED exit=23    67ms E-CHANNEL-EXPIRED |  |  | 
+|  | expired + explicit override -> ok | 0 | 74 | 
+| T8 | offline cache miss -> E-OFFLINE | 20 | 34 | `E-OFFLINE`
+| T9 | fetch -o bundle | 0 | 229 | 
+|  | install --from bundle (offline) | 0 | 4450 | 
+|  | bundle kept after --from |  |  | 
+| T10 | lock held -> E-LOCK-TIMEOUT | 15 | 1038 | `E-LOCK-TIMEOUT`
+| T11 | '../' member -> E-CAPSULE-INVALID | 21 | 52 | `E-CAPSULE-INVALID`
+|  | nothing escaped the staging dir |  |  | 
+| T12 | install into path with spaces | 0 | 4436 | 
+|  | chez runs from spaced path |  |  | 
+|  | lock lacks host target -> E-PIN-NOT-FOUND exit=10    23ms E-PIN-NOT-FOUND |  |  | 
+| T13 | gc removes incomplete dirs | 0 | 16 | 
+|  | incomplete dir gone, complete kept |  |  | 
+| T14 | exec -- idris2 --version | 0 | 549 | 
+|  | selftest (chez_codegen, relocatable_artifact, refc) exit=0  2081ms |  |  | 
+| T15 | exec works from spaced store | 0 | 537 | 
+|  | selftest: compiled program breaks (shebang) -> E-PROBE-CODEGEN with fix hint exit=17   951ms E-PROBE-CODEGEN |  |  | 
+|  | diagnosis names the shebang/space cause |  |  | 
+|===
+
+== Canary results on the relocated store copy
+
+Capsule root: `~/.cache/idris2x/store/sha256-0dc9ae68…/` (installed by the prototype from a local mirror, run via direct exec).
+
+[cols="2,1,4",options="header"]
+|===
+| Canary | Result | Note
+| pure_eval | pass | Chez boots from relocated boot files, prints 42
+| chez_codegen | pass | compile + run 0.8 s
+| refc_codegen | pass | `--cg refc` with host cc + gmp
+| c_ffi_support | pass | `System.getPID` through libidris2_support
+| ipkg_multi_module | pass | `--build canary.ipkg`, two modules
+| relocatable_artifact | pass | compiled program moved to a dir with spaces, run under `env -i`
+| prelude_base | pass | Data.List / Data.String / Data.Vect
+| concurrent_build | pass | two parallel compilations
+| unicode_paths | *expected fail* | upstream Idris 2 bug: Chez backend mis-quotes non-ASCII paths (UPSTREAM-NOTES.adoc)
+| large_module | pass | 400 generated definitions, compile + run 1.5 s
+| chez_threads | pass | `(threaded?)` #t, fork-thread / thread-join
+| version_match | pass | `Idris 2, version 0.8.0`
+|===
+
+Runner: `tests/canaries/run.sh <capsule-root> [--quick]`. A runner bug found on the way: Idris 2 refuses source files outside the working directory, so canaries are copied into a scratch directory first.
+
+== What Phase 0 changed in the plan
+
+. Pin `idris2@0.8.0` + `chez 10.4.1`; build both from pinned sources in CI (no upstream binaries exist).
+. The launcher execs the capsule's Chez directly with an explicit environment contract; wrappers and shebangs are not trusted.
+. Linux capsules come out of manylinux_2_28 containers; `min_glibc` is measured and recorded, and the launcher maps the dynamic-loader failure to `E-GLIBC-FLOOR`.
+. Channel signatures are signify-format pure Ed25519; the manifest carries `expires`; both rollback and freeze are typed failures; execution never needs the manifest.
+. Five error IDs added. Taxonomy and target matrix are TOML data with generators.
+. One upstream bug report prepared (non-ASCII project paths, Chez backend).
+. Language changed from Go to Rust to comply with the estate canon; generators rewritten without Python.

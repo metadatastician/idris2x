@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Contributing guide
+
+Start with link:https://github.com/metadatastician/idris2x/blob/main/CONTRIBUTING.adoc[CONTRIBUTING.adoc]; this page is the idris2x-specific part.
+
+== Set up
+
+[source,bash]
+----
+git clone https://github.com/metadatastician/idris2x && cd idris2x
+mise install                 # toolchain pinned in mise.toml
+just test && just quality    # the golden path
+----
+
+== Rules that reviewers will hold you to
+
+* Every failure is typed: add it to `src/errors/errors.toml`, then run `scripts/gen-runbooks.sh` and `scripts/gen-issue-forms.sh`.
+* The launcher stays under 1,000 lines of our own code. Features that do not fit belong in the channel (data) or the capsule.
+* No Python, Go or Node.js. Scripts are bash + jq + awk; the launcher is Rust.
+* User-visible output changes need a before/after transcript in the PR (plain, `NO_COLOR=1`, `--json`).
+* Signed commits; SPDX header on every file.
+
+== Where to start
+
+* `good first issue` and `area:dx` issues.
+* Port a prototype behaviour from `scripts/proto/idris2x.sh` into Rust, with its chaos drill.

@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Mirrors and caching
+
+[NOTE]
+====
+*Planned (Phase 1).* Describes the agreed design (ADRs in `docs/decisions/`); not yet shipped.
+====
+
+* Each capsule lists several URLs; the launcher tries them in order and verifies every byte against the lock, so a mirror can deny service but cannot substitute content.
+* Resume uses HTTP `Range` on immutable capsule downloads only. Some CDNs answer a range request with a full `200`; the launcher detects that and restarts.
+* GitHub release download URLs redirect to signed URLs that expire in minutes; always mirror the stable `github.com/.../releases/download/...` URL, never the redirect target.
+* A plain directory served over HTTPS (or `file://` for labs) is a valid mirror: copy the capsule files and keep their names.
+
+== Caching in CI
+
+Cache `~/.cache/idris2x/store` keyed on the hash of `idris2x.lock`. A restored store is re-verified on use (`.complete` marker plus per-file `sha256sums.txt`), so a corrupted cache produces `E-HASH-MISMATCH`, not a broken compiler.

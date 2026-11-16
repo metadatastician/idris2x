@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Offline and air-gapped use
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+== Prefetch on a connected machine
+
+[source,bash]
+----
+idris2x fetch -o idris2x-bundle.tar.gz     # capsule + signed manifest + signature, checked against the lock
+----
+
+Copy the bundle, the project's `idris2x.lock` and the launcher binary to the isolated host.
+
+== Install on the isolated host
+
+[source,bash]
+----
+IDRIS2X_OFFLINE=1 idris2x install --from idris2x-bundle.tar.gz
+IDRIS2X_OFFLINE=1 idris2x exec --locked -- idris2 --version
+----
+
+The bundle is verified exactly like a download: wrong bytes fail with `E-HASH-MISMATCH`; a cache miss in offline mode fails with
+`E-OFFLINE` and tells you to fetch, instead of reaching for the network. Both paths are drilled in the Phase 0 chaos suite.

@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+# Project labels for idris2x, in addition to the estate set in .github/labels.json (generated elsewhere; do not edit).
+# Applied by scripts/sync-local-labels.sh (create or update; never deletes).
+schema = 1
+
+[[label]]
+name = "area:launcher"
+color = "1d76db"
+description = "The Rust launcher: resolve, fetch, verify, store, exec"
+[[label]]
+name = "area:factory"
+color = "1d76db"
+description = "Capsule factory CI: building Chez and Idris 2 from pinned sources"
+[[label]]
+name = "area:channel"
+color = "1d76db"
+description = "The signed compat channel (data only)"
+[[label]]
+name = "area:capsule"
+color = "1d76db"
+description = "A capsule: contents, layout, licences, new versions or targets"
+[[label]]
+name = "area:canary"
+color = "1d76db"
+description = "The twelve canaries and churn drills"
+[[label]]
+name = "area:dx"
+color = "5319e7"
+description = "Developer experience: error messages, install and uninstall, debugging flows"
+[[label]]
+name = "area:wiki"
+color = "0075ca"
+description = "docs/wikis and the published GitHub wiki"
+[[label]]
+name = "error-report"
+color = "d93f0b"
+description = "A user hit a typed E-... error"
+[[label]]
+name = "risk:class-a"
+color = "0e8a16"
+description = "Mirror, URL or docs change: auto-merge after two green rehearsals"
+[[label]]
+name = "risk:class-b"
+color = "fbca04"
+description = "New version pin or checksum: one human approval after green canaries"
+[[label]]
+name = "risk:class-c"
+color = "b60205"
+description = "Launcher, schema, exit codes or support matrix: human only, needs an ADR"
+[[label]]
+name = "agent:proposed"
+color = "c5def5"
+description = "Opened by the bounded maintenance agent; never merged by it"
+[[label]]
+name = "agent:kill-switch"
+color = "000000"
+description = "While any open issue carries this label the maintenance agent does nothing"
+[[label]]
+name = "upstream:idris2"
+color = "bfdadc"
+description = "Caused by or reported to idris-lang/Idris2"
+[[label]]
+name = "upstream:chez"
+color = "bfdadc"
+description = "Caused by or reported to cisco/ChezScheme"
+[[label]]
+name = "target:linux"
+color = "ededed"
+description = "Linux x86_64 or aarch64 capsules"
+[[label]]
+name = "target:macos"
+color = "ededed"
+description = "macOS arm64 or x86_64 capsules"
+[[label]]
+name = "target:windows"
+color = "ededed"
+description = "Windows x86_64 (Tier 2, experimental)"
+[[label]]
+name = "needs-triage"
+color = "fef2c0"
+description = "Not yet classified"

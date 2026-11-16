@@ -2,7 +2,7 @@
 SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
-<!-- Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}> -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (metadatastician) <j.d.a.jewell@open.ac.uk> -->
 <!-- Authoritative source: docs/practice/AI-CONVENTIONS.adoc -->
 
 # Copilot Instructions
@@ -17,7 +17,7 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 - SPDX: `MPL-2.0` on all new files.
 - Never use AGPL-3.0.
-- Copyright: `{{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>`
+- Copyright: `Jonathan D.A. Jewell (metadatastician) <j.d.a.jewell@open.ac.uk>`
 
 ## Code Style
 
@@ -91,3 +91,18 @@ Only if this repo has a `src/interface/` seam; otherwise skip.
 No `.a2ml` file may exist anywhere: the format is retired. State, metadata,
 `(neurosym)` and `(playbook)` are clauses of the repo deed (`*_chora.deed`);
 the journal is `docs/status/ROADMAP.adoc`. Never recreate them as separate files.
+
+## idris2x: rules for agents working in this repository
+
+These are project facts, measured in Phase 0 (docs/status/PHASE0-REPORT.adoc). They bind every agent.
+
+* **Five invariants.** I1 no silent drift, I2 atomic or absent, I3 loud by default, I4 the past never breaks, I5 verify before trust. A change that adds a silent fallback, an untyped failure or a network call on the execution path is wrong even if tests pass.
+* **Execution never reads the channel.** `install --locked` and `exec --locked` need only `idris2x.lock` and capsule bytes. Expiry, rollback protection and deprecation gate `pin`/`update` only (ADR 0008).
+* **Every failure is typed.** Add or change errors only in `src/errors/errors.toml` (exit codes are append-only), then run `scripts/gen-runbooks.sh` and `scripts/gen-issue-forms.sh`. Never hand-edit `docs/runbooks/*.adoc` above the marker or `.github/ISSUE_TEMPLATE/error_report.yml`.
+* **The environment contract is a reset** (ADR 0005): inherited `IDRIS2_*`, `LD_LIBRARY_PATH`, `DYLD_*`, `CHEZ`, `SCHEMEHEAPDIRS` are code search paths; the launcher sets them and inherits none unless `--inherit-env`.
+* **Resume only immutable, digest-addressed downloads.** Never resume the channel manifest or any mutable document.
+* **Archive extraction** rejects absolute names, `..`, links escaping the staging tree, devices and setuid bits, and uses a containment check, never `join(dst, clean(name))`.
+* **Languages:** Rust for the launcher, bash + jq + awk for scripts. No Python, Go or Node.js (estate policy and this repo's anchor). The capsule factory *invokes* upstream Makefiles; it never patches Idris 2 or Chez Scheme (zero-fork policy).
+* **The launcher stays under 1,000 lines of our own code.** A feature that does not fit belongs in the channel (data) or the capsule.
+* **The maintenance agent** may only propose one of four shapes (`compat_patch`, `pin_bump`, `mirror_add`, `escalate`), never signs, never approves or merges its own PR, never widens `src/definitions/targets.toml`. Any open issue labelled `agent:kill-switch` stops it.
+* **Report faithfully.** The launcher, factory and published capsules do not exist yet; do not describe planned behaviour as shipped.

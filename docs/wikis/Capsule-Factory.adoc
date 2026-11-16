@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Capsule factory
+
+[NOTE]
+====
+*Planned (Phase 1).* Describes the agreed design (ADRs in `docs/decisions/`); not yet shipped.
+====
+
+Per Idris 2 release and target:
+
+. Build Chez Scheme from the sha256-pinned `csv<ver>.tar.gz` with `--disable-x11 --disable-curses` (runtime deps: libc and libm only).
+. Build Idris 2 from its tag with `make bootstrap` and `make install` using the *same* `PREFIX` and an absolute `CHEZ`.
+. Merge both trees, drop bootstrap artifacts, add licences (Apache-2.0 + NOTICE, BSD-3, LZ4, Nanopass, zlib), `capsule.json` and `sha256sums.txt`.
+. Relocation probe: move the tree into a path with spaces and run all twelve canaries.
+. Pack reproducibly (sorted, fixed mtime, numeric owners), attest, publish as an immutable release, mirror.
+
+Measured: Chez 164 s, Idris 2 bootstrap 604 s on four cores.

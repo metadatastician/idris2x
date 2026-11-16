@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// GENERATED from src/errors/errors.toml by scripts/gen-runbooks.sh — edit the TOML, not this block
+= E-CAPSULE-INVALID
+:toc: macro
+
+[cols="1,4"]
+|===
+| Exit code | `21`
+| Meaning | capsule archive is malformed or contains unsafe paths/links
+| Fix | `report the digest; never unpack by hand`
+| Invariant | I3 loud by default
+|===
+
+// END GENERATED — hand-written triage notes below survive regeneration
+
+== Triage
+
+. Reproduce with `idris2x doctor --json` and attach the output.
+. Classify: data fix (channel patch), engine fix (launcher), or upstream outage.
+. If a channel patch resolves it, open a Class A/B PR; the rehearsal pipeline must be green on 3 targets.

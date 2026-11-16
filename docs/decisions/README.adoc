@@ -1,3 +1,23 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= decisions Unit
+= Architecture Decision Records
+
+Template-inherited (estate):
+
+* link:0001-adopt-rsr-standard.adoc[0001] Adopt the Rhodium Standard Repository template
+* link:0002-variant-contract.adoc[0002] Variant contract
+* link:0003-forge-and-sustain-lifecycle.adoc[0003] Forge and sustain lifecycle
+* link:0000-template.adoc[0000] / link:0001-template.adoc[template] ADR templates
+
+idris2x (Phase 0, measured on real builds; see link:../status/PHASE0-REPORT.adoc[the Phase 0 report]):
+
+* link:0004-pin-chez-10-build-from-release-tarball.adoc[0004] Pin Chez Scheme 10.x for every target; build it from the release tarball
+* link:0005-relocation-by-direct-exec.adoc[0005] Relocation by direct exec; the environment contract is a reset
+* link:0006-glibc-floor-via-manylinux-containers.adoc[0006] glibc 2.28 floor via manylinux_2_28 containers
+* link:0007-launcher-constraints-compression-digest-lock-language.adoc[0007] Launcher constraints: gzip, sha256, JSON lock + minimal TOML; Rust
+* link:0008-channel-trust-signify-ed25519-monotonic-expiry.adoc[0008] Channel trust: Ed25519, monotonic versions, expiry gates resolution only
+* link:0009-error-taxonomy-as-data.adoc[0009] The error taxonomy is data
+* link:0010-hosting-and-survivability.adoc[0010] Hosting and survivability: immutable releases, own-domain mirror, manifest URL list
+* link:0011-estate-compliance-mint-rust-cli.adoc[0011] Estate compliance: mint with `rust-cli`, MPL-2.0, AsciiDoc, PROOF-POLICY deviation, Idris 2 contract
+
+A change to the channel schema, lock schema, exit codes or support matrix is Class C and needs a new ADR.

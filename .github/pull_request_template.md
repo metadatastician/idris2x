@@ -46,3 +46,15 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 ## Screenshots
 
 <!-- If applicable, add screenshots or terminal output demonstrating the change. -->
+
+## idris2x specifics
+
+<!-- Delete the rows that do not apply. -->
+
+- Risk class: [ ] A (mirror, URL, docs) · [ ] B (version pin, checksum) · [ ] C (launcher, schema, exit codes, support matrix: link the ADR)
+- [ ] Channel patch: `channel_version` is exactly +1, the manifest validates against `src/contracts/channel-v1.schema.json`, and `expires` is set
+- [ ] Canaries green on three targets (link the run)
+- [ ] Error taxonomy changed: `src/errors/errors.toml` edited (exit codes append-only), then `scripts/gen-runbooks.sh` and `scripts/gen-issue-forms.sh` re-run
+- [ ] Launcher still under 1,000 lines of our own code; new crates vendored and allowed in `deny.toml`
+- [ ] User-facing output changed: before/after transcript pasted below (plain, `NO_COLOR=1` and `--json`)
+- [ ] Wiki source changed in `docs/wikis/` (published on merge)

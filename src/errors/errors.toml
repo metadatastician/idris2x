@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+# errors.toml — the error taxonomy. Every failure the launcher can emit has a stable ID, a stable exit
+# code, a one-line meaning, an exact fix, and a runbook page runbooks/<ID>.adoc (generated stubs).
+# Exit codes are part of the CLI contract: never renumber; append only.
+schema = 1
+
+[[error]]
+id = "E-USAGE"
+exit = 2
+meaning = "bad command line"
+fix = "idris2x --help"
+[[error]]
+id = "E-PIN-NOT-FOUND"
+exit = 10
+meaning = "no lock, or lock/channel has no capsule for this version+target"
+fix = "idris2x pin <supported-version>"
+[[error]]
+id = "E-HASH-MISMATCH"
+exit = 11
+meaning = "downloaded bytes or unpacked tree do not match the pinned digest"
+fix = "idris2x gc && idris2x install --locked"
+[[error]]
+id = "E-SIG-INVALID"
+exit = 12
+meaning = "channel manifest signature or key id does not verify"
+fix = "do not override; investigate the mirror (runbook)"
+[[error]]
+id = "E-PLATFORM-UNSUPPORTED"
+exit = 13
+meaning = "no capsule exists for this OS/arch"
+fix = "see supported targets; consider --from-source (Tier 3)"
+[[error]]
+id = "E-NETWORK"
+exit = 14
+meaning = "all mirrors failed"
+fix = "retry; check proxy; IDRIS2X_OFFLINE=1 with a prefetched bundle"
+[[error]]
+id = "E-LOCK-TIMEOUT"
+exit = 15
+meaning = "another install of the same capsule held the lock too long"
+fix = "wait, or remove the stale lock file named in the message"
+[[error]]
+id = "E-GLIBC-FLOOR"
+exit = 16
+meaning = "host glibc older than the capsule's min_glibc"
+fix = "upgrade the host or use a musl/static capsule when available"
+[[error]]
+id = "E-PROBE-CODEGEN"
+exit = 17
+meaning = "capsule unpacked and verified but a canary failed on this host"
+fix = "runbook triage; idris2x doctor --json"
+[[error]]
+id = "E-CHANNEL-SCHEMA"
+exit = 18
+meaning = "channel or lock schema newer than this launcher"
+fix = "update idris2x"
+[[error]]
+id = "E-PIN-DRIFT"
+exit = 19
+meaning = "idris2x.toml and idris2x.lock disagree"
+fix = "idris2x pin <version>"
+[[error]]
+id = "E-OFFLINE"
+exit = 20
+meaning = "cache miss while IDRIS2X_OFFLINE=1"
+fix = "idris2x fetch -o bundle on a connected host, then idris2x install --from bundle"
+# --- added by the Phase 0 prototype (not in the original plan) ---
+[[error]]
+id = "E-CAPSULE-INVALID"
+exit = 21
+meaning = "capsule archive is malformed or contains unsafe paths/links"
+fix = "report the digest; never unpack by hand"
+[[error]]
+id = "E-CHANNEL-ROLLBACK"
+exit = 22
+meaning = "channel_version went backwards relative to the lock (rollback/freeze attack or stale mirror)"
+fix = "investigate; do not override"
+[[error]]
+id = "E-CHANNEL-EXPIRED"
+exit = 23
+meaning = "channel manifest past its expires timestamp (freeze protection)"
+fix = "fetch a fresh manifest; IDRIS2X_ALLOW_EXPIRED=1 only when you know why"
+[[error]]
+id = "E-STORE-IO"
+exit = 24
+meaning = "store not writable, disk full, or atomic rename failed"
+fix = "free space / fix permissions; idris2x gc"
+[[error]]
+id = "E-INTERNAL"
+exit = 70
+meaning = "launcher bug"
+fix = "file an issue with idris2x doctor --json"

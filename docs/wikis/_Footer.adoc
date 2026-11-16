@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+Generated from `docs/wikis/` in https://github.com/metadatastician/idris2x[metadatastician/idris2x]. Edits here are overwritten; open a pull request instead. Docs: CC-BY-SA-4.0.

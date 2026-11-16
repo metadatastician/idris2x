@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0005. The launcher execs the capsule's Chez directly; no wrapper scripts, one explicit environment contract
+
+Date: 2026-11-09
+
+== Status
+
+Accepted (Phase 0 spike, measured: 11 of 12 canaries pass on a tree copied into a path with spaces).
+
+== Context
+
+Idris 2's installed `bin/idris2` is a POSIX sh script that execs `bin/idris2_app/idris2.so`, whose first line is
+`#!<absolute path of the Chez used at build time> --program`. Three facts make that fragile for a relocatable capsule:
+the baked path (`src/Compiler/Scheme/Chez.idr:87-91`), the Linux shebang limit (256 bytes since kernel 5.1, 128 before; a
+`~/.cache/idris2x/store/sha256-<64 hex>/bin/scheme --program` line is ~125 bytes), and macOS SIP stripping `DYLD_LIBRARY_PATH`
+when passing through `/bin/sh`. The compiler's own prefix is baked into `src/IdrisPaths.idr` but overridden at runtime by `IDRIS2_PREFIX`.
+
+== Decision
+
+The launcher performs `execve(<store>/bin/scheme, ["scheme", "--program", "<store>/bin/idris2_app/idris2.so", args...])`
+(argv-identical to what the wrappers end up doing) with exactly this environment, recorded in each capsule's `capsule.json`:
+
+[cols="1,2",options="header"]
+|===
+| Variable | Value
+| `IDRIS2_PREFIX` | `<store>` — libraries, support files, `libidris2_support`
+| `CHEZ` | `<store>/bin/scheme` — so the compiler finds Chez when compiling user programs
+| `SCHEMEHEAPDIRS` | `<store>/lib/csv<chez>/%m` — belt and braces; the default executable-relative path already works
+| `IDRIS2_INC_SRC` | `<store>/bin/idris2_app`
+| `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` | `<store>/bin/idris2_app` prepended (the compiler dlopens `libidris2_support`)
+| `PATH` | `<store>/bin` prepended
+|===
+
+The contract is a *reset*, not a prepend: the launcher also clears inherited `IDRIS2_PATH`, `IDRIS2_PACKAGE_PATH`,
+`IDRIS2_DATA`, `IDRIS2_LIBS`, `IDRIS2_CG`, `IDRIS2_INC_CGS` and any `CHEZ`/`SCHEMEHEAPDIRS` from the environment unless
+`--inherit-env` is given, because Idris 2 treats every one of them as a code search path (THREAT-MODEL.adoc, Tampering).
+`idris2x run -- <chez args>` execs `<store>/bin/scheme` the same way. The capsule factory builds Idris 2 with `CHEZ` set to an
+absolute path and the *same* `PREFIX` for `make bootstrap` and `make install` (the libraries are installed by the freshly
+built compiler into its baked prefix).
+
+== Consequences
+
+=== Positive
+* No `sh`, no `readlink -f`, no `zsh` on macOS, no shebang length limit, no SIP interaction; warm path is a stat plus an execve.
+* The store path may contain spaces and non-ASCII characters (verified for spaces; see ADR note on Idris 2's own non-ASCII bug).
+
+=== Negative
+* Programs compiled *through* the capsule embed `#!<store>/bin/scheme --program`; garbage-collecting or moving that capsule breaks them.
+  `idris2x gc` must say so loudly, and the docs must recommend `--cg refc` or re-compilation for long-lived artifacts.
+* The exec form is capsule-layout-specific; the layout is therefore part of `capsule.json` (`exec` and `env` fields), not of the launcher.
+
+=== Neutral
+* Rewriting the `.so` shebang at capsule-build time remains possible (Chez tolerates it) but is not needed.

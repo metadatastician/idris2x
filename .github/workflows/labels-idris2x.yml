@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+name: Project labels
+
+# Applies the idris2x project labels from .github/labels-idris2x.toml (create or update, never delete).
+# The estate label set stays with labels.yml. NO `uses:` (see labels.yml for why).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/labels-idris2x.toml']
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch the commit (plain git, no actions)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init -q src && cd src
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA" && git checkout -q FETCH_HEAD
+      - name: Apply project labels
+        working-directory: src
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/sync-local-labels.sh "$GITHUB_REPOSITORY"

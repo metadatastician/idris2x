@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Beyond this repository: items to track or act on elsewhere
+:toc: macro
+
+Collected from the Phase 0 audit (five fact-checking passes, primary sources cited in the audit record) and the spike. Each line names where it lives.
+
+== Estate canon (`metadatastician/standards`)
+
+* LANGUAGE-POLICY §3 bans Go and Python; this project complied by choosing Rust and bash. Decide whether a toolchain-launcher archetype (`rust-launcher`?) belongs in the template if the shape recurs.
+* No toolchain-pinning policy exists for Idris 2 / pack; PROVISIONING-STANDARD §4 notes Guix lacks idris2 and mise cannot provide it; `echidna-verify.yml` installs pack unpinned from main. Propose: PROOF-POLICY §6 recognises sha256-pinned, signed capsules (idris2x) as a sanctioned route.
+* KNOWN-TENSIONS: Interface & Architecture Law ("ABI → Idris 2, always") versus capability-gated template applicability; record it.
+* Licence canon: add guidance for redistributing third-party binaries (Apache-2.0 NOTICE propagation, BSD-3 notice retention, `dep5` Files stanzas, `LICENSES/` texts).
+* Standardise one Ed25519 wire format estate-wide (signify / minisign-legacy `Ed`, raw bytes); document key custody, rotation and a trusted-keys list embedded in launchers.
+* Export-control note: a one-time 15 CFR 742.15(b) notification for open-source binaries containing TLS is a cross-estate policy question (not legal advice).
+
+== RSR template (`hyperpolymath/rsr-template-repo`)
+
+* `proven-tests.yml` never installs Idris 2; `run-proven-suite.sh` degrades to Static-Checked; `check-proofs.sh` is unwired; 5 of 6 Idris 2 proofs quarantined. idris2x is the obvious fix once it exists.
+* `oracle-segfault-diag.yml` ("TEMPORARY DIAGNOSTIC … must never reach main") is on main @2be7b88; remove before minting children.
+* `mise.toml` references `launch-scaffolder provision-set realign` (hyperpolymath/launch-scaffolder) as the re-minter of `mise.toml`/`launcher.sh`; track it for the launcher standard.
+* Local `standards` clone used by the audit (d036da33) is behind main (e518e0c9); re-verify canon citations against main before relying on them.
+* GitHub Pages / CodeQL / Scorecard SARIF need Pages enabled and a Code Security licence on private repos; SCAFFOLD-LIFECYCLE defaults new repos to private — decide visibility before the first push (public is also what unlocks free arm64 Linux and macOS runners).
+
+== Upstream: Idris 2
+
+* Bug: Chez backend mis-quotes non-ASCII project paths (`Chez.idr:536-537` uses Idris `show`); repro in UPSTREAM-NOTES.adoc. Check the tracker, then file.
+* Docs: INSTALL.md still demands `--threads` and points Apple Silicon at the Racket fork; `envvars.rst` lists `IDRIS2_PREFIX` as build-time only although runtime honours it.
+* `/usr/bin/env scheme --program` fallback cannot work on Linux (single-argument shebang); long-path shebang truncation (128/256 bytes).
+* Search-path precedence (`IDRIS2_DATA`, `IDRIS2_LIBS`, `IDRIS2_PACKAGE_PATH`, `IDRIS2_INC_SRC`) means any env-injected directory is code execution; worth an upstream security note.
+* Upstream `ci-bootstrap.yml` still pins the retired `ubuntu-20.04` runner; AArch64 Linux needs Chez ≥ 10 (undocumented); Windows wrappers embed the Chez path in `idris2.cmd`.
+* Source provenance: idris-lang.org publishes `idris2-0.8.0.tgz` + `.sha256` (`940a283c…`); pin by tag commit `15a3e4e7…` as well.
+
+== Upstream: Chez Scheme
+
+* Release cadence roughly yearly (10.0.0 2024-02, 10.2.0 2025-05, 10.4.0/10.4.1 2026-05); only Windows gets binaries; tarball sha256 for 10.4.1 is `2e74952d…ef308`.
+* Executable basename determines the boot file name; renaming the kernel requires shipping `<name>.boot`.
+* Linux kernel links `libtinfo` unless `--disable-curses` (measured: `--disable-curses --disable-x11` leaves only libm/libc).
+* Windows capsule obligations: `vcruntime140.dll` (MSVC builds) and optional win-iconv; macOS binaries need ad-hoc or Developer ID signing for Gatekeeper.
+* Distro drift: Ubuntu noble 9.5.8, jammy 9.5.4; Homebrew 10.4.1 with the executable named `chez`.
+
+== GitHub / infrastructure
+
+* Runner lifecycle: macos-13 retired 2025-12-04, macos-14 retired 2026-11-02; Intel macOS (`macos-15-intel`, `macos-26-intel`) sunsetting ~2027 — plan the `x86_64-apple-darwin` fallback (cross boot files via `make bootquick XM=ta6osx`, or demote the target).
+* Enable *immutable releases* at the organisation level for every estate repo publishing binaries; adopt draft → attach → publish.
+* Release asset redirects are five-minute signed URLs; AUP §9 allows throttling: share one download/resume helper estate-wide that always re-requests the stable URL.
+* Cloudflare R2: custom domain required for public buckets (never `r2.dev`), `Range` may be answered with a full 200 at the edge, 512 MB Free-plan cache ceiling, domain renewal/registrar lock as an abandonment risk.
+* Sigstore trusted-root rotation ("a few times a year") and Rekor SLO are upstream dependencies if any launcher embeds a Sigstore root; prefer attestation-gated signing in the factory.
+* Apple: Sequoia removed the Control-click Gatekeeper override; decide estate-wide whether CLI launchers get Developer ID + notarization.
+* Windows: short store roots and `longPathAware` manifests across estate launchers (MAX_PATH 260 without opt-in); avoid symlinks in Windows capsules.
+* Archival: Software Heritage scope for binary assets is unverified (site bot-protected during the audit); set up Internet Archive items + IPFS pinning as a shared estate service.
+
+== Distribution ecosystem (from the prior-art audit)
+
+* Watch idris-lang/Idris2 PR #3857 (installers), issue #3295 (CHEZ shebang validation, open) and #3778 (macOS `DYLD_*` stripping in the `/bin/sh` launcher); upstream fixes shrink our surface.
+* Publish idris2x (the launcher) through the mise/aqua registry as well, so estate repos get an independently governed hash and mise's verification for free; no Idris 2 entry exists in the registry today.
+* Homebrew `chezscheme` bottles (7 platforms, relocatable) are a workable Tier-2 Chez source; needs the ghcr anonymous-token flow and the Linux ncurses caveat.
+* Adopt the Zig community-mirrors protocol and the python-build-standalone pattern (SHA256SUMS + release attestations) as estate conventions for any binary distribution.
+* Third-party images worth monitoring as CI fallbacks: `mattpolzin2/idris-docker`, `ghcr.io/joshuanianji/idris-2-docker`, `ghcr.io/stefan-hoeck/idris2-pack`.
+* Distro Chez is too old or too varied to rely on (Ubuntu 24.04 9.5.8, Debian trixie 10.0.0, Alpine 10.3.0); no distro except Fedora ships idris2 at all.
+
+== Toolchains and languages
+
+* Go: `internal/zstd` (decoder-only, BSD) exists since Go 1.21; a public `compress/zstd` would change ADR 0007's arithmetic. Moot while Go is banned, but relevant to the canon's own Go-rewrite roadmap.
+* Zig: std API churn measured between 0.14 → 0.17 (`posix.execveZ`/`flock` removed, zstd/ZON/Io renamed); any Zig launcher must vendor its toolchain tarball.
+* Rust: `zstd` crate links C (`ruzstd` pure, 1.4–3.5x slower); macOS/Windows cross-builds from Linux need extra toolchains; RUSTSEC tracking across the vendored tree.

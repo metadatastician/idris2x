@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Maintenance loop
+
+Target: 15–30 minutes a week for one maintainer.
+
+. Canary badge green: done.
+. Red: read the auto-filed failure record. Classify as a data fix (review the agent's channel patch), an engine fix (monthly train) or an upstream outage (document, wait).
+. Merge by risk class: A auto-merges after two green rehearsals, B needs one human approval, C needs an ADR.
+
+The agent proposes only `compat_patch`, `pin_bump`, `mirror_add` or `escalate`; every proposal is schema-validated and rehearsed on three targets before a human sees it. Label any open issue `agent:kill-switch` to stop it.

@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Error reference
+
+Generated from `src/errors/errors.toml`. Exit codes are stable and append-only.
+
+[cols="2,1,4,4",options="header"]
+|===
+| ID | Exit | Meaning | Fix
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc[`E-USAGE`] | 2 | bad command line | `idris2x --help`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc[`E-PIN-NOT-FOUND`] | 10 | no lock, or lock/channel has no capsule for this version+target | `idris2x pin <supported-version>`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc[`E-HASH-MISMATCH`] | 11 | downloaded bytes or unpacked tree do not match the pinned digest | `idris2x gc && idris2x install --locked`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc[`E-SIG-INVALID`] | 12 | channel manifest signature or key id does not verify | `do not override; investigate the mirror (runbook)`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PLATFORM-UNSUPPORTED.adoc[`E-PLATFORM-UNSUPPORTED`] | 13 | no capsule exists for this OS/arch | `see supported targets; consider --from-source (Tier 3)`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc[`E-NETWORK`] | 14 | all mirrors failed | `retry; check proxy; IDRIS2X_OFFLINE=1 with a prefetched bundle`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc[`E-LOCK-TIMEOUT`] | 15 | another install of the same capsule held the lock too long | `wait, or remove the stale lock file named in the message`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc[`E-GLIBC-FLOOR`] | 16 | host glibc older than the capsule's min_glibc | `upgrade the host or use a musl/static capsule when available`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc[`E-PROBE-CODEGEN`] | 17 | capsule unpacked and verified but a canary failed on this host | `runbook triage; idris2x doctor --json`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc[`E-CHANNEL-SCHEMA`] | 18 | channel or lock schema newer than this launcher | `update idris2x`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc[`E-PIN-DRIFT`] | 19 | idris2x.toml and idris2x.lock disagree | `idris2x pin <version>`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OFFLINE.adoc[`E-OFFLINE`] | 20 | cache miss while IDRIS2X_OFFLINE=1 | `idris2x fetch -o bundle on a connected host, then idris2x install --from bundle`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc[`E-CAPSULE-INVALID`] | 21 | capsule archive is malformed or contains unsafe paths/links | `report the digest; never unpack by hand`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc[`E-CHANNEL-ROLLBACK`] | 22 | channel_version went backwards relative to the lock (rollback/freeze attack or stale mirror) | `investigate; do not override`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXPIRED.adoc[`E-CHANNEL-EXPIRED`] | 23 | channel manifest past its expires timestamp (freeze protection) | `fetch a fresh manifest; IDRIS2X_ALLOW_EXPIRED=1 only when you know why`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc[`E-STORE-IO`] | 24 | store not writable, disk full, or atomic rename failed | `free space / fix permissions; idris2x gc`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-INTERNAL.adoc[`E-INTERNAL`] | 70 | launcher bug | `file an issue with idris2x doctor --json`
+|===

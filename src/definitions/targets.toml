@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+# targets.toml — single source of truth for the support matrix. CI matrices, docs tables and the
+# launcher's allowlist are GENERATED from this file (Phase 1); never hand-edit the generated copies.
+# tier 1 = capsules built, canaried nightly, supported. tier 2 = experimental. tier 3 = source-only.
+schema = 1
+
+[[target]]
+triple = "x86_64-unknown-linux-gnu"
+os = "linux"
+arch = "x86_64"
+chez_machine = "ta6le"
+tier = 1
+min_glibc = "2.28"                       # built inside quay.io/pypa/manylinux_2_28_x86_64 (AlmaLinux 8)
+runner = "ubuntu-24.04"                  # GitHub-hosted, free for public repos
+notes = "Ubuntu 24.04-native build measured to need glibc 2.38; hence the manylinux_2_28 container"
+
+[[target]]
+triple = "aarch64-unknown-linux-gnu"
+os = "linux"
+arch = "aarch64"
+chez_machine = "tarm64le"
+tier = 1
+min_glibc = "2.28"                       # quay.io/pypa/manylinux_2_28_aarch64
+runner = "ubuntu-24.04-arm"              # native arm64 runner (free for public repos since 2025-01)
+notes = "Chez >= 10.0.0 required on any AArch64 (9.x has no arm64 boot files)"
+
+[[target]]
+triple = "aarch64-apple-darwin"
+os = "macos"
+arch = "aarch64"
+chez_machine = "tarm64osx"
+tier = 1
+min_macos = "13.0"
+runner = "macos-15"
+notes = "Chez >= 10.0.0 required (9.6.4 configure refuses Apple Silicon); binaries need ad-hoc codesign"
+
+[[target]]
+triple = "x86_64-apple-darwin"
+os = "macos"
+arch = "x86_64"
+chez_machine = "ta6osx"
+tier = 1
+min_macos = "13.0"
+runner = "macos-15-intel"                # verify availability/retirement date before Phase 1 (see audit)
+notes = "Intel macOS runners are being retired by GitHub; may need cross-build from arm64 (make bootquick XM=ta6osx)"
+
+[[target]]
+triple = "x86_64-pc-windows-msvc"
+os = "windows"
+arch = "x86_64"
+chez_machine = "ta6nt"
+tier = 2
+runner = "windows-2025"
+notes = "Experimental: wrappers embed chez path in idris2.cmd; needs vcruntime140.dll; launcher must spawn+relay exit code (no execve)"

@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Theory overview
+
+idris2x makes one bet: *a toolchain is a value, not a process.* Installing a compiler is usually a stateful, platform-specific
+procedure whose result you cannot name. idris2x turns it into a content-addressed artifact whose name is its sha256, plus a small
+deterministic executor. Every guarantee follows from that change of representation.
+
+== The reduction
+
+* *Liveness becomes an immutable-prefix problem.* "Will this project still build in five years?" reduces to "do these bytes still exist
+  somewhere?", which archival copies and mirrors can answer, rather than "does the build procedure still work on future systems?".
+* *Trust is split by kind.* Freshness and authenticity of *choices* (which capsule satisfies `idris2@0.8.0` on this platform) are signed
+  data in the channel. Integrity of *bytes* is a digest in your lockfile. Execution depends only on the second.
+* *Failure becomes a type.* The error taxonomy is a finite, append-only sum type; every path of the executor ends in success or in
+  exactly one constructor. "Loud by default" is totality of that function.
+
+Read on: link:Formal-Model[Formal model] → link:Trust-and-Freshness[Trust and freshness] → link:Proof-Plan[Proof plan].

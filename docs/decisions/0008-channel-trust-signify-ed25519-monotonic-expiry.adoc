@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0008. Channel trust: pure Ed25519 (signify/minisign-legacy format), monotonic versions, expiry that gates resolution only
+
+Date: 2026-11-09
+
+== Status
+
+Accepted (Phase 0 prototype drills: tampered manifest, wrong key, rollback and expiry all fail loudly with stable exit codes).
+
+== Context
+
+The plan said "minisign". minisign's default mode pre-hashes with BLAKE2b-512, which is not in Go's standard library; its legacy
+mode and OpenBSD signify both sign the raw bytes with Ed25519, which *is* (`crypto/ed25519`). The plan's "TUF-lite" (monotonic
+`channel_version`) stops rollback but not a freeze attack (serving an old-but-valid manifest forever).
+
+== Decision
+
+* Signature format: signify-compatible (`Ed` algorithm, 8-byte key id, 64-byte Ed25519 signature over the manifest bytes).
+  Verifiable by `crypto/ed25519`, `openssl pkeyutl -verify -rawin`, `signify`, and `minisign -l`. Pre-hashed `ED` signatures are rejected.
+* `channel_version` is strictly monotonic; the lockfile records the version it was resolved from and `pin`/`update` refuse to go
+  backwards (`E-CHANNEL-ROLLBACK`). A rollback is published as version N+1 with the old content.
+* Every manifest carries `expires` (re-signed on each publish, default +90 days). After expiry `pin`/`update` fail with
+  `E-CHANNEL-EXPIRED`; `IDRIS2X_ALLOW_EXPIRED=1` is the explicit human override. *Execution never consults the manifest*: a lock plus
+  capsule bytes is sufficient forever (I4).
+* The channel is data only: schema-validated (`src/contracts/channel-v1.schema.json`), no scripts, no commands, HTTPS URLs only. Mirrors are untrusted.
+
+== Consequences
+
+=== Positive
+* Stdlib-only verification in the launcher; keys and signatures can be produced and audited with ubiquitous tools.
+* Freeze, rollback and mix-and-match are detected; abandonment does not strand existing pins.
+
+=== Negative
+* A maintainer must re-sign at least every 90 days or new pins start failing (loudly, with an override). The sunset procedure in MAINTAINERS.adoc covers the end state.
+* No delegation/threshold roles yet (full TUF is an explicit non-goal for v1).
+
+=== Neutral
+* Capsule provenance attestations (SLSA, sigstore) are published for humans and CI and are *not* verified by the launcher.

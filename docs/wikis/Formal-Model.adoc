@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Formal model
+
+== Store state machine
+
+For a digest `d`, the store directory `S(d)` is in exactly one of three observable states:
+
+[cols="1,3",options="header"]
+|===
+| State | Definition
+| Absent | no directory, or a directory without `.complete` (garbage by definition)
+| Staged | a private staging directory exists under `tmp/`; invisible to readers
+| Complete | `S(d)/.complete` exists and `sha256sums.txt` verifies
+|===
+
+Transitions: `Absent → Staged` (download, verify, unpack, probe under the per-digest lock), `Staged → Complete` (one atomic
+rename, then the marker), any `Staged → Absent` on failure. No transition writes to a Complete directory.
+
+== Invariants as properties
+
+* *I1 (no silent drift):* `exec(lock)` either runs a program whose bytes hash to `lock[target]` or returns an error. Formally, the
+  executor is a total function `Lock × Host → Result(Exec(d), Error)` with `d = lock[target(Host)]`.
+* *I2 (atomic or absent):* for every interleaving of installers and crashes, every reader observes Absent or Complete, never a partial
+  tree. Proof obligation: the marker is written after the rename, and readers test only the marker.
+* *I3 (loud):* the error type is a closed sum (`src/errors/errors.toml`); every non-success path returns a constructor.
+* *I4 (past never breaks):* `exec` reads neither the channel nor the clock. Its only inputs are the lock, the capsule bytes and the host.
+* *I5 (verify before trust):* no edge from Staged to any `execve` exists without passing the digest, archive-safety and probe checks.
+
+== Tested, not yet proven
+
+The 43 chaos drills exercise these properties on a real capsule (concurrent installers, crashes via write limits, tampering).
+Proof work is planned: link:Proof-Plan[Proof plan].

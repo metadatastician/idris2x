@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Architecture
+
+Three pieces, only one of which is code:
+
+[cols="1,2,3",options="header"]
+|===
+| Piece | What | Changes how often
+| Launcher | Rust, one static binary, < 1,000 lines | Rarely (monthly engine train at most)
+| Capsule factory | CI recipes driving upstream Makefiles in manylinux_2_28 containers and native macOS runners | Per upstream release
+| Channel | One signed JSON document | Whenever data changes; a fix is a JSON diff plus `channel_version + 1`
+|===
+
+== Execution path
+
+`resolve` (local, no network) → stat `store/sha256-<d>/.complete` (warm path) → otherwise fetch from mirrors with resume →
+verify sha256 → safety-check the archive → unpack to staging → verify `sha256sums.txt` → run probes → atomic rename →
+write `.complete` → compose the environment (a reset, ADR 0005) → `execve(<store>/bin/scheme, --program, idris2.so, args)`.
+
+== Measured (Phase 0)
+
+Cold install from a local mirror 3.3 s; warm no-op 1.7–2.8 ms (Go skeleton measurement, ADR 0007); capsule 35 MB gzip.
+
+Decisions: link:https://github.com/metadatastician/idris2x/blob/main/docs/decisions/README.adoc[ADRs].
