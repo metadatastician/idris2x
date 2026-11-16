@@ -7,7 +7,7 @@
 |===
 | Exit code | `15`
 | Meaning | another install of the same capsule held the lock too long
-| Fix | `wait, or remove the stale lock file named in the message`
+| Fix | `wait for the other install, or raise IDRIS2X_LOCK_TIMEOUT; never delete a lock that is held`
 | Invariant | I3 loud by default
 |===
 

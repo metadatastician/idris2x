@@ -11,11 +11,11 @@ Generated from `src/errors/errors.toml`. Exit codes are stable and append-only.
 | ID | Exit | Meaning | Fix
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc[`E-USAGE`] | 2 | bad command line | `idris2x --help`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc[`E-PIN-NOT-FOUND`] | 10 | no lock, or lock/channel has no capsule for this version+target | `idris2x pin <supported-version>`
-| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc[`E-HASH-MISMATCH`] | 11 | downloaded bytes or unpacked tree do not match the pinned digest | `idris2x gc && idris2x install --locked`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc[`E-HASH-MISMATCH`] | 11 | downloaded bytes or unpacked tree do not match the pinned digest | `idris2x install --locked`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc[`E-SIG-INVALID`] | 12 | channel manifest signature or key id does not verify | `do not override; investigate the mirror (runbook)`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PLATFORM-UNSUPPORTED.adoc[`E-PLATFORM-UNSUPPORTED`] | 13 | no capsule exists for this OS/arch | `see supported targets; consider --from-source (Tier 3)`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc[`E-NETWORK`] | 14 | all mirrors failed | `retry; check proxy; IDRIS2X_OFFLINE=1 with a prefetched bundle`
-| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc[`E-LOCK-TIMEOUT`] | 15 | another install of the same capsule held the lock too long | `wait, or remove the stale lock file named in the message`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc[`E-LOCK-TIMEOUT`] | 15 | another install of the same capsule held the lock too long | `wait for the other install, or raise IDRIS2X_LOCK_TIMEOUT; never delete a lock that is held`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc[`E-GLIBC-FLOOR`] | 16 | host glibc older than the capsule's min_glibc | `upgrade the host or use a musl/static capsule when available`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc[`E-PROBE-CODEGEN`] | 17 | capsule unpacked and verified but a canary failed on this host | `runbook triage; idris2x doctor --json`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc[`E-CHANNEL-SCHEMA`] | 18 | channel or lock schema newer than this launcher | `update idris2x`

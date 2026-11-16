@@ -7,7 +7,7 @@
 |===
 | Exit code | `11`
 | Meaning | downloaded bytes or unpacked tree do not match the pinned digest
-| Fix | `idris2x gc && idris2x install --locked`
+| Fix | `idris2x install --locked`
 | Invariant | I3 loud by default
 |===
 
