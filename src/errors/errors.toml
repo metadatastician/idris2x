@@ -21,7 +21,7 @@ id = "E-HASH-MISMATCH"
 title = "capsule bytes do not match the lock"
 exit = 11
 meaning = "downloaded bytes or unpacked tree do not match the pinned digest"
-fix = "idris2x gc && idris2x install --locked"
+fix = "idris2x install --locked"
 [[error]]
 id = "E-SIG-INVALID"
 title = "channel manifest signature or key does not verify"
@@ -43,7 +43,7 @@ id = "E-LOCK-TIMEOUT"
 title = "another idris2x is installing the same capsule"
 exit = 15
 meaning = "another install of the same capsule held the lock too long"
-fix = "wait, or remove the stale lock file named in the message"
+fix = "wait for the other install, or raise IDRIS2X_LOCK_TIMEOUT; never delete a lock that is held"
 [[error]]
 id = "E-GLIBC-FLOOR"
 exit = 16

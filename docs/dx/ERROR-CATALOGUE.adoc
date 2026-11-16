@@ -1,0 +1,348 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Error catalogue: all 17 IDs, the A/B wording experiment, and the schema change
+:toc: macro
+
+[NOTE]
+====
+*Status.* The Rust launcher does not exist. Everything described as running here runs in the bash prototype
+(`scripts/proto/idris2x.sh`). Five IDs (twelve cases) have new wording in two candidate styles, rendered and
+regression-tested. The other twelve IDs have their analysis below and keep the prototype's old wording until a style
+is chosen (owner decision, 2026-11-16).
+====
+
+toc::[]
+
+== How to read this page
+
+* The exact rendered text for the five experiment IDs, in every form (interactive terminal, plain, `--json`) and both
+  styles, is in link:ERROR-CATALOGUE-RENDERED.adoc[the generated page]. It is generated from `src/errors/errors.toml`
+  and checked by `scripts/proto/dx-golden.sh --check`, so it cannot drift from what the prototype prints.
+* This page holds what a generator cannot: the reasoning, the old wording, the defects found, and the plan for the rest.
+* The rules cited as A1, W5 and so on are in link:DX-PRINCIPLES.adoc[the DX principles].
+
+== The experiment
+
+Two styles are rendered from the same data. Style A is conversational, after Elm. Style B is one labelled field per
+line, after rustc and cargo. One failure, both styles, plain form:
+
+.Style A
+[source,text]
+----
+idris2x: E-HASH-MISMATCH (exit 11)
+
+The capsule I downloaded is not the one idris2x.lock pins.
+
+    expected  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    got       sha256:3f1c88a2d4e6071b95c3fa2e6d8097b4c1a5e3f7029b6d4c8a1e5f3b7d902c64
+    size      17706495 bytes (the lock says 35412990)
+    from      https://mirror.example.org/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
+
+Nothing was installed. The bad download was deleted and the store is unchanged.
+
+A mirror served a damaged, truncated or stale file. It can also mean tampering,
+which is what this check exists to catch.
+
+Try the download again:
+
+    idris2x install --locked
+
+If it fails again with the same got digest, the mirror is serving a bad file:
+report it with the runbook below.
+
+More: idris2x explain E-HASH-MISMATCH
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+.Style B
+[source,text]
+----
+idris2x: error[E-HASH-MISMATCH]: downloaded capsule does not match idris2x.lock
+    expected: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    got: sha256:3f1c88a2d4e6071b95c3fa2e6d8097b4c1a5e3f7029b6d4c8a1e5f3b7d902c64
+    size: 17706495 bytes (the lock says 35412990)
+    from: https://mirror.example.org/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
+  state: Nothing was installed. The bad download was deleted and the store is unchanged.
+  why: A mirror served a damaged, truncated or stale file. It can also mean tampering, which is what this check exists to catch.
+  fix: idris2x install --locked
+  note: If it fails again with the same got digest, the mirror is serving a bad file: report it with the runbook below.
+  see: idris2x explain E-HASH-MISMATCH
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+.What the prototype printed before (measured, commit `e1d7779`)
+[source,text]
+----
+idris2x: E-HASH-MISMATCH: capsule bytes do not match the lock: got sha256:3f1c… (17706495 bytes), expected sha256:0d7a…
+  fix: idris2x gc && idris2x install --locked ; if it repeats, a mirror is serving a bad file: see runbook
+  see: https://github.com/metadatastician/idris2x/blob/main/runbooks/E-HASH-MISMATCH.adoc
+----
+
+=== How the choice gets made
+
+This is a proposal for the owner; nothing here has been run with people.
+
+. Show the five IDs in both styles to at least five people from each group: new to Idris 2, CI maintainers, and
+  experienced Idris 2 users. The rendered page is the stimulus; no build is needed.
+. For each message ask three things with a right answer: what happened, is anything on disk damaged, and what do
+  you type next. Record correctness and time, then ask which style they would rather meet at 2 a.m.
+. Read each message through a screen reader (Orca or VoiceOver) once and note where it stumbles.
+. Choose per measure, not per taste. If the groups split, the data model already allows one style on a terminal and
+  the other in CI logs; that is a renderer option, not a second set of words.
+
+The ask of Idris 2 users in step 1 is outward-facing, so it waits for the owner (see link:ADOPTION.adoc[adoption]).
+
+== The schema change (proposed in this branch, not silently)
+
+`src/errors/errors.toml` moves from schema 1 to schema 2. Exit codes and IDs are untouched. Generators that read
+`id`, `exit`, `meaning` and `fix` keep working: `gen-runbooks.sh --check` and `gen-issue-forms.sh --check` pass.
+
+[source,diff]
+----
+-schema = 1
++schema = 2
+
+ [[error]]
+ id = "E-HASH-MISMATCH"
++title = "capsule bytes do not match the lock"       # constant per type; --json `title`
+ exit = 11
+ meaning = "downloaded bytes or unpacked tree do not match the pinned digest"
+-fix = "idris2x gc && idris2x install --locked"
++fix = "idris2x install --locked"
+
++[[case]]                                 # one SHAPE the type takes at a call site
++error = "E-HASH-MISMATCH"
++case = "download"
++summary = "downloaded capsule does not match {lock}"            # style B headline
++story = "The capsule I downloaded is not the one {lock} pins."  # style A headline
++facts = "expected=want got=got size=bytes from=source"          # label=context-name, in order
++state = "Nothing was installed. The bad download was deleted and the store is unchanged."
++why = "A mirror served a damaged, truncated or stale file. ..."
++fix_lead = "Try the download again:"                            # style A only
++fix_cmd = "idris2x install --locked"
++fix_note = "If it fails again with the same got digest, ..."
++auto = "safe"                                                   # safe | placeholder | none
+----
+
+Why two tables. An error *type* (`[[error]]`) is the stable contract: ID, exit code, title. A *case* (`[[case]]`) is
+one situation in which that type occurs. `E-PIN-NOT-FOUND` has three: no lock file, a lock without this platform, and
+a version the channel lacks. Their causes and fixes differ, so one sentence cannot serve all three. A call site now
+reads `fail E-PIN-NOT-FOUND no-target lock=… target=…` and contains no prose.
+
+What the change costs:
+
+* The file stays inside the strict TOML subset `scripts/lib/toml2json.sh` accepts: strings and integers only, which
+  is why `facts` is one string. The launcher's own reader has the same limits.
+* After the experiment, one of `summary` and `story` is deleted, and `fix_lead` goes with style A if B wins.
+* The `[[case]]` blocks will conflict textually with any edit the main thread makes to the same file. The conflict is
+  one-off and mechanical.
+
+`--json` output also changes shape, from `{error, message, fix, runbook}` to the object shown on the generated page.
+Nothing consumed the old shape. IDs without cases still print the old shape until they are migrated, which is a
+known inconsistency of the experiment and must not survive into the Rust launcher.
+
+== The five experiment IDs
+
+Each row gives the case, the fact the user needs, the fix, and what was wrong before.
+Rendered text: link:ERROR-CATALOGUE-RENDERED.adoc[generated page].
+
+[cols="2,2,3,3,3",options="header"]
+|===
+| ID and case | Cause | The fact the user needs | Single best fix | Before, and what was wrong
+
+| `E-PIN-NOT-FOUND` `no-lock`
+| No `idris2x.lock` in the current directory
+| Which directory was searched
+| `idris2x pin <version>` (placeholder)
+| `no idris2x.lock in /path`. No reason given; did not say the lock is read from the current directory only.
+
+| `E-PIN-NOT-FOUND` `no-target`
+| The lock has no capsule for this platform
+| This platform's target, and the targets the lock covers
+| `idris2x pin 0.8.0` with the lock's own version filled in (safe)
+| Fix said `idris2x pin <version> on a supported target, or request the target`: two actions and a placeholder
+  where the version was already known.
+
+| `E-PIN-NOT-FOUND` `no-version`
+| The channel offers no such version
+| The versions it does offer
+| `idris2x pin <version>` (placeholder)
+| Listed versions as `idris2@0.8.0`, a form the user cannot type back.
+
+| `E-HASH-MISMATCH` `download`
+| Downloaded bytes differ from the pinned digest
+| Both digests, the size against the pinned size, and which mirror served it
+| `idris2x install --locked` (safe)
+| Fix began with `idris2x gc`, which is not needed: the bad download is already deleted. The mirror was not named.
+  Truncation was not distinguishable from corruption.
+
+| `E-HASH-MISMATCH` `bundle`
+| A bundle passed to `--from` is not the pinned capsule
+| Both digests and the bundle path
+| `idris2x fetch -o capsule.tar.gz` on a connected machine (none)
+| Same text as a download failure, with a fix (`install --locked`) that cannot work offline.
+
+| `E-HASH-MISMATCH` `store-modified`
+| An installed capsule fails its own checksums
+| The store entry's path
+| `rm -rf '<entry>' && idris2x install --locked` (none)
+| Fix was `idris2x gc --purge sha256:…`. *That flag does not exist.* `sha256sum` output also leaked to the terminal.
+  The new fix is tested end to end: chaos runs the printed command and then `verify` passes.
+
+| `E-SIG-INVALID` `bad-signature`
+| Manifest bytes do not match the signature
+| The manifest URL and the trusted key id
+| Repeat the same `pin` once (none)
+| `investigate the mirror; do not override`: no next step, and no statement that pinned work is unaffected.
+
+| `E-SIG-INVALID` `wrong-key`
+| Manifest signed by a key other than the trusted one
+| Both key ids and the URL
+| No command. Check the URL; if right, update idris2x.
+| Did not show either key id, so two reports could not be compared.
+
+| `E-SIG-INVALID` `malformed`
+| Key or signature file is not signify-format Ed25519
+| Which file, and what is wrong with it
+| No command. Open the file; fix the proxy if it is HTML.
+| Four call sites with four hand-written sentences and no fix line.
+
+| `E-OFFLINE` `capsule-missing`
+| Offline mode is on and the capsule is not in the store
+| The digest, the store path, and that offline mode is the reason
+| `idris2x fetch -o capsule.tar.gz` on a connected machine (none)
+| One line that put two commands for two machines in a single fix.
+
+| `E-OFFLINE` `no-manifest`
+| Offline `pin` with no cached manifest
+| The cache path
+| `IDRIS2X_OFFLINE=0 idris2x pin 0.8.0` (none)
+| `run once online`. Did not say that running an existing pin never needs the manifest.
+
+| `E-LOCK-TIMEOUT` `held`
+| Another process holds this capsule's install lock
+| The lock file and, when it can be seen running, the holder's process id
+| `IDRIS2X_LOCK_TIMEOUT=1800 idris2x install --locked` (safe)
+| Fix said `if no idris2x is running: rm <lock file>`. *That advice was unsafe*: `flock` locks vanish with their
+  holder, so a held lock always has a live holder, and deleting the file lets two installs write at once.
+|===
+
+== The other twelve IDs
+
+No final wording yet. Each row records what the message must carry, so that writing it in the chosen style is
+mechanical. "Before" is the prototype's present text.
+
+[cols="2,2,3,3,3",options="header"]
+|===
+| ID (exit) | Cases to write | The fact the user needs | Single best fix | Before, and what must change
+
+| `E-USAGE` (2)
+| unknown-command, unknown-flag, missing-argument, no-such-file
+| The token that was not understood, and the nearest valid one
+| The corrected command when one candidate is close; else `idris2x --help`
+| Prints the whole usage string for every mistake. cargo and uv both print one `similar` suggestion instead.
+  Two prototype-only cases (`set IDRIS2X_CHANNEL_URL`) disappear when the key and URL are embedded.
+
+| `E-PLATFORM-UNSUPPORTED` (13)
+| unknown-os, unknown-arch
+| The detected OS and architecture, and the supported target list
+| No command. Link to supported platforms and the tier-3 source route.
+| `unsupported OS: FreeBSD` with no fix line at all.
+
+| `E-NETWORK` (14)
+| all-mirrors-failed, manifest-unreachable
+| Each mirror tried with its own outcome (DNS, TLS, HTTP status, timeout), as a chain from request to cause
+| `idris2x install --locked` (safe to retry)
+| `all 2 mirror(s) failed`, with causes left in a log file. Show them (W7).
+  *Defect:* a full disk during download is reported as `E-NETWORK` (chaos T6 expects exit 14). It should be `E-STORE-IO`.
+
+| `E-GLIBC-FLOOR` (16)
+| too-old
+| Host glibc version, the capsule's minimum, and how the host version was detected
+| No command. Use a newer base image or container; name the minimum.
+| No call site in the prototype: the check is not implemented. Do not claim it.
+
+| `E-PROBE-CODEGEN` (17)
+| chez-failed, idris2-failed, version-mismatch, codegen-failed, path-has-spaces
+| The probe that failed and its captured output, labelled as Chez's or Idris 2's words, not ours (A9)
+| For path-has-spaces: `export IDRIS2X_CACHE=<path without spaces>`. Otherwise `idris2x doctor --json` and a report.
+| Three call sites bypass `die` and print by hand; one prints no runbook link. The space-in-path diagnosis is good
+  and already tested; keep its content.
+
+| `E-CHANNEL-SCHEMA` (18)
+| lock-newer, channel-newer
+| The schema number found, the highest this launcher reads, and which file
+| `idris2x self-update` (planned command); until it exists, the install instructions
+| `update idris2x` does not say how. The lock case has no network cause and should say a colleague's newer
+  launcher wrote the lock.
+
+| `E-PIN-DRIFT` (19)
+| toml-vs-lock
+| Both versions and both file names
+| `idris2x pin <version from idris2x.toml>` with the version filled in (safe)
+| No call site in the prototype. Model on bun: name the first differing item and the exact repair.
+
+| `E-CAPSULE-INVALID` (21)
+| unsafe-path, no-metadata, tree-mismatch
+| The digest, and the first offending member name
+| No command. Report the digest; nothing was unpacked.
+| `report this capsule digest upstream` is ambiguous: "upstream" must mean the idris2x channel, never Idris 2.
+  The tree-mismatch fix repeats the needless `idris2x gc`.
+
+| `E-CHANNEL-ROLLBACK` (22)
+| version-went-back
+| The version the lock saw, the version offered, and the URL
+| No command. Retry later; if it persists, report the mirror.
+| `refusing (rollback attack or stale mirror); investigate` gives no way to tell the two apart. Say that a stale
+  mirror is the common cause and usually heals.
+
+| `E-CHANNEL-EXPIRED` (23)
+| expired
+| The expiry time, the time now, and how long ago it expired
+| Repeat `idris2x pin <version>` (safe); then the stated override `IDRIS2X_ALLOW_EXPIRED=1`, with what it gives up
+| Does not show the current time, so a wrong system clock (a common cause) is invisible.
+
+| `E-STORE-IO` (24)
+| cannot-create, no-space, rename-failed
+| The path, the operating system's own error text, and free space when the cause is space
+| For no-space: `idris2x gc`. For permissions: no command; show owner and mode.
+| Four sites, each guessing (`disk full or corrupt gzip`). Report the OS error instead of a guess (W6).
+
+| `E-INTERNAL` (70)
+| bug, missing-tool
+| The launcher version and what to attach
+| `idris2x doctor --json > doctor.json`, then the issue form
+| `missing tool: curl` is a prototype-only case. The Rust launcher has no external tools.
+|===
+
+== Defects found while doing this work
+
+Found by reading and running the prototype, not hypothetical. The first three are fixed in this branch; the rest are open.
+
+. *Fixed.* The runbook link pointed to `blob/main/runbooks/`, which does not exist. It is `blob/main/docs/runbooks/`.
+. *Fixed.* The `E-LOCK-TIMEOUT` fix advised deleting a held lock file.
+. *Fixed.* The `store-modified` fix named `idris2x gc --purge`, a flag that does not exist.
+. *Open.* A full disk during download exits 14 (`E-NETWORK`), not 24 (`E-STORE-IO`).
+. *Open.* `E-GLIBC-FLOOR` and `E-PIN-DRIFT` have IDs and runbooks but no code path in the prototype.
+. *Open.* Three `E-PROBE-CODEGEN` sites print by hand and can drift from the taxonomy.
+. *Open.* `idris2x gc` deletes capsules without the warning ADR 0005 requires about compiled programs.
+
+== What is tested, exactly
+
+[cols="2,3",options="header"]
+|===
+| Check | Result on 2026-11-16 (Ubuntu 24.04, x86_64)
+
+| `scripts/proto/dx-golden.sh --check`
+| Passes: 12 cases, 5 renderings each, compared character for character.
+
+| `scripts/proto/chaos.sh`, Chez and Idris 2 0.8.0 capsule, style B
+| 77 passed, 0 failed. Twelve of the passes compare a live failure's whole output with the expected text.
+
+| `scripts/proto/chaos.sh`, Chez-only capsule, styles A and B
+| 72 passed, 0 failed, in each style.
+|===
+
+Limits of that evidence. The capsule in these runs used Debian's Chez Scheme 9.5.8 labelled as 10.4.1, and Idris 2
+0.8.0 built from source on the same machine; it is a test fixture, not a capsule the factory would publish. The
+terminal form is tested by forcing colour, not on a real terminal. Nothing was tested on macOS or Windows.

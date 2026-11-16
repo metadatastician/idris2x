@@ -1,0 +1,322 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= DX principles: the design system for everything idris2x prints
+:toc: macro
+
+[NOTE]
+====
+*Status: specification.* The Rust launcher does not exist yet. This page is what it will be built to.
+Rules marked *tested* are enforced today on the bash prototype by `scripts/proto/dx-golden.sh` or `scripts/proto/chaos.sh`.
+Rules marked *planned* have no test yet.
+====
+
+The aim is a tool whose failures are easier to act on than most tools' successes. That is a claim about behaviour,
+so every rule below is written to be checked: a reviewer or a test can say whether a message obeys it.
+
+toc::[]
+
+== How the sources were read
+
+The sources were fetched on 2026-11-16. Where a tool was installed, its real output was also observed
+(git 2.43.0, cargo 1.97.0, uv 0.11.32, bun 1.4.4).
+
+Quotations marked † were compared with the raw page text. The others were extracted by a fetch tool that summarises
+pages, so check each one against its URL before quoting it outside this repository.
+<<not-verified>> lists what could not be read.
+
+== The rules
+
+=== 1. Anatomy: what every error contains
+
+[cols="1,4,3,1",options="header"]
+|===
+| Rule | Statement | Source | Check
+
+| A1
+| Every failure has a stable ID and a stable exit code, both defined in one data file (`src/errors/errors.toml`).
+| Rust: "Each error of rustc's comes with an error code". ADR 0009.
+| tested
+
+| A2
+| A message has six parts in a fixed order: *what* happened, the *facts* (values the user needs), the *state* of
+  the machine now, *why* it happens, the *fix*, and where to read *more*.
+| Elm †: "General context is above the code ... more specific hints are below the code."
+| tested
+
+| A3
+| The state line is never omitted. It says what was and was not changed, in the user's terms
+  ("Nothing was installed. The bad download was deleted."). This is invariant I2 (atomic or absent) said aloud.
+| clig.dev: "Catch errors and rewrite them for humans."
+| tested
+
+| A4
+| At most one fix command, on its own line, pasteable as printed. Paths inside it are quoted. If no command is
+  honest, there is no command and the note says what to do.
+| git prints the command in a hint on its own indented line. uv: "A hint will not be available for all build failures." †
+| tested
+
+| A5
+| Facts and advice stay in separate parts. A fact line is never an instruction, and a fix line never carries a value
+  the user must read.
+| rustc: `note` gives "more context"; `help` shows "changes the user can possibly make".
+| tested
+
+| A6
+| Every fix command carries a machine-readable applicability: `safe` (CI or an agent may run it), `placeholder`
+  (a human must fill a value), or `none` (human judgement). Only `safe` may ever be run unattended.
+| rustc suggestion applicability: `MachineApplicable`, `HasPlaceholders`, `MaybeIncorrect`.
+| tested (`--json`)
+
+| A7
+| Identifiers are never truncated or re-formatted: digests, paths, URLs and versions appear exactly as the machine
+  holds them. Long values may overflow the line; they are not shortened with an ellipsis.
+| Elm †: "The error shows the code exactly as you wrote it."
+| tested
+
+| A8
+| One root cause per run. The first typed failure stops the command; nothing after it prints a second error.
+| Elm †: "there are no more cascading errors in Elm 0.16".
+| tested (`says` compares the whole output)
+
+| A9
+| The speaker is named. Every line idris2x prints about itself starts from `idris2x:` (or its header), because
+  the same terminal also shows Idris 2 and Chez output. Output of a child process is passed through untouched.
+| uv labels third-party output `[stderr]` apart from its own diagnosis †.
+| tested (header); planned (child output)
+
+| A10
+| Every ID has an offline long form (`idris2x explain <ID>`) and an HTML runbook. The message links both;
+  the URL is the last line and stands alone.
+| `rustc --explain`. CHI 2021 †, recommendation 1: "Ensure that a HTML version of all documentation is available."
+| tested
+|===
+
+=== 2. Wording
+
+[cols="1,4,3,1",options="header"]
+|===
+| Rule | Statement | Source | Check
+
+| W1
+| Every word a user reads lives in `errors.toml`. Call sites pass an ID, a case name and context values only.
+| ADR 0009; the launcher's 1,000-line budget.
+| tested (`render.jq` has no message text)
+
+| W2
+| Headlines are lowercase with no full stop (style B) or one plain sentence (style A). No exclamation marks.
+| rustc: "messages start with a lowercase letter and do not end with punctuation."
+| planned (lint)
+
+| W3
+| Banned words: `illegal`, `fatal`, `abort`, `simply`, `just`, `obviously`, `please`. Say `invalid`, or say what happened.
+| rustc: "The word 'illegal' is illegal. Prefer 'invalid'".
+| planned (lint over `errors.toml`)
+
+| W4
+| The message blames no one and does not apologise. It describes the machine, not the user.
+| Elm †: "nobody wants a confusing and rude gatekeeper."
+| review
+
+| W5
+| No message suggests a way round a security check. Where no override exists, the message says so.
+| ADR 0008 (trust), invariant I5.
+| tested (E-SIG-INVALID text)
+
+| W6
+| A message claims only what the launcher observed. "held by process 48213 (still running)" is printed only
+  after checking that the process exists; otherwise the message says the holder is unknown.
+| Estate doctrine 10 (report faithfully).
+| tested (two E-LOCK-TIMEOUT drills)
+
+| W7
+| A conflict is explained as a chain from the user's request to the clash, never as a bare list of names.
+| Gleam's dependency error: "You require wisp ... wisp requires mist ...".
+| review
+
+| W8
+| Every sentence can be read aloud. No ASCII art, no box tables, no symbols that stand for words in plain form.
+| CHI 2021 †, recommendation 7: "Ensure that error messages are understandable when read aloud."
+| tested for plain form (no rule line, no glyphs)
+|===
+
+=== 3. Streams, forms and machine output
+
+[cols="1,4,3,1",options="header"]
+|===
+| Rule | Statement | Source | Check
+
+| S1
+| Results go to stdout. Errors, notes and progress go to stderr. `idris2x env` and `install` stay pipeable.
+| clig.dev: "Log messages, errors, and so on should all be sent to stderr."
+| tested
+
+| S2
+| `--json` (or `IDRIS2X_JSON=1`) prints exactly one JSON object per failure, on one line, on stderr.
+| rustc: "JSON messages are emitted one per line to stderr."
+| tested
+
+| S3
+| The JSON object separates the constant `title` of the type from the per-occurrence `summary` and `context`.
+  Consumers must ignore unknown fields; fields are only ever added.
+| RFC 9457: `title` "SHOULD NOT change from occurrence to occurrence". rustc: "New fields may be added."
+| tested (shape); planned (schema file)
+
+| S4
+| A launcher failure can be told apart from the child's own exit code without parsing text: when
+  `IDRIS2X_ERROR_FILE` is set (planned also as `--error-fd N`), the JSON object is written there, and the file
+  is absent when the launcher itself did not fail.
+| Owner decision 2026-11-16. Compare `docker run`, which reserves 125 for its own failures.
+| tested (env form); planned (fd form)
+
+| S5
+| Exit codes: 0 success; 2 usage; 10 to 29 idris2x failures, one per ID, append-only; 70 internal error.
+  idris2x never itself exits 126, 127 or above 128. A child's exit code passes through unchanged.
+| Bash manual: 126, 127 and 128+N are the shell's. sysexits: 70 is "internal software error".
+| tested (per-ID codes); planned (pass-through in Rust)
+
+| S6
+| No log-level labels in normal output, and stderr is not a log. `--verbose` adds a trace; `--quiet` removes notes
+  but never an error.
+| clig.dev: "Don't treat stderr like a log file, at least not by default."
+| planned
+|===
+
+=== 4. Colour, width and accessibility
+
+[cols="1,4,3,1",options="header"]
+|===
+| Rule | Statement | Source | Check
+
+| C1
+| Colour is decided in this order: an explicit flag or `IDRIS2X_COLOR=always|never`; then `NO_COLOR` (set and not
+  empty means no colour); then `TERM=dumb`; then whether stderr is a terminal.
+| no-color.org: "when present and not an empty string (regardless of its value), prevents the addition of ANSI color."
+  The same page says per-instance arguments override it.
+| tested
+
+| C2
+| Colour never carries meaning alone. Removing every escape sequence leaves a complete message; in style B the two
+  forms differ in escape bytes only.
+| GitHub CLI accessibility work (2025); clig.dev colour rules.
+| tested (style B: plain equals terminal minus escapes, by construction)
+
+| C3
+| Only the 4-bit palette: bold, red, cyan. No 256-colour or true-colour codes, so the user's terminal theme decides contrast.
+| GitHub blog: "align our color palettes to 4-bit colors".
+| tested (golden shows every escape used)
+
+| C4
+| Prose wraps at the terminal width, capped at 80 columns and never below 40 (`COLUMNS`). Fact lines do not wrap (A7).
+| uv: `COLUMNS` "Overrides terminal width used for wrapping." rustc `--diagnostic-width`.
+| tested at 80; planned for other widths
+
+| C5
+| Progress on a terminal is one redrawn line. Anywhere else it is append-only text: a start line and an end line per
+  step, no carriage returns and no spinner glyphs.
+| CHI 2021 †: "screen readers do not recognize them as progress indicators and vocalize the underlying Unicode characters."
+| planned (see link:JOURNEYS.adoc[journeys])
+
+| C6
+| Every long operation announces its start and its end, including the successful end.
+| CHI 2021 †, recommendation 5: "Ensure that all commands provide status and progress indication."
+| planned
+
+| C7
+| The ID, the exit code and every key in `--json` are locale-independent. Translations, if they ever exist, change
+  prose only, so a search for the ID works in any language.
+| RFC 9457 allows `title` to vary "for localization" while `type` is fixed. This rule is our inference; no source states it directly.
+| planned
+
+| C8
+| No prompt ever appears unless stdin is a terminal, and every prompt has a flag that answers it.
+| clig.dev: "If stdin is not an interactive terminal, skip prompting and just require those flags/args."
+| planned (the prototype has no prompts)
+|===
+
+=== 5. Hints and noise
+
+[cols="1,4,3,1",options="header"]
+|===
+| Rule | Statement | Source | Check
+
+| H1
+| A successful command prints at most one line on stderr, and nothing when `--quiet`.
+| clig.dev: "Signal-to-noise ratio is crucial."
+| planned
+
+| H2
+| Advice that is not an error (for example the `gc` warning about compiled programs) is a `hint:` on stderr.
+  Each hint names the setting that silences it, and `IDRIS2X_ADVICE=0` silences all of them for tools.
+| git: "Git will give the message alongside instructions on how to squelch it."; `GIT_ADVICE=0`.
+| planned
+
+| H3
+| Nothing is printed about new versions, news or surveys during `install` or `exec`. There is no update check on
+  the execution path at all.
+| ADR 0008 (execution never reads the channel); IS-NOT telemetry.
+| planned (structural: the executor has no network code path)
+
+| H4
+| An internal error (`E-INTERNAL`) prints what to attach and where to send it, and nothing else that looks like a diagnosis.
+| clig.dev: "Make it effortless to submit bug reports."
+| planned
+|===
+
+== What the two candidate styles share and where they differ
+
+Both styles are rendered from the same data by one small program, so the choice costs nothing to reverse.
+
+[cols="1,2,2",options="header"]
+|===
+| | Style A (after Elm) | Style B (after rustc and cargo)
+| Voice | First person, full sentences | Impersonal, one labelled field per line
+| Layout | Paragraphs with blank lines; facts in an aligned block | No blank lines; `label: value` throughout
+| Terminal form | A ruled header line, command in bold | The same text as plain, with colour added
+| Strength | Reads well aloud and for a first-time user | Greps well, stays compact in CI logs, identical in every form
+| Weakness | About twice as many lines; "I" may grate on experts | Long lines; the reader must know the labels
+|===
+
+Neither is chosen yet. link:ERROR-CATALOGUE.adoc[The error catalogue] describes the experiment that will decide.
+
+== Proposed lints (not written yet)
+
+. Every `[[error]]` has at least one `[[case]]`, and every `fail` call site names a case that exists.
+  The prototype already fails with `E-INTERNAL` at run time; the Rust launcher should make this a compile-time table.
+. `summary` matches W2; no field contains a word banned by W3.
+. Every `{name}` in a case is supplied by every call site (run-time check exists; make it static in Rust).
+. No `fix_cmd` contains a channel-provenance value (see link:../decisions/0012-provenance-typed-diagnostics.adoc[ADR 0012]).
+
+[[not-verified]]
+== Not verified
+
+* Elm and early Gleam posts show their sample errors as images, so no text sample was taken from them.
+* Zig: only the start of the language reference was read. No official statement on error notes was found.
+* Deno: no documented exit codes or `--help` conventions on the pages read.
+* uv and rustup: no exit-code table was found. cargo documents only 0 and 101.
+* cargo: its behaviour when not on a terminal is described only as "Intelligently guess".
+* bun: the exact frozen-lockfile error text was not reproduced.
+* git: only the first part of the `advice.*` list was read.
+
+== Sources
+
+* Elm, "Compiler Errors for Humans" (2015): https://elm-lang.org/news/compiler-errors-for-humans
+* Elm, "Compilers as Assistants" (2015): https://elm-lang.org/news/compilers-as-assistants
+* Rust compiler development guide, diagnostics: https://rustc-dev-guide.rust-lang.org/diagnostics.html
+* Rust RFC 1644: https://rust-lang.github.io/rfcs/1644-default-and-expanded-rustc-errors.html
+* rustc command-line arguments: https://doc.rust-lang.org/rustc/command-line-arguments.html
+* rustc JSON output: https://doc.rust-lang.org/rustc/json.html
+* Rust error index: https://doc.rust-lang.org/error_codes/error-index.html
+* Gleam, dependency errors: https://gleam.run/news/no-more-dependency-management-headaches/
+* uv, build failures: https://docs.astral.sh/uv/reference/troubleshooting/build-failures/
+* uv, CLI and environment reference: https://docs.astral.sh/uv/reference/cli/ and https://docs.astral.sh/uv/reference/environment/
+* bun install: https://bun.com/docs/pm/cli/install
+* cargo: https://doc.rust-lang.org/cargo/commands/cargo.html and https://doc.rust-lang.org/cargo/reference/config.html
+* git-config, `advice.*`: https://git-scm.com/docs/git-config
+* Command Line Interface Guidelines: https://clig.dev/
+* NO_COLOR: https://no-color.org/ and FORCE_COLOR: https://force-color.org/
+* GitHub, "Building a more accessible GitHub CLI" (2025): https://github.blog/engineering/user-experience/building-a-more-accessible-github-cli/
+* Sampath, Merrick and Macvean, "Accessibility of Command Line Interfaces", CHI 2021: https://doi.org/10.1145/3411764.3445544
+* GNU gettext, locale variables: https://www.gnu.org/software/gettext/manual/html_node/Locale-Environment-Variables.html
+* sysexits(3): https://man.freebsd.org/cgi/man.cgi?query=sysexits&sektion=3
+* Bash manual, exit status: https://www.gnu.org/software/bash/manual/html_node/Exit-Status.html
+* RFC 9457, Problem Details for HTTP APIs: https://www.rfc-editor.org/rfc/rfc9457.html
