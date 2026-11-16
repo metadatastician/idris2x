@@ -37,7 +37,7 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 - [ ] `docs/architecture/TOPOLOGY.adoc` updated (if architecture changed)
 - [ ] `CHANGELOG` or release notes updated
 - [ ] New dependencies reviewed for license compatibility (compatible with MPL-2.0)
-- [ ] ABI/FFI changes validated (`src/interface/abi/` and `src/interface/ffi/` consistent)
+- [ ] Interface contract changes (`src/contracts/`, `src/errors/errors.toml`) reflected in the ADRs and regenerated outputs
 
 ## Testing
 

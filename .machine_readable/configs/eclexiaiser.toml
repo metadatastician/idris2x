@@ -1,20 +1,18 @@
 # eclexiaiser manifest — energy/carbon resource budgets
 # SPDX-License-Identifier: MPL-2.0
+#
+# The template's entries budgeted Zig FFI functions that the rust-cli mint pruned. The launcher is not
+# written yet, so the one entry below points at the crate's real entry point and keeps the template's
+# placeholder budget unchanged; set measured budgets when the launcher exists (Phase 1, ROADMAP).
 
 [project]
 name = "idris2x"
 
 [[functions]]
-name = "build"
-source = "src/interface/ffi/build.zig"
+name = "main"
+source = "src/main.rs"
 energy-budget-mj = 15.0
 carbon-budget-mg = 3.0
-
-[[functions]]
-name = "setError"
-source = "src/interface/ffi/src/main.zig"
-energy-budget-mj = 5.0
-carbon-budget-mg = 1.0
 
 [carbon]
 provider = "static"

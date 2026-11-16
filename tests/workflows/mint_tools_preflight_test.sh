@@ -52,6 +52,17 @@ mkdir -p "$work/yqonly"; cp "$work/good/yq" "$work/yqonly/"
 out="$(check "$work/yqonly")"; st=$?
 if [ "$st" -ne 0 ] && grep -q 'nickel' <<<"$out" && ! grep -q '  - yq' <<<"$out"; then ok "no nickel: refused, nickel named"; else bad "no nickel: expected exit 1 naming only nickel (got $st): $out"; fi
 
+# Controls 2-4 below apply only when the tree has container configs: with none (an archetype
+# such as rust-cli pruned build/container/), check-mint-tools.sh correctly demands no yq, by the
+# formatter's own --preflight. Ask the same oracle with no yq on PATH; report the yq controls
+# NOT RUN, never as passes, when it says yq is not needed.
+yq_needed=1
+if PATH="$base" bash "$repo/scripts/format-container-kyaml.sh" --preflight "$repo" >/dev/null 2>&1; then yq_needed=0; fi
+if [ "$yq_needed" -eq 0 ]; then
+    echo "  NOT RUN  yq controls (no yq, old yq, foreign yq): this tree has no container configs, so no yq is required"
+    out="$(check)"; st=$?
+    if [ "$st" -ne 0 ] && grep -q '  - nickel' <<<"$out" && ! grep -q '  - yq' <<<"$out"; then ok "both missing (no container configs): nickel named, yq rightly not demanded"; else bad "both missing (no container configs): expected only nickel named (got $st): $out"; fi
+else
 mkdir -p "$work/nickelonly"; cp "$work/good/nickel" "$work/nickelonly/"
 out="$(check "$work/nickelonly")"; st=$?
 if [ "$st" -ne 0 ] && grep -q '  - yq' <<<"$out" && ! grep -q '  - nickel' <<<"$out"; then ok "no yq: refused, yq named"; else bad "no yq: expected exit 1 naming only yq (got $st): $out"; fi
@@ -66,6 +77,7 @@ if [ "$st" -ne 0 ] && grep -q "  - yq" <<<"$out" && ! grep -q "  - nickel" <<<"$
 
 out="$(check)"; st=$?
 if [ "$st" -ne 0 ] && grep -q '  - yq' <<<"$out" && grep -q '  - nickel' <<<"$out" && grep -q 'mise' <<<"$out"; then ok "both missing: every missing tool listed, provision named"; else bad "both missing: expected both named (got $st): $out"; fi
+fi
 
 out="$(check "$work/good")"; st=$?
 if [ "$st" -eq 0 ]; then ok "both present: accepted"; else bad "both present: expected exit 0 (got $st): $out"; fi
