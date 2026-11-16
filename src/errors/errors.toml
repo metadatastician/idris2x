@@ -3,7 +3,7 @@
 # errors.toml — the error taxonomy. Every failure the launcher can emit has a stable ID, a stable exit
 # code, a one-line meaning, an exact fix, and a runbook page runbooks/<ID>.adoc (generated stubs).
 # Exit codes are part of the CLI contract: never renumber; append only.
-schema = 1
+schema = 2
 
 [[error]]
 id = "E-USAGE"
@@ -12,16 +12,19 @@ meaning = "bad command line"
 fix = "idris2x --help"
 [[error]]
 id = "E-PIN-NOT-FOUND"
+title = "nothing is pinned for this version and target"
 exit = 10
 meaning = "no lock, or lock/channel has no capsule for this version+target"
 fix = "idris2x pin <supported-version>"
 [[error]]
 id = "E-HASH-MISMATCH"
+title = "capsule bytes do not match the lock"
 exit = 11
 meaning = "downloaded bytes or unpacked tree do not match the pinned digest"
 fix = "idris2x gc && idris2x install --locked"
 [[error]]
 id = "E-SIG-INVALID"
+title = "channel manifest signature or key does not verify"
 exit = 12
 meaning = "channel manifest signature or key id does not verify"
 fix = "do not override; investigate the mirror (runbook)"
@@ -37,6 +40,7 @@ meaning = "all mirrors failed"
 fix = "retry; check proxy; IDRIS2X_OFFLINE=1 with a prefetched bundle"
 [[error]]
 id = "E-LOCK-TIMEOUT"
+title = "another idris2x is installing the same capsule"
 exit = 15
 meaning = "another install of the same capsule held the lock too long"
 fix = "wait, or remove the stale lock file named in the message"
@@ -62,6 +66,7 @@ meaning = "idris2x.toml and idris2x.lock disagree"
 fix = "idris2x pin <version>"
 [[error]]
 id = "E-OFFLINE"
+title = "needed data is not cached and offline mode is on"
 exit = 20
 meaning = "cache miss while IDRIS2X_OFFLINE=1"
 fix = "idris2x fetch -o bundle on a connected host, then idris2x install --from bundle"
@@ -91,3 +96,168 @@ id = "E-INTERNAL"
 exit = 70
 meaning = "launcher bug"
 fix = "file an issue with idris2x doctor --json"
+
+# --- schema 2 (DX design, docs/dx/): occurrence shapes ---------------------------------------------------------------
+# An [[error]] is a failure TYPE: id, exit, meaning, fix stay as they were, and `title` is its constant one-line summary.
+# A [[case]] is one SHAPE that type takes at a call site. The launcher passes only an id, a case name and typed context
+# values; every word a user reads comes from here. Fields ({name} is replaced by a context value):
+#   error, case   which type this shape belongs to, and its name (unique within the type)
+#   summary       terse headline: lowercase, no full stop (style B header, and --json `summary`)
+#   story         the same headline as one plain sentence (style A)
+#   facts         ordered `label=context-name` pairs, space separated: the values the user needs, never truncated
+#   state         what is true on disk now (I2 atomic or absent, said out loud)
+#   why           why this happens, in one or two sentences
+#   fix_lead      optional lead-in to the command (style A only)
+#   fix_cmd       the single best command to paste; empty when no command is honest
+#   fix_note      what to do if the command is not enough, or instead of one
+#   auto          may CI or an agent run fix_cmd unattended? safe | placeholder | none
+# The A/B wording experiment (docs/dx/ERROR-CATALOGUE.adoc) covers five ids; the other twelve get cases once a style is chosen.
+
+[[case]]
+error = "E-PIN-NOT-FOUND"
+case = "no-lock"
+summary = "no {lock} in {dir}"
+story = "There is no {lock} in this directory, so I do not know which Idris 2 to run."
+facts = "directory=dir looked-for=lock"
+state = "Nothing was downloaded or changed."
+why = "idris2x never guesses a version. Every run is tied to a lock file, so the same command gives the same compiler on every machine."
+fix_lead = "If this is the project root, pin a version here:"
+fix_cmd = "idris2x pin <version>"
+fix_note = "If the project already has a lock file, change to the directory that holds it: the lock is read from the current directory only."
+auto = "placeholder"
+[[case]]
+error = "E-PIN-NOT-FOUND"
+case = "no-target"
+summary = "{lock} pins no capsule for {target}"
+story = "{lock} does not pin a capsule for this machine."
+facts = "this-machine=target lock-covers=covered"
+state = "Nothing was downloaded or changed."
+why = "The lock records one capsule per platform. It was written when the channel had none for this platform."
+fix_lead = "Pin again to pick up every platform the channel offers now:"
+fix_cmd = "idris2x pin {version}"
+fix_note = "If {target} is still missing afterwards, no capsule is published for it yet: see the supported platforms page."
+auto = "safe"
+[[case]]
+error = "E-PIN-NOT-FOUND"
+case = "no-version"
+summary = "the channel has no idris2 {version}"
+story = "The channel does not offer Idris 2 {version}."
+facts = "asked-for=version available=available"
+state = "{lock} was not changed."
+why = "Only versions with a published, signed capsule can be pinned."
+fix_lead = "Pin one of the available versions:"
+fix_cmd = "idris2x pin <version>"
+fix_note = ""
+auto = "placeholder"
+
+[[case]]
+error = "E-HASH-MISMATCH"
+case = "download"
+summary = "downloaded capsule does not match {lock}"
+story = "The capsule I downloaded is not the one {lock} pins."
+facts = "expected=want got=got size=bytes from=source"
+state = "Nothing was installed. The bad download was deleted and the store is unchanged."
+why = "A mirror served a damaged, truncated or stale file. It can also mean tampering, which is what this check exists to catch."
+fix_lead = "Try the download again:"
+fix_cmd = "idris2x install --locked"
+fix_note = "If it fails again with the same got digest, the mirror is serving a bad file: report it with the runbook below."
+auto = "safe"
+[[case]]
+error = "E-HASH-MISMATCH"
+case = "bundle"
+summary = "bundle {source} does not match {lock}"
+story = "The bundle you gave me is not the capsule {lock} pins."
+facts = "expected=want got=got size=bytes bundle=source"
+state = "Nothing was installed. Your bundle file was left untouched."
+why = "The bundle was fetched for a different lock file, or it was damaged in transit."
+fix_lead = ""
+fix_cmd = "idris2x fetch -o capsule.tar.gz"
+fix_note = "Run that on a connected machine with this exact {lock}, then copy the new bundle here."
+auto = "none"
+[[case]]
+error = "E-HASH-MISMATCH"
+case = "store-modified"
+summary = "an installed capsule was modified after installation"
+story = "An installed capsule no longer matches its own checksums."
+facts = "capsule=digest store-entry=dir"
+state = "The capsule was left in place so that you can inspect it."
+why = "Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only."
+fix_lead = "Remove this capsule and install it again:"
+fix_cmd = "rm -rf '{dir}' && idris2x install --locked"
+fix_note = "Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same."
+auto = "none"
+
+[[case]]
+error = "E-SIG-INVALID"
+case = "bad-signature"
+summary = "channel manifest signature does not verify"
+story = "The channel manifest's signature does not match its contents."
+facts = "manifest=url trusted-key=key"
+state = "The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs."
+why = "The manifest was altered after it was signed, or a mirror served a manifest and a signature from two different publishes."
+fix_lead = "Wait a minute, then try once more in case a mirror was mid-update:"
+fix_cmd = "idris2x pin {version}"
+fix_note = "If it fails again, stop: there is no flag that skips this check. Follow the runbook below to report the mirror."
+auto = "none"
+[[case]]
+error = "E-SIG-INVALID"
+case = "wrong-key"
+summary = "channel manifest was signed by an untrusted key"
+story = "The channel manifest was signed by a key I do not trust."
+facts = "manifest=url signed-by=signer trusted-key=key"
+state = "The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs."
+why = "This URL is not the channel this idris2x trusts, or the channel changed its key after this idris2x was released, or someone is impersonating the channel."
+fix_lead = ""
+fix_cmd = ""
+fix_note = "Check that the manifest URL is the channel you meant. If it is, update idris2x, because key changes ship in launcher releases. Never swap the trusted key by hand."
+auto = "none"
+[[case]]
+error = "E-SIG-INVALID"
+case = "malformed"
+summary = "cannot read signature material: {what}"
+story = "I could not read the signature material: {what}."
+facts = "file=file"
+state = "The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs."
+why = "The file is not a signify-format Ed25519 key or signature. A proxy or captive portal that returns a web page in place of the file is the usual cause."
+fix_lead = ""
+fix_cmd = ""
+fix_note = "Open the file named above. If it contains HTML, fix the proxy or network first, then run the same command again."
+auto = "none"
+
+[[case]]
+error = "E-OFFLINE"
+case = "capsule-missing"
+summary = "a pinned capsule is not in the store and {mode} is set"
+story = "I need a capsule that is not in the store, and offline mode is on."
+facts = "capsule=digest store=store offline-because=mode"
+state = "Nothing was downloaded, as you asked. The store is unchanged."
+why = "Offline mode never touches the network, so the capsule has to arrive another way."
+fix_lead = ""
+fix_cmd = "idris2x fetch -o capsule.tar.gz"
+fix_note = "Run that on a connected machine with the same {lock}, copy capsule.tar.gz here, then run: idris2x install --from capsule.tar.gz"
+auto = "none"
+[[case]]
+error = "E-OFFLINE"
+case = "no-manifest"
+summary = "no cached channel manifest and {mode} is set"
+story = "Pinning needs the channel manifest. None is cached, and offline mode is on."
+facts = "cache=cache offline-because=mode"
+state = "Nothing was changed."
+why = "pin reads the signed channel manifest. Offline, it can only use a copy cached by an earlier online pin."
+fix_lead = "Run the pin once with the network allowed:"
+fix_cmd = "IDRIS2X_OFFLINE=0 idris2x pin {version}"
+fix_note = "Running an already pinned toolchain never needs the manifest: install --locked and exec --locked work offline from the store."
+auto = "none"
+
+[[case]]
+error = "E-LOCK-TIMEOUT"
+case = "held"
+summary = "waited {seconds}s for another install of the same capsule"
+story = "Another idris2x is installing the same capsule. I waited {seconds} seconds and then gave up."
+facts = "capsule=digest lock-file=lockfile held-by=holder"
+state = "This run installed nothing. The other install is not affected."
+why = "Installs of one capsule take turns, so two processes never write the same store entry. A slow download in the other process is the usual cause."
+fix_lead = "Wait for the other install to finish, or allow more time:"
+fix_cmd = "IDRIS2X_LOCK_TIMEOUT=1800 idris2x install --locked"
+fix_note = "Do not delete the lock file while its holder is running: two installs would then write at once. The lock is released by itself when the holder exits."
+auto = "safe"
