@@ -188,7 +188,7 @@ pages, so check each one against its URL before quoting it outside this reposito
 | Rule | Statement | Source | Check
 
 | C1
-| Colour is decided in this order: an explicit flag or `IDRIS2X_COLOR=always|never`; then `NO_COLOR` (set and not
+| Colour is decided in this order: an explicit flag or `IDRIS2X_COLOR=always` or `never`; then `NO_COLOR` (set and not
   empty means no colour); then `TERM=dumb`; then whether stderr is a terminal.
 | no-color.org: "when present and not an empty string (regardless of its value), prevents the addition of ANSI color."
   The same page says per-instance arguments override it.

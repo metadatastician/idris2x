@@ -83,7 +83,7 @@ idris2x: E-HASH-MISMATCH: capsule bytes do not match the lock: got sha256:3f1câ€
 |===
 | How | Status
 | `IDRIS2X_STYLE=a` or `b` in the environment | Runs in the prototype; the whole chaos suite passes under each.
-| `--style a|b` on the command line | Planned.
+| `--style a` or `--style b` on the command line | Planned.
 | `style = "a"` in the user's own configuration file, so a person sets it once | Planned. It must be a per-user file,
   never `idris2x.toml`: a project should not choose how its contributors read errors.
 | `--json` | Unaffected by style: one object, the same for both.
