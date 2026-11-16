@@ -53,7 +53,7 @@ them.
 | ID | Claim (and the artefact that proves or tests it) | Token | PWG | Rocq leg | Lean leg | Receipt
 
 | DX-PROV-1
-| Design model, not launcher code: in the provenance-typed message model of ADR 0012, channel text cannot reach the fix slot (T1, T3) or anything the executor prints (T2, T4), and the advisory slot does depend on it (T5). `verification/proofs/idris2/Diagnostics/Provenance.idr`; negative cases in `Diagnostics/ProvenanceClient.idr`.
+| Design model, not launcher code: in the provenance-typed message model of ADR 0012, channel text cannot reach the fix slot (T1, T3) or anything the executor prints (T2, T4), and the advisory slot does depend on it (T5). `verification/proofs/idris2/Diagnostics/Provenance.idr`; negative cases in `verification/proofs/idris2/Diagnostics/ProvenanceClient.idr`.
 | `proven`
 | `ungraded`
 | not applicable (engineering)
