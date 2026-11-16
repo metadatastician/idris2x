@@ -113,8 +113,7 @@ safe_tar_list() { # reject absolute member paths, '..' components, and symlink/h
     case "$target" in /*) return 1;; esac
     if [ "$type" = l ]; then dir=${member%/*}; [ "$dir" = "$member" ] && dir=.; inside_tree "$dir/$target" || return 1
     else inside_tree "$target" || return 1; fi      # hardlink targets are archive-root relative
-  done < <(tar -tvzf "$1" 2>/dev/null | sed -n
- 's/^\([lh]\)[^ ]* .* [0-9][0-9]:[0-9][0-9] \(.*\) -> \(.*\)$/\1\t\2\t\3/p; s/^\(h\)[^ ]* .* [0-9][0-9]:[0-9][0-9] \(.*\) link to \(.*\)$/\1\t\2\t\3/p')
+  done < <(tar -tvzf "$1" 2>/dev/null | sed -n  's/^\([lh]\)[^ ]* .* [0-9][0-9]:[0-9][0-9] \(.*\) -> \(.*\)$/\1\t\2\t\3/p; s/^\(h\)[^ ]* .* [0-9][0-9]:[0-9][0-9] \(.*\) link to \(.*\)$/\1\t\2\t\3/p')
   return 0
 }
 

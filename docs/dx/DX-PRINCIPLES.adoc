@@ -245,10 +245,11 @@ pages, so check each one against its URL before quoting it outside this reposito
 | planned
 
 | H2
-| Advice that is not an error (for example the `gc` warning about compiled programs) is a `hint:` on stderr.
-  Each hint names the setting that silences it, and `IDRIS2X_ADVICE=0` silences all of them for tools.
+| Advice that is not an error (for example a `doctor` note, or the `gc` warning about compiled programs) is a
+  `note:` line. Each one names the setting that silences it, and `IDRIS2X_ADVICE=0` silences all of them for tools.
 | git: "Git will give the message alongside instructions on how to squelch it."; `GIT_ADVICE=0`.
-| planned
+| tested for `doctor` (chaos T17); planned for `gc`
+
 
 | H3
 | Nothing is printed about new versions, news or surveys during `install` or `exec`. There is no update check on
@@ -259,7 +260,15 @@ pages, so check each one against its URL before quoting it outside this reposito
 | H4
 | An internal error (`E-INTERNAL`) prints what to attach and where to send it, and nothing else that looks like a diagnosis.
 | clig.dev: "Make it effortless to submit bug reports."
-| planned
+| tested (golden)
+
+| H5
+| Advice earns its place and is pruned when it stops earning it. Every advice entry records when it was added, a
+  `review_by` date, the condition under which it is retired, and the `basis` for believing it (tested, or unverified).
+  A check fails once a review date passes; the reviewer renews it with a reason or deletes it. Advice resting on an
+  unverified premise gets a short review date.
+| Owner request, 2026-11-16. Estate contractile *Dust* (exnovation). git's advice keys grow without any such review.
+| tested (`scripts/check-advice-review.sh`, chaos T17)
 |===
 
 == What the two candidate styles share and where they differ
@@ -276,7 +285,8 @@ Both styles are rendered from the same data by one small program, so the choice 
 | Weakness | About twice as many lines; "I" may grate on experts | Long lines; the reader must know the labels
 |===
 
-Neither is chosen yet. link:ERROR-CATALOGUE.adoc[The error catalogue] describes the experiment that will decide.
+Both ship, and each user chooses with `IDRIS2X_STYLE` (owner ruling, 2026-11-16). Style B is the default; the
+link:ERROR-CATALOGUE.adoc[error catalogue] says why, and what the alternative default would be.
 
 == Proposed lints (not written yet)
 

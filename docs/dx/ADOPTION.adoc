@@ -88,6 +88,23 @@ one point: pack needs a Scheme executable (its `scheme` setting, default `scheme
 | 4 | 2
 |===
 
+*Owner's direction, 2026-11-16:* probably A, and perhaps D, depending on how D would work with OPSM
+(`hyperpolymath/odds-and-sods-package-manager`).
+
+What OPSM changes about option D. OPSM is the estate's package manager. Its README (read 2026-11-16, commit `970e8ee`)
+describes a git-based Idris 2 adapter with a curated package list. Option D's weakness was that a "collection to
+capsule" mapping would make idris2x behave like a package manager. If OPSM owns that mapping, the boundary holds:
+
+* OPSM resolves packages and decides which compiler a set of packages needs.
+* idris2x supplies that compiler as a verified capsule and nothing more: the toolchain provider in OPSM's chain.
+* pack's collections stay pack's. OPSM could read them; idris2x never does.
+
+That makes D a matter between OPSM and pack, with idris2x as a provider to both, which is the same role as option A.
+So A is not replaced by D; A is the part of D that belongs here.
+
+Not checked: OPSM's Idris 2 adapter code was not read or run, only its README. Whether OPSM can call an external
+toolchain provider at all is unknown. Find that out in OPSM before designing anything.
+
 Hard rules whichever is chosen: idris2x never reads or writes pack's directories (`$XDG_CONFIG_HOME/pack`,
 `$XDG_STATE_HOME/pack`, `$XDG_CACHE_HOME/pack`) or `~/.idris2`, and never puts itself ahead of pack's `idris2` on
 `PATH` without being asked. Option A needs testing before it is promised: pack's install script has not been run
@@ -107,12 +124,15 @@ against an idris2x-provided Chez.
 `idris2-lsp` must be built for the same compiler version, and editors start it by bare name from `PATH`.
 A mismatched pair is a common silent failure.
 
-* *Planned, cheap:* `doctor` notes when the `idris2-lsp` on `PATH` reports a different Idris 2 version from the pin
-  (shown in journey 1). Needs a check of how `idris2-lsp` reports its version.
+* *Done in the prototype, on an unverified premise:* `doctor` notes when the `idris2-lsp` on `PATH` does not report
+  the pinned Idris 2 version. It was tested against a stand-in program only; how a real `idris2-lsp` reports its
+  version is not known. The owner asked that such advice review and prune itself, so the note is an `[[advice]]`
+  entry whose `review_by` date is two months out and whose `basis` says "unverified". When that date passes, CI fails
+  until someone tests it against a real `idris2-lsp` and renews it, or deletes it.
 * *Planned:* `idris2x env --json` is the integration point for editor plugins: they read the environment and start
   the compiler themselves. No editor plugin is proposed here.
-* *Owner decision:* whether capsules should ever include `idris2-lsp`. It would solve the mismatch at source, and it
-  enlarges the factory and the capsule. It is not in any ADR today.
+* *Deferred:* whether capsules should ever include `idris2-lsp`. It would solve the mismatch at source, and it
+  enlarges the factory and the capsule. The advice entry's `retire_when` names this as one of its two exits.
 
 === 4. Documentation people can trust
 
@@ -173,10 +193,11 @@ Until then there is nothing truthful to announce.
 
 == Decisions that are the owner's
 
-. Which pack option to pursue (A recommended as the first step; B is the more elegant end state and depends on pack).
+. Whether OPSM can use an external toolchain provider, which decides if option D is real. Option A goes first either way.
 . Whether and when to send the step 1 messages, and to whom.
 . How to word the disclosure of AI assistance, and where it lives.
-. Whether capsules may include `idris2-lsp`.
+. Whether the default style should become "A on a terminal, B elsewhere" (it is B everywhere today).
+
 . Whether `doctor` should print a block meant for Idris 2 bug reports.
 . Whether Phase 0's upstream findings are reported, by the owner, to Idris 2.
 

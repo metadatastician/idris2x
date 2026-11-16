@@ -14,7 +14,7 @@ Chez Scheme 9.5.8). Home directory and host names are replaced by `/home/ada` an
 *PLANNED* means a design for the Rust launcher, which does not exist. Nothing marked PLANNED has run.
 ====
 
-Error text below uses style B. Style A is equally possible until link:ERROR-CATALOGUE.adoc[the experiment] decides.
+Error text below uses style B, the default. Set `IDRIS2X_STYLE=a` for the conversational style; both are tested.
 
 toc::[]
 
@@ -127,7 +127,25 @@ $ idris2x doctor
 [exit 0]
 ----
 
+.RAN: `doctor` notes a variable it will ignore, and says how to silence the note
+[source,text]
+----
+$ IDRIS2_PATH=/opt/old-idris2 idris2x doctor
+[info] idris2x 0.0.0-proto  target=x86_64-unknown-linux-gnu  glibc=2.39  cache=/home/ada/.cache/idris2x
+[OK] store writable, flock works
+[OK] capsule sha256:d99736595a6c installed (idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1)
+[OK] mirror reachable 0.000655s http://127.0.0.1:8131/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
+[OK] probes: pure_eval, version_match
+note: IDRIS2_PATH is set in your shell and idris2x will ignore it. Pass --inherit-env to keep it.
+note: silence this note with IDRIS2X_ADVICE_ENV=0
+[exit 0]
+----
+
+Each note is an `[[advice]]` entry with a review date; `scripts/check-advice-review.sh` fails when one is overdue.
+The note about a mismatched `idris2-lsp` exists too, and has been tested only against a stand-in program.
+
 .PLANNED: `idris2x doctor` in the Rust launcher
+
 [source,text]
 ----
 $ idris2x doctor

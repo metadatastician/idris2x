@@ -57,6 +57,7 @@ echo "== T1 happy path"; fresh t1
 t "pin 0.8.0"                        0 "$X" pin 0.8.0
 t "install --locked (cold)"          0 "$X" install --locked
 DIG=$(jq -r '.capsules[].sha256' idris2x.lock); STORE="$IDRIS2X_CACHE/store/sha256-$DIG"
+assert "  a successful install prints the store path and nothing else" test "$(cat "$W/out.txt")" = "$STORE"
 assert "store/.complete present"     test -f "$STORE/.complete"
 assert "no staging leftovers in tmp" test -z "$(ls -A "$IDRIS2X_CACHE/tmp" | grep -v fetch.log)"
 t "install --locked (warm, no-op)"   0 "$X" install --locked
@@ -143,6 +144,11 @@ jq --arg s "$UNSAFE_SHA" --arg u "$U/unsafe.tar.gz" '.capsules[] |= (.sha256=$s 
 t "'../' member -> E-CAPSULE-INVALID" 21 "$X" install --locked
 says "  exact text: unsafe-path"     E-CAPSULE-INVALID unsafe-path digest="sha256:$UNSAFE_SHA"
 assert "nothing escaped the staging dir" test ! -e "$IDRIS2X_CACHE/tmp/evil.txt" -a ! -e "$IDRIS2X_CACHE/evil.txt"
+mkdir -p "$W/esc"; ln -sfn /etc "$W/esc/out"; echo x > "$W/esc/file"; tar -czf "$OUT/escape.tar.gz" -C "$W/esc" out file; ESC_SHA=$(sha256sum "$OUT/escape.tar.gz" | cut -d' ' -f1)
+jq --arg s "$ESC_SHA" --arg u "$U/escape.tar.gz" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=100)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
+t "symlink pointing outside the tree -> E-CAPSULE-INVALID" 21 "$X" install --locked
+says "  exact text: unsafe-path (link escape)" E-CAPSULE-INVALID unsafe-path digest="sha256:$ESC_SHA"
+
 echo "== T12 cache path with spaces + unsupported-target lock"; fresh "t12 with spaces"; pin
 t "install into path with spaces"    0 "$X" install --locked
 assert "chez runs from spaced path"  test "$(echo '(display (+ 40 2))' | "$X" run -- -q)" = 42

@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= Error catalogue: all 17 IDs, the A/B wording experiment, and the schema change
+= Error catalogue: all 17 IDs, two message styles, and the schema change
 :toc: macro
 
 [NOTE]
 ====
 *Status.* The Rust launcher does not exist. Everything described as running here runs in the bash prototype
-(`scripts/proto/idris2x.sh`). Five IDs (twelve cases) have new wording in two candidate styles, rendered and
-regression-tested. The other twelve IDs have their analysis below and keep the prototype's old wording until a style
-is chosen (owner decision, 2026-11-16).
+(`scripts/proto/idris2x.sh`). All 17 IDs (44 cases) have wording in two styles, rendered and regression-tested.
+The owner ruled on 2026-11-16 that both styles ship and each user chooses.
 ====
 
 toc::[]
 
 == How to read this page
 
-* The exact rendered text for the five experiment IDs, in every form (interactive terminal, plain, `--json`) and both
+* The exact rendered text for every case of every ID, in every form (interactive terminal, plain, `--json`) and both
   styles, is in link:ERROR-CATALOGUE-RENDERED.adoc[the generated page]. It is generated from `src/errors/errors.toml`
   and checked by `scripts/proto/dx-golden.sh --check`, so it cannot drift from what the prototype prints.
 * This page holds what a generator cannot: the reasoning, the old wording, the defects found, and the plan for the rest.
 * The rules cited as A1, W5 and so on are in link:DX-PRINCIPLES.adoc[the DX principles].
 
-== The experiment
+== Two styles, the user's choice
 
-Two styles are rendered from the same data. Style A is conversational, after Elm. Style B is one labelled field per
+Two styles are rendered from the same data, and `IDRIS2X_STYLE=a` or `IDRIS2X_STYLE=b` selects one. Style A is conversational, after Elm. Style B is one labelled field per
 line, after rustc and cargo. One failure, both styles, plain form:
 
 .Style A
@@ -78,19 +77,33 @@ idris2x: E-HASH-MISMATCH: capsule bytes do not match the lock: got sha256:3f1câ€
   see: https://github.com/metadatastician/idris2x/blob/main/runbooks/E-HASH-MISMATCH.adoc
 ----
 
-=== How the choice gets made
+=== Switching, and the default
 
-This is a proposal for the owner; nothing here has been run with people.
+[cols="1,3",options="header"]
+|===
+| How | Status
+| `IDRIS2X_STYLE=a` or `b` in the environment | Runs in the prototype; the whole chaos suite passes under each.
+| `--style a|b` on the command line | Planned.
+| `style = "a"` in the user's own configuration file, so a person sets it once | Planned. It must be a per-user file,
+  never `idris2x.toml`: a project should not choose how its contributors read errors.
+| `--json` | Unaffected by style: one object, the same for both.
+|===
 
-. Show the five IDs in both styles to at least five people from each group: new to Idris 2, CI maintainers, and
-  experienced Idris 2 users. The rendered page is the stimulus; no build is needed.
-. For each message ask three things with a right answer: what happened, is anything on disk damaged, and what do
-  you type next. Record correctness and time, then ask which style they would rather meet at 2 a.m.
-. Read each message through a screen reader (Orca or VoiceOver) once and note where it stumbles.
-. Choose per measure, not per taste. If the groups split, the data model already allows one style on a terminal and
-  the other in CI logs; that is a renderer option, not a second set of words.
+The default is style B. That is a design call made here, not an owner ruling, and it departs from what may be the
+more elegant arm: style A when a person is at a terminal and style B everywhere else. B was kept as the default because
+it is the same text in every setting, so a message pasted from a terminal matches the one in a CI log. The automatic
+arm costs one line in the renderer and can be switched on later.
 
-The ask of Idris 2 users in step 1 is outward-facing, so it waits for the owner (see link:ADOPTION.adoc[adoption]).
+Cost of shipping both, stated plainly: every case keeps two headlines (`summary` and `story`), and both are tested.
+That is 44 extra sentences to keep true.
+
+=== Still worth measuring
+
+Shipping both removes the need to choose before building. It does not show which default serves people best.
+The measurement proposed earlier still applies and nothing in it has been run with people: show both styles to
+newcomers, CI maintainers and experienced Idris 2 users; ask what happened, whether anything on disk is damaged,
+and what to type next; and read each style through a screen reader once. Asking Idris 2 users is outward-facing,
+so it waits for the owner (see link:ADOPTION.adoc[adoption]).
 
 == The schema change (proposed in this branch, not silently)
 
@@ -133,15 +146,17 @@ What the change costs:
 
 * The file stays inside the strict TOML subset `scripts/lib/toml2json.sh` accepts: strings and integers only, which
   is why `facts` is one string. The launcher's own reader has the same limits.
-* After the experiment, one of `summary` and `story` is deleted, and `fix_lead` goes with style A if B wins.
+* Both styles ship, so `summary`, `story` and `fix_lead` all stay.
+* A new `[[advice]]` table holds notes that are not errors. Each entry has `review_by`, `retire_when` and `basis`,
+  and `scripts/check-advice-review.sh` fails once a review date has passed (see the DX principles, rule H5).
 * The `[[case]]` blocks will conflict textually with any edit the main thread makes to the same file. The conflict is
   one-off and mechanical.
 
 `--json` output also changes shape, from `{error, message, fix, runbook}` to the object shown on the generated page.
-Nothing consumed the old shape. IDs without cases still print the old shape until they are migrated, which is a
-known inconsistency of the experiment and must not survive into the Rust launcher.
+Nothing consumed the old shape. One call to the old `die` function remains in the prototype: the last resort when
+the message data itself cannot be read.
 
-== The five experiment IDs
+== The first five IDs
 
 Each row gives the case, the fact the user needs, the fix, and what was wrong before.
 Rendered text: link:ERROR-CATALOGUE-RENDERED.adoc[generated page].
@@ -229,8 +244,10 @@ Rendered text: link:ERROR-CATALOGUE-RENDERED.adoc[generated page].
 
 == The other twelve IDs
 
-No final wording yet. Each row records what the message must carry, so that writing it in the chosen style is
-mechanical. "Before" is the prototype's present text.
+These now have wording in both styles, written from the analysis in this table. "Before" is the text the prototype
+printed at commit `e1d7779`; the last column says what was wrong with it. Two IDs are exceptions: `E-PIN-DRIFT` has
+wording and a golden rendering but still no code path, because the prototype does not read `idris2x.toml`.
+`E-PLATFORM-UNSUPPORTED` is wired but was not drilled, since the test machine is a supported platform.
 
 [cols="2,2,3,3,3",options="header"]
 |===
@@ -260,7 +277,8 @@ mechanical. "Before" is the prototype's present text.
 | too-old
 | Host glibc version, the capsule's minimum, and how the host version was detected
 | No command. Use a newer base image or container; name the minimum.
-| No call site in the prototype: the check is not implemented. Do not claim it.
+| There was no call site. *Now implemented* in the prototype: the lock's `min_glibc` is compared with the host before
+  any download, and chaos drill T16 tests it.
 
 | `E-PROBE-CODEGEN` (17)
 | chez-failed, idris2-failed, version-mismatch, codegen-failed, path-has-spaces
@@ -317,15 +335,25 @@ mechanical. "Before" is the prototype's present text.
 
 == Defects found while doing this work
 
-Found by reading and running the prototype, not hypothetical. The first three are fixed in this branch; the rest are open.
+Found by reading and running the prototype, not hypothetical. Eight are fixed in this branch and two are open.
 
 . *Fixed.* The runbook link pointed to `blob/main/runbooks/`, which does not exist. It is `blob/main/docs/runbooks/`.
 . *Fixed.* The `E-LOCK-TIMEOUT` fix advised deleting a held lock file.
 . *Fixed.* The `store-modified` fix named `idris2x gc --purge`, a flag that does not exist.
-. *Open.* A full disk during download exits 14 (`E-NETWORK`), not 24 (`E-STORE-IO`).
-. *Open.* `E-GLIBC-FLOOR` and `E-PIN-DRIFT` have IDs and runbooks but no code path in the prototype.
-. *Open.* Three `E-PROBE-CODEGEN` sites print by hand and can drift from the taxonomy.
+. *Fixed.* A write failure during download exited 14 (`E-NETWORK`). It now exits 24 (`E-STORE-IO`). Tested with a
+  file-size limit, which stands in for a full disk; a truly full disk was not tested.
+. *Fixed.* `E-NETWORK` said only that all mirrors failed. It now lists each address with its own reason.
+. *Fixed.* `E-GLIBC-FLOOR` had no code path. It is now checked before any download.
+. *Fixed.* Three `E-PROBE-CODEGEN` sites printed by hand. They now go through the same data as every other error.
+. *Fixed.* `tar` printed its own warning in front of `E-CAPSULE-INVALID`. The exact-text drill caught it.
+. *Open.* `E-PIN-DRIFT` has an ID, a runbook and wording but no code path in the prototype.
 . *Open.* `idris2x gc` deletes capsules without the warning ADR 0005 requires about compiled programs.
+
+One defect was introduced and removed during this work, and is recorded because of how it was found. An edit split a
+line in the archive safety check, which silently disabled the test for links that leave the capsule tree. The chaos
+suite still passed. A line-by-line comparison of the journeys page with a fresh run exposed it. Two drills were
+added (a successful install prints nothing but the store path; a capsule with an escaping link is refused), and
+they fail on a copy with the fault put back.
 
 == What is tested, exactly
 
@@ -334,14 +362,19 @@ Found by reading and running the prototype, not hypothetical. The first three ar
 | Check | Result on 2026-11-16 (Ubuntu 24.04, x86_64)
 
 | `scripts/proto/dx-golden.sh --check`
-| Passes: 12 cases, 5 renderings each, compared character for character.
+| Passes: 44 cases, 5 renderings each, compared character for character.
 
-| `scripts/proto/chaos.sh`, Chez and Idris 2 0.8.0 capsule, style B
-| 77 passed, 0 failed. Twelve of the passes compare a live failure's whole output with the expected text.
+| `scripts/proto/chaos.sh`, Chez and Idris 2 0.8.0 capsule, style A and style B
+| 113 passed, 0 failed, in each style. Twenty-eight of the passes compare a live failure's whole output with the
+  expected text, covering 25 of the 44 cases.
 
-| `scripts/proto/chaos.sh`, Chez-only capsule, styles A and B
-| 72 passed, 0 failed, in each style.
+| `scripts/check-advice-review.sh`
+| Passes today, and fails as intended when run with a date after a review date.
 |===
+
+Nineteen cases have a golden rendering and no live drill. They include every case of `E-PLATFORM-UNSUPPORTED`,
+`E-PIN-DRIFT` and `E-INTERNAL`, and the `E-STORE-IO` cases other than a failed write.
+
 
 Limits of that evidence. The capsule in these runs used Debian's Chez Scheme 9.5.8 labelled as 10.4.1, and Idris 2
 0.8.0 built from source on the same machine; it is a test fixture, not a capsule the factory would publish. The
