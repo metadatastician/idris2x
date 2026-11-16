@@ -52,7 +52,22 @@ them.
 |===
 | ID | Claim (and the artefact that proves or tests it) | Token | PWG | Rocq leg | Lean leg | Receipt
 
-| — | No claims yet | — | — | — | — | —
+| DX-PROV-1
+| Design model, not launcher code: in the provenance-typed message model of ADR 0012, channel text cannot reach the fix slot (T1, T3) or anything the executor prints (T2, T4), and the advisory slot does depend on it (T5). `verification/proofs/idris2/Diagnostics/Provenance.idr`; negative cases in `Diagnostics/ProvenanceClient.idr`.
+| `proven`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None yet. Checked by hand on 2026-11-16 with Idris 2 0.8.0 (Chez 9.5.8): `scripts/check-proofs.sh idris2` reports PASS for both modules. No headless, pinned receipt exists.
+
+| DX-PROV-2
+| The Rust launcher's message module upholds the same four properties. Planned verifiers: Creusot with Pearlite contracts, and Verus. Neither has been run: the launcher does not exist.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None.
+
 |===
 
 == Trust boundary

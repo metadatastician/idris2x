@@ -64,3 +64,12 @@ Collected from the Phase 0 audit (five fact-checking passes, primary sources cit
 * Go: `internal/zstd` (decoder-only, BSD) exists since Go 1.21; a public `compress/zstd` would change ADR 0007's arithmetic. Moot while Go is banned, but relevant to the canon's own Go-rewrite roadmap.
 * Zig: std API churn measured between 0.14 → 0.17 (`posix.execveZ`/`flock` removed, zstd/ZON/Io renamed); any Zig launcher must vendor its toolchain tarball.
 * Rust: `zstd` crate links C (`ruzstd` pure, 1.4–3.5x slower); macOS/Windows cross-builds from Linux need extra toolchains; RUSTSEC tracking across the vendored tree.
+
+== Developer experience and diagnostics (from the DX design, 2026-11-16)
+
+* *Errors as data with tested wording.* `errors.toml` schema 2 (`[[error]]` types plus `[[case]]` shapes) and a golden check on the rendered text would suit every estate CLI; propose it to `standards` once a style is chosen here.
+* *Provenance-typed diagnostics* (ADR 0012): text labelled by where it came from, with a policy for which label may fill which slot. A candidate estate pattern for any tool that shows remote data beside commands. Only a design model is checked.
+* *Choreographic statement of "execution never reads the channel"*: a direction for the estate's proof route, not planned work; no Rust tooling for it is in the canon.
+* *Idris 2's AI-contribution policy*: upstream will not consider issues, pull requests, commits or comments produced with generative AI. Every estate agent that touches Idris 2 needs the rule "no generated text upstream"; it belongs in `standards`.
+* *Idris community venues*: the Zulip is the active venue and the Discord is being retired; estate docs that point to Discord need updating.
+* *Template findings in this checkout* (not fixed here): `scripts/check-proofs.sh idris2` fails on `.machine_readable/coaptation/core/Coaptation.idr` under Idris 2 0.8.0 (non-covering clause), and the manifest lists `src/interface/Abi/*.idr`, a directory this repository does not have.

@@ -1,0 +1,198 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Adoption: what would make Idris 2 users and maintainers want this
+:toc: macro
+
+[NOTE]
+====
+*Status: a plan, with nothing sent.* No message has been posted, no issue filed and no maintainer contacted.
+The launcher, the factory and published capsules do not exist. The owner ruled on 2026-11-16 that the first outward
+step is to *ask before building*, and that this session only drafts.
+====
+
+toc::[]
+
+== The finding that shapes everything else
+
+Idris 2's `CONTRIBUTING.md` (main branch, read 2026-11-16) has a policy on generative AI. It says the project wants
+"issues, pull requests, commits, and comments to be written and submitted by humans", and that contributions arising
+from generative AI or large language models, including those made by autonomous coding agents, will not be considered.
+
+Consequences for idris2x:
+
+* Every word sent to the Idris 2 project is written by the owner, personally. This page therefore gives *points to
+  cover*, not text to paste. Pasting a draft from here would break the policy's plain intent.
+* The maintenance agent already may not file upstream issues or pull requests (CLAUDE.md). This policy is a second,
+  external reason, and the agent's `escalate` shape must route to the owner, never upstream.
+* idris2x is itself built with AI assistance. Say so before anyone asks. A community with this policy will find
+  out, and being told first is the difference between a disclosed method and a discovered one.
+* No idris2x message may send users to the Idris 2 issue tracker for a launcher or capsule fault. "Upstream" in an
+  error text must never mean Idris 2 (see `E-CAPSULE-INVALID` in the catalogue).
+
+== Who would adopt, and what each needs first
+
+[cols="2,3,3",options="header"]
+|===
+| Person | What they need | What idris2x must show them
+
+| Newcomer to Idris 2
+| A working compiler in minutes, without building Chez and Idris 2 from source
+| One binary, one `pin`, one `exec`. A first error that says what to type (journey 1).
+
+| Library author with CI
+| The same compiler on every runner, cached, with failures that say why
+| A lock file, stable exit codes, `--json`, no network on warm runs.
+
+| Researcher who must reproduce a result later
+| The exact compiler from the paper, years on
+| A digest in the lock, offline bundles, "the past never breaks" (I4), and an honest sunset plan.
+
+| pack maintainer and users
+| Assurance that this is not a rival package manager
+| An IS-NOT statement they can verify, and a way to use both together.
+
+| Idris 2 core team
+| No extra support burden, no confusion with an official distribution
+| Clear "unofficial" wording, bugs routed to idris2x, zero patches to their code.
+|===
+
+== What would earn adoption
+
+=== 1. Work with pack, visibly
+
+pack installs Idris 2 by building it from source against a Chez Scheme the user already has, and curates package
+collections tied to a compiler commit. idris2x supplies a verified compiler and Chez and stops there. They meet at
+one point: pack needs a Scheme executable (its `scheme` setting, default `scheme`) and builds its own compiler.
+
+[cols="1,3,1,1",options="header"]
+|===
+| Option | What it means | Elegance | Dependability
+
+| A. Chez provider (recommended first step)
+| `idris2x run -- <chez args>` and `idris2x env` give pack a verified Chez without a system install. pack is unchanged.
+  Removes pack's hardest prerequisite.
+| 4 | 5
+
+| B. Compiler provider
+| pack learns to use a prebuilt Idris 2 for a collection whose commit matches a release. Needs pack's agreement and
+  code in pack. The most elegant end state; not ours to decide.
+| 5 | 3
+
+| C. Document coexistence only
+| A page showing both installed, each in its own directories. No integration.
+| 2 | 5
+
+| D. Out of the box: capsules for pack collections
+| The factory publishes a capsule per pack collection commit, so `pack switch` could be instant. Large build matrix;
+  blurs IS-NOT ("not a package manager") unless pack owns the mapping.
+| 4 | 2
+|===
+
+Hard rules whichever is chosen: idris2x never reads or writes pack's directories (`$XDG_CONFIG_HOME/pack`,
+`$XDG_STATE_HOME/pack`, `$XDG_CACHE_HOME/pack`) or `~/.idris2`, and never puts itself ahead of pack's `idris2` on
+`PATH` without being asked. Option A needs testing before it is promised: pack's install script has not been run
+against an idris2x-provided Chez.
+
+=== 2. Be unmistakably unofficial, and useful to upstream
+
+* The README, `--version` and `doctor` say "not an official Idris 2 or Chez Scheme distribution".
+* Zero-fork is the offer to upstream: capsules are their release tags built with their Makefiles, unpatched.
+* What upstream gains: bug reports that name an exact, reproducible compiler build. Proposed: `idris2x doctor`
+  prints a short block a user can paste into an Idris 2 bug report (compiler version, commit, Chez version, platform).
+* Phase 0 found upstream facts worth reporting (`docs/status/UPSTREAM-NOTES.adoc`). Under the policy above the owner
+  reports them personally, or not at all.
+
+=== 3. Editors and the language server
+
+`idris2-lsp` must be built for the same compiler version, and editors start it by bare name from `PATH`.
+A mismatched pair is a common silent failure.
+
+* *Planned, cheap:* `doctor` notes when the `idris2-lsp` on `PATH` reports a different Idris 2 version from the pin
+  (shown in journey 1). Needs a check of how `idris2-lsp` reports its version.
+* *Planned:* `idris2x env --json` is the integration point for editor plugins: they read the environment and start
+  the compiler themselves. No editor plugin is proposed here.
+* *Owner decision:* whether capsules should ever include `idris2-lsp`. It would solve the mismatch at source, and it
+  enlarges the factory and the capsule. It is not in any ADR today.
+
+=== 4. Documentation people can trust
+
+* Every page says what exists and what is planned. The wiki already does this; keep it when the launcher ships.
+* Error messages are the documentation most people will read. The catalogue and the tested wording are the
+  investment here.
+* One page for each audience above, each starting from their first command.
+* HTML runbooks for every ID, plus the same text offline in `idris2x explain`.
+
+=== 5. Survive the maintainer
+
+The project's stated aim is to keep working after its maintainer stops. For adopters, that is the feature: a lock and
+capsule bytes run for ever with no channel. Say it early, with the sunset procedure linked. It answers the
+question "what if this is abandoned?" before it is asked.
+
+== The outreach plan: ask before building
+
+=== Step 0. Prerequisites (inside the repository)
+
+. The owner chooses the wording style, or agrees that asking users is part of step 2.
+. A short page states what idris2x is, what it is not, and how it was built, AI assistance included.
+. Nothing in the repository claims a shipped launcher.
+
+=== Step 1. Ask two people, privately and briefly
+
+The pack maintainer first, then one Idris 2 maintainer. One message each, from the owner, in the owner's words.
+
+Points to cover, not text to send:
+
+* What exists: a design, a measured prototype, no release.
+* What it is not: not a package manager, not official, no patches, no telemetry.
+* How it was made, AI assistance included, and that nothing will be submitted to their repositories by a tool.
+* One question for pack: would a verified Chez provider help your users, or get in your way?
+* One question for Idris 2: is there anything in an unofficial binary distribution you would want done differently,
+  for example naming, version strings or where bug reports go?
+* An explicit way to say "please do not": the owner then records that and adjusts the plan.
+
+A refusal is a result. If pack's maintainer says no to option A, option C remains and needs nobody's permission.
+
+=== Step 2. Ask users one narrow question, in public
+
+Only after step 1. Venue: the Idris Zulip (the project's site lists it as the active venue; the Discord is being
+retired). One post from the owner: here are two ways an installer could tell you a download failed; which would you
+rather read? It links the rendered catalogue page. It asks for nothing else and announces nothing.
+
+=== Step 3. Announce only what runs
+
+When a real launcher and real capsules exist for at least Linux x86_64: one post, with the limits stated first.
+Until then there is nothing truthful to announce.
+
+=== What not to do
+
+* No automated posting, ever, to any Idris 2 venue.
+* No issue or pull request against Idris 2, Chez Scheme or pack from this repository's tooling.
+* No "official", "recommended" or "the Idris 2 installer" in any text.
+* No comparison that makes pack look worse; the two do different jobs.
+* No badge, registry entry or package-manager formula that implies endorsement before step 1 has an answer.
+
+== Decisions that are the owner's
+
+. Which pack option to pursue (A recommended as the first step; B is the more elegant end state and depends on pack).
+. Whether and when to send the step 1 messages, and to whom.
+. How to word the disclosure of AI assistance, and where it lives.
+. Whether capsules may include `idris2-lsp`.
+. Whether `doctor` should print a block meant for Idris 2 bug reports.
+. Whether Phase 0's upstream findings are reported, by the owner, to Idris 2.
+
+== Beyond this repository
+
+* The AI-contribution policy affects every estate repository that touches Idris 2, not only this one. It belongs in
+  the estate's standards as a rule for agents: no generated text upstream.
+* "Errors as data with tested wording" (`errors.toml` schema 2 and the golden check) would suit any estate CLI.
+* The ask-before-building pattern is reusable for other estate tools that sit beside an existing community tool.
+
+== Sources
+
+* Idris 2 contributing guide: https://github.com/idris-lang/Idris2/blob/main/CONTRIBUTING.md
+* pack: https://github.com/stefan-hoeck/idris2-pack
+* idris2-lsp: https://github.com/idris-community/idris2-lsp
+* Idris community venues: https://www.idris-lang.org/
+
+Not verified: whether pack still honours a legacy `~/.pack` directory; how VS Code locates `idris2-lsp`; how
+`idris2-lsp` reports its compiler version. The pack directory layout was read from pack's source, not tested.
