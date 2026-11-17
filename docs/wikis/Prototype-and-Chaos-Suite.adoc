@@ -17,7 +17,7 @@ FIXTURE_SERVER=target/debug/examples/fixture_server \
   scripts/proto/chaos.sh <chez-prefix> <idris2-prefix> <chez-src> <idris2-src>
 ----
 
-== What is drilled (43 checks, all passing)
+== What is drilled (121 checks, all passing on 2026-11-17)
 
 404 on the primary mirror, flipped byte, truncation and resume (asserting a 206), four concurrent installs, a disk-full analogue,
 tampered manifest, wrong key, rollback, expiry with and without override, offline cache miss, air-gap bundle, lock contention,

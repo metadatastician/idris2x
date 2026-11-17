@@ -26,6 +26,15 @@ advisory note = MkFrag Channel (fromChannel note)
 pinnedDigest : String -> Frag Executor Fact
 pinnedDigest d = MkFrag Lock (fromLock d)
 
+||| Accepted: a lock digest that passed checkDigest may name the store entry in a fix command
+||| (the store root is a host path; the digest can carry no shell syntax).
+storeFix : String -> String -> Maybe (List (Frag Executor Fix))
+storeFix root d = map (\c => [MkFrag Embedded (embedded RemoveEntry), MkFrag Host (fromHost root), MkFrag Checked c]) (checkDigest d)
+
+||| Accepted: a lock version that passed checkVersion may complete `idris2x pin`.
+pinChecked : String -> Maybe (List (Frag Resolver Fix))
+pinChecked v = map (\c => [MkFrag Embedded (embedded PinAgain), MkFrag Checked c]) (checkVersion v)
+
 -- Rejected 1: channel text in the fix slot.
 failing "Can't find an implementation for Allowed Resolver Fix Channel"
   evilFix : String -> Frag Resolver Fix
@@ -59,3 +68,14 @@ failing "MkTxt is private"
 failing "Can't find an implementation for Allowed Executor Fix Lock"
   lockFix : String -> Frag Executor Fix
   lockFix s = MkFrag Lock (fromLock s)
+
+-- Rejected 8: relabelling through rendering. Rendered output is opaque, so channel text that has
+-- been rendered cannot be turned back into a String and passed off as host text.
+failing "Mismatch between: Rendered and String"
+  relabelRendered : Frag Resolver Fact -> Frag Resolver Fix
+  relabelRendered f = MkFrag Host (fromHost (render f))
+
+-- Rejected 9: Checked text cannot be forged from raw lock text without the check.
+failing "Mismatch between: Lock and Checked"
+  skipCheck : String -> Frag Executor Fix
+  skipCheck s = MkFrag Checked (fromLock s)

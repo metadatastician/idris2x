@@ -948,6 +948,98 @@ idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: idris2x.lock lists no downlo
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"no-urls","exit":10,"title":"nothing is pinned for this version and target","summary":"idris2x.lock lists no download address for this machine's capsule","context":{"lock":"idris2x.lock","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","version":"0.8.0"},"state":"Nothing was downloaded or changed.","why":"The lock file was edited by hand, or written by a faulty tool. A lock written by idris2x pin always lists at least one address.","fix":{"command":"idris2x pin 0.8.0","note":"","auto":"safe"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
 ----
 
+=== E-PIN-NOT-FOUND, case `malformed-lock`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-NOT-FOUND (exit 10)
+
+idris2x.lock records a digest for this machine that is not well formed.
+
+    this-machine  x86_64-unknown-linux-gnu
+    field         digest
+
+Nothing was downloaded or changed.
+
+A digest is exactly 64 lowercase hexadecimal characters and a version is numbers
+separated by dots. Anything else means the lock was edited by hand or damaged,
+and it is refused before it can reach a download, a store path or a printed
+command.
+
+Write the lock again from the channel:
+
+    idris2x pin <version>
+
+If the lock is under version control, compare it with the last committed version
+first.
+
+More: idris2x explain E-PIN-NOT-FOUND
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-NOT-FOUND (exit 10) ------------------------------------------- idris2x<ESC>[0m
+
+idris2x.lock records a digest for this machine that is not well formed.
+
+    this-machine  x86_64-unknown-linux-gnu
+    field         digest
+
+Nothing was downloaded or changed.
+
+A digest is exactly 64 lowercase hexadecimal characters and a version is numbers
+separated by dots. Anything else means the lock was edited by hand or damaged,
+and it is refused before it can reach a download, a store path or a printed
+command.
+
+Write the lock again from the channel:
+
+    <ESC>[1midris2x pin <version><ESC>[0m
+
+If the lock is under version control, compare it with the last committed version
+first.
+
+More: idris2x explain E-PIN-NOT-FOUND
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-NOT-FOUND]: idris2x.lock has a malformed digest for this machine
+    this-machine: x86_64-unknown-linux-gnu
+    field: digest
+  state: Nothing was downloaded or changed.
+  why: A digest is exactly 64 lowercase hexadecimal characters and a version is numbers separated by dots. Anything else means the lock was edited by hand or damaged, and it is refused before it can reach a download, a store path or a printed command.
+  fix: idris2x pin <version>
+  note: If the lock is under version control, compare it with the last committed version first.
+  see: idris2x explain E-PIN-NOT-FOUND
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: idris2x.lock has a malformed digest for this machine
+    this-machine: x86_64-unknown-linux-gnu
+    field: digest
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: A digest is exactly 64 lowercase hexadecimal characters and a version is numbers separated by dots. Anything else means the lock was edited by hand or damaged, and it is refused before it can reach a download, a store path or a printed command.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin <version><ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If the lock is under version control, compare it with the last committed version first.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-NOT-FOUND
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"malformed-lock","exit":10,"title":"nothing is pinned for this version and target","summary":"idris2x.lock has a malformed digest for this machine","context":{"lock":"idris2x.lock","target":"x86_64-unknown-linux-gnu","field":"digest"},"state":"Nothing was downloaded or changed.","why":"A digest is exactly 64 lowercase hexadecimal characters and a version is numbers separated by dots. Anything else means the lock was edited by hand or damaged, and it is refused before it can reach a download, a store path or a printed command.","fix":{"command":"idris2x pin <version>","note":"If the lock is under version control, compare it with the last committed version first.","auto":"placeholder"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
+----
+
 == E-HASH-MISMATCH
 
 === E-HASH-MISMATCH, case `download`

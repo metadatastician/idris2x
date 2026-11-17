@@ -33,21 +33,24 @@ It cannot remove the two tiers. It can make the separation a checked property in
 . Wording stays embedded. The channel never supplies `summary`, `state`, `why`, `fix_cmd` or `fix_note`.
 . The channel may later carry one optional *advisory* string per error ID: free text, sanitised, shown under a label
   that names its source, on `pin` and `update` only.
-. In the launcher, message text is typed by provenance: `Embedded`, `Host`, `Lock`, `Channel`. A policy table says
-  which provenance may fill which slot for which role:
+. In the launcher, message text is typed by provenance: `Embedded`, `Host`, `Lock`, `Checked`, `Channel`. `Checked`
+  is lock text that passed a format check (a 64-hex digest, or a version of two to four dot-separated digit runs); only
+  the trusted module can produce it. A policy table says which provenance may fill which slot for which role:
 +
-[cols="1,1,1,1,1",options="header"]
+[cols="1,1,1,1,1,1",options="header"]
 |===
-| Slot | Embedded | Host | Lock | Channel
-| fix | yes | yes | no | no
-| prose (summary, state, why, note) | yes | yes | no | no
-| fact | yes | yes | yes | resolver only
-| advisory | no | no | no | resolver only
+| Slot | Embedded | Host | Lock | Checked | Channel
+| fix | yes | yes | no | yes | no
+| prose (summary, state, why, note) | yes | yes | no | no | no
+| fact | yes | yes | yes | yes | resolver only
+| advisory | no | no | no | no | resolver only
 |===
 +
 The executor (`install --locked`, `exec --locked`) can show no channel text in any slot.
 . The property to keep is non-interference: the rendered fix command, and everything the executor prints, is the
   same whatever the channel says.
+. Rendered output is opaque: the only way out of a rendered message is to print it, so rendered channel text
+  cannot be turned back into a string and relabelled.
 
 == Evidence
 
@@ -63,17 +66,21 @@ The executor (`install --locked`, `exec --locked`) can show no channel text in a
 | T5 | The policy is not vacuous: for the resolver, an advisory does change when channel text is erased.
 |===
 
-`Diagnostics/ProvenanceClient.idr` holds seven `failing` blocks: channel text in the fix slot, in prose, or anywhere
-for the executor; relabelling channel text as embedded; forging a label through the private constructor; and lock
-text in a fix. The file compiles only if each is rejected.
+`Diagnostics/ProvenanceClient.idr` holds nine `failing` blocks: channel text in the fix slot, in prose, or anywhere
+for the executor; relabelling channel text as embedded; forging a label through the private constructor; raw lock
+text in a fix; relabelling rendered output as host text; and `Checked` text built without the check. It also
+accepts a checked digest naming a store entry, and a checked version completing `idris2x pin`. The file compiles
+only if each `failing` block is rejected with its stated error (a wrong expected error was checked to break the build).
 
 A mutation test was run by hand: adding a rule that allows channel text in the fix slot makes the module fail to
 check. That mutant is not kept in the repository.
 
 Limits. This is a model of the design, in Idris 2, of four provenances and four slots. It does not check any Rust.
 T3 and T4 are stated over erasure of channel fragments, which is weaker than a semantic non-interference theorem
-over arbitrary message-building programs. The model assumes text enters only through the labelled entry points; in
-Rust that assumption is carried by private fields, and nothing has verified it.
+over arbitrary message-building programs. The model assumes text enters only through the labelled entry points: a string read from the channel and handed to
+`fromHost` would be mislabelled, and no type can see that. In Rust that assumption is carried by private fields and a
+small, reviewed ingress, and nothing has verified it. `checkDigest` and `checkVersion` are trusted by inspection, not
+proved, to admit no shell syntax. Both boundaries are listed in `docs/status/PROOF-STATUS.adoc`.
 
 == Options considered
 

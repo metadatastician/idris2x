@@ -67,8 +67,13 @@ resolve() { # prints: digest size urls... for this host, from the lock only (no 
   [ -f "$LOCK" ] || fail E-PIN-NOT-FOUND no-lock lock="$LOCK" dir="$(pwd)"
   [ "$(lock_get .schema)" = 1 ] || fail E-CHANNEL-SCHEMA lock-newer file="$LOCK" found="$(lock_get .schema)" supports=1 version="$PROTO_VERSION"
   local t; t=$(target)
+  # Lock values reach downloads, store paths and printed fix commands, so they are format-checked here, once (ADR 0012:
+  # a checked value carries the Checked provenance; raw lock text never reaches a fix command).
+  local v; v=$(lock_get '.toolchain.idris2 // empty')
+  [[ "$v" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=version
   local d; d=$(lock_get ".capsules[\"$t\"].sha256 // empty")
-  [ -n "$d" ] || fail E-PIN-NOT-FOUND no-target lock="$LOCK" target="$t" covered="$(lock_get '.capsules|keys|join(", ")')" version="$(lock_get .toolchain.idris2)"
+  [ -n "$d" ] || fail E-PIN-NOT-FOUND no-target lock="$LOCK" target="$t" covered="$(lock_get '.capsules|keys|join(", ")')" version="$v"
+  [[ "$d" =~ ^[0-9a-f]{64}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=digest
   local needs host; needs=$(lock_get ".capsules[\"$t\"].min_glibc // empty"); host=$(getconf GNU_LIBC_VERSION 2>/dev/null | cut -d' ' -f2)
   if [ -n "$needs" ] && [ -n "$host" ] && [ "$(printf '%s\n%s\n' "$needs" "$host" | sort -V | head -1)" != "$needs" ]; then   # ADR 0006: refuse before downloading
     fail E-GLIBC-FLOOR too-old host="$host" needs="$needs" digest="sha256:$d"; fi

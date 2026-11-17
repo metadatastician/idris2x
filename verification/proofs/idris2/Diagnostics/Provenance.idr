@@ -11,6 +11,8 @@
 module Diagnostics.Provenance
 
 import Data.List
+import Data.List1
+import Data.String
 
 %default total
 
@@ -21,6 +23,7 @@ data Prov
   | Host      -- this machine: argv, paths, environment, the clock
   | Lock      -- idris2x.lock, a local file; every capsule it names is digest-checked
   | Channel   -- the signed channel manifest (trusted as far as the channel key is)
+  | Checked   -- a lock value that passed a format check in THIS module (checkDigest, checkVersion)
 
 ||| Text that remembers its provenance. The constructor is NOT exported: outside this module a
 ||| `Txt p` can only be obtained from the entry points below, so provenance cannot be forged.
@@ -53,6 +56,25 @@ export
 fromChannel : String -> Txt Channel
 fromChannel = MkTxt
 
+||| Format checks: the only way to obtain `Checked` text. A lock is a local file an attacker may
+||| have written, so raw lock text never reaches a fix command (ClientRejected 6); a value that
+||| passes one of these checks can carry no shell syntax, and may (FixChecked).
+isLowerHex : Char -> Bool
+isLowerHex c = isDigit c || (c >= 'a' && c <= 'f')
+
+||| A sha256 digest: exactly 64 lowercase hexadecimal characters.
+export
+checkDigest : String -> Maybe (Txt Checked)
+checkDigest s = if length s == 64 && all isLowerHex (unpack s) then Just (MkTxt s) else Nothing
+
+||| A version: two to four non-empty runs of decimal digits separated by single dots.
+export
+checkVersion : String -> Maybe (Txt Checked)
+checkVersion s =
+  let parts = forget (split (== '.') s) in
+  if length parts >= 2 && length parts <= 4 && all (\p => p /= "" && all isDigit (unpack p)) parts
+     then Just (MkTxt s) else Nothing
+
 ||| Who is building the message. `Executor` is `install --locked` / `exec --locked` (ADR 0008:
 ||| execution never reads the channel); `Resolver` is `pin` / `update`.
 public export
@@ -73,11 +95,13 @@ public export
 data Allowed : Role -> Slot -> Prov -> Type where
   FixEmbedded   : Allowed r Fix Embedded
   FixHost       : Allowed r Fix Host            -- a quoted path or the version the user typed
+  FixChecked    : Allowed r Fix Checked         -- a lock digest or version that passed its format check
   ProseEmbedded : Allowed r Prose Embedded
   ProseHost     : Allowed r Prose Host
   FactEmbedded  : Allowed r Fact Embedded
   FactHost      : Allowed r Fact Host
   FactLock      : Allowed r Fact Lock           -- digests, URLs and versions from the lock
+  FactChecked   : Allowed r Fact Checked
   FactChannel   : Allowed Resolver Fact Channel -- e.g. the versions the channel offers
   AdviceChannel : Allowed Resolver Advisory Channel
 
@@ -90,13 +114,28 @@ public export
 provOf : Frag r s -> Prov
 provOf (MkFrag p _) = p
 
+||| Rendered output is opaque: there is no function from `Rendered` back to `String` except the
+||| IO sink `emit`, so rendered channel text cannot be fed to `fromHost` and relabelled
+||| (ClientRejected 8). The trusted base is therefore only the ingress: the code that reads the
+||| channel, the lock and the host must call the matching entry point above.
 export
-render : Frag r s -> String
-render (MkFrag _ (MkTxt str)) = str
+data Rendered = MkRendered String
+
+raw : Frag r s -> String
+raw (MkFrag _ (MkTxt str)) = str
 
 export
-renderAll : List (Frag r s) -> String
-renderAll = concat . map render
+render : Frag r s -> Rendered
+render f = MkRendered (raw f)
+
+export
+renderAll : List (Frag r s) -> Rendered
+renderAll fs = MkRendered (concat (map raw fs))
+
+||| The only way out: print it.
+export
+emit : HasIO io => Rendered -> io ()
+emit (MkRendered str) = putStr str
 
 -- ---------------------------------------------------------------------------------------
 -- Theorems
@@ -117,6 +156,7 @@ fixNeverChannel : (f : Frag r Fix) -> Not (provOf f = Channel)
 fixNeverChannel (MkFrag Embedded _) Refl impossible
 fixNeverChannel (MkFrag Host _) Refl impossible
 fixNeverChannel (MkFrag Lock _ {ok}) Refl impossible
+fixNeverChannel (MkFrag Checked _) Refl impossible
 fixNeverChannel (MkFrag Channel _ {ok}) _ = void (absurd ok)
 
 ||| T2. On the execution path no slot contains channel text (the typed form of ADR 0008
@@ -126,6 +166,7 @@ executorNeverChannel : (f : Frag Executor s) -> Not (provOf f = Channel)
 executorNeverChannel (MkFrag Embedded _) Refl impossible
 executorNeverChannel (MkFrag Host _) Refl impossible
 executorNeverChannel (MkFrag Lock _) Refl impossible
+executorNeverChannel (MkFrag Checked _) Refl impossible
 executorNeverChannel (MkFrag Channel _ {ok}) _ = void (absurd ok)
 
 ||| Replace every piece of channel text by the empty string: "what if the channel had said
@@ -139,12 +180,14 @@ scrubFixId : (f : Frag r Fix) -> scrub f = f
 scrubFixId (MkFrag Embedded _) = Refl
 scrubFixId (MkFrag Host _) = Refl
 scrubFixId (MkFrag Lock _) = Refl
+scrubFixId (MkFrag Checked _) = Refl
 scrubFixId (MkFrag Channel _ {ok}) = void (absurd ok)
 
 scrubExecId : (f : Frag Executor s) -> scrub f = f
 scrubExecId (MkFrag Embedded _) = Refl
 scrubExecId (MkFrag Host _) = Refl
 scrubExecId (MkFrag Lock _) = Refl
+scrubExecId (MkFrag Checked _) = Refl
 scrubExecId (MkFrag Channel _ {ok}) = void (absurd ok)
 
 mapId : {0 g : a -> a} -> ((x : a) -> g x = x) -> (xs : List a) -> map g xs = xs

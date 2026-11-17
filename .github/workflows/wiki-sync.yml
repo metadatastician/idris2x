@@ -17,8 +17,10 @@ on:
     branches: [main]
     paths: ['docs/wikis/**', 'src/errors/errors.toml', 'src/definitions/targets.toml', 'scripts/**']
   pull_request:
-    paths: ['docs/wikis/**', 'src/errors/errors.toml', 'src/definitions/targets.toml', 'scripts/**', '.github/ISSUE_TEMPLATE/**']
+    paths: ['docs/wikis/**', 'docs/dx/**', 'docs/runbooks/**', 'src/errors/errors.toml', 'src/definitions/targets.toml', 'scripts/**', '.github/ISSUE_TEMPLATE/**', '.github/workflows/wiki-sync.yml']
   workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"   # weekly: advice whose review date has passed must fail even when nothing changed
 
 permissions:
   contents: read
@@ -51,6 +53,8 @@ jobs:
           scripts/gen-runbooks.sh --check
           scripts/gen-issue-forms.sh --check
           scripts/sync-wiki.sh --check
+          scripts/proto/dx-golden.sh --check     # the wording contract: errors.toml vs docs/dx/ERROR-CATALOGUE-RENDERED.adoc
+          bash scripts/check-advice-review.sh       # advice entries past their review date fail
 
   publish:
     needs: check

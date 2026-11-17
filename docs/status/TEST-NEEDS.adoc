@@ -14,7 +14,7 @@ which the `rust-cli` archetype pruned; it did not describe this repository and h
 | Category | Count | Details
 
 | Launcher unit tests (Rust) | 0 | The launcher is not written yet (Phase 1). `cargo test --all-targets` runs and passes with no tests.
-| Chaos drills | 43 checks | `scripts/proto/chaos.sh` against the bash prototype and a real Linux x86_64 capsule; 43 of 43 pass (2026-11-16). This is the executable specification the Rust launcher must pass.
+| Chaos drills | 121 checks | `scripts/proto/chaos.sh` against the bash prototype and a real Linux x86_64 capsule; 121 of 121 pass (2026-11-17). This is the executable specification the Rust launcher must pass.
 | Canaries | 12 | `tests/canaries/run.sh`; 11 of 12 pass on a relocated capsule, `unicode_paths` fails on an upstream Idris 2 bug (expected failure for 0.8.0).
 | Generator drift checks | 3 | `scripts/gen-runbooks.sh --check`, `scripts/gen-issue-forms.sh --check`, `scripts/sync-wiki.sh --check`; run in `wiki-sync.yml`.
 | Estate gates | inherited | root shape, SPDX, mint tokens, placeholders, I-JSON/JCS, lock sync, workflow edges, proven suite.

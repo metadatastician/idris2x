@@ -155,6 +155,13 @@ assert "chez runs from spaced path"  test "$(echo '(display (+ 40 2))' | "$X" ru
 jq '.capsules |= with_entries(.key="riscv64-unknown-linux-gnu")' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "lock lacks host target -> E-PIN-NOT-FOUND" 10 "$X" install --locked
 says "  exact text: no-target"       E-PIN-NOT-FOUND no-target lock=idris2x.lock target="$HOST" covered=riscv64-unknown-linux-gnu version=0.8.0
+jq --arg t "$HOST" '.capsules = {($t): {sha256: "../../../evil", size: 1, urls: ["http://127.0.0.1:1/x"]}}' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
+t "malformed digest in the lock -> refused before any download" 10 "$X" install --locked
+says "  exact text: malformed-lock (digest)" E-PIN-NOT-FOUND malformed-lock lock=idris2x.lock target="$HOST" field=digest
+assert "  nothing named by the bad digest was created" test ! -e "$IDRIS2X_CACHE/store/sha256-../../../evil" -a ! -e "$IDRIS2X_CACHE/evil"
+jq '.toolchain.idris2 = "0.8.0; touch pwned"' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
+t "malformed version in the lock -> refused" 10 "$X" install --locked
+says "  exact text: malformed-lock (version)" E-PIN-NOT-FOUND malformed-lock lock=idris2x.lock target="$HOST" field=version
 echo "== T13 gc"; fresh t13; pin; "$X" install --locked >/dev/null 2>&1; mkdir -p "$IDRIS2X_CACHE/store/sha256-deadbeef"
 t "gc removes incomplete dirs"       0 "$X" gc --keep-last 3
 assert "incomplete dir gone, complete kept" test ! -e "$IDRIS2X_CACHE/store/sha256-deadbeef" -a -f "$IDRIS2X_CACHE/store/sha256-$DIG/.complete"

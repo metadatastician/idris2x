@@ -155,7 +155,7 @@ themselves is not.
 |===
 | Claim | Status | Evidence (command, and what it printed)
 | _e.g. The library builds clean_ | affirmed | `just build` at the anchor SHA — exit 0
-| _e.g. The prototype passes its chaos suite_ | affirmed | `scripts/proto/chaos.sh` — 43 passed, 0 failed
+| _e.g. The prototype passes its chaos suite_ | affirmed | `scripts/proto/chaos.sh` — 121 passed, 0 failed
 | _e.g. Feature X is complete_ | aspiration | README §… — *not checked*, do not read as affirmed
 |===
 

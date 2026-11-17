@@ -10,8 +10,7 @@ token, its Proof Witness Grade (PWG) and its recheck legs. The estate census
 (hyperpolymath/mathesis) reads this file. A row says only what a receipt or a
 gate supports.
 
-A freshly minted repository has no claims, so the table is empty. That is the
-honest state. Do not replace it with a percentage or an "overall" figure:
+The table below lists this repository's claims, one row each. Do not summarise it with a percentage or an "overall" figure:
 §8.4 forbids percentages, averages and single scores for proofs.
 
 == Vocabulary
@@ -53,12 +52,12 @@ them.
 | ID | Claim (and the artefact that proves or tests it) | Token | PWG | Rocq leg | Lean leg | Receipt
 
 | DX-PROV-1
-| Design model, not launcher code: in the provenance-typed message model of ADR 0012, channel text cannot reach the fix slot (T1, T3) or anything the executor prints (T2, T4), and the advisory slot does depend on it (T5). `verification/proofs/idris2/Diagnostics/Provenance.idr`; negative cases in `verification/proofs/idris2/Diagnostics/ProvenanceClient.idr`.
+| Design model, not launcher code: in the provenance-typed message model of ADR 0012, text labelled `Channel` cannot reach the fix slot (T1, T3) or anything the executor prints (T2, T4), and the advisory slot does depend on it (T5). Lock values reach a fix command only as `Checked` text, which only the model's own format checks produce, and rendered output is opaque, so it cannot be relabelled. `verification/proofs/idris2/Diagnostics/Provenance.idr`; nine negative cases in `verification/proofs/idris2/Diagnostics/ProvenanceClient.idr`. Rests on the trust boundary below.
 | `proven`
 | `ungraded`
 | not applicable (engineering)
 | not applicable (engineering)
-| None yet. Checked by hand on 2026-11-16 with Idris 2 0.8.0 (Chez 9.5.8): `scripts/check-proofs.sh idris2` reports PASS for both modules. No headless, pinned receipt exists.
+| None yet. Checked by hand on 2026-11-17 with Idris 2 0.8.0 (Chez 10.4.1): `scripts/check-proofs.sh idris2` passes both modules, and its overall line is `RESULT: FAIL (1 failure(s), 0 unexpected pass(es))`. The one failure is `.machine_readable/coaptation/core/Coaptation.idr` (a `with` block in `resolveComplete` is not covering), a template file identical on `main`, not part of this claim. No headless, pinned receipt exists.
 
 | DX-PROV-2
 | The Rust launcher's message module upholds the same four properties. Planned verifiers: Creusot with Pearlite contracts, and Verus. Neither has been run: the launcher does not exist.
@@ -76,7 +75,18 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 §1.1) and recorded exception (§4) here, with the claims that rest on it. Write
 "none" when there are none, so an empty section cannot read as an oversight.
 
-none
+[cols="1,3,1",options="header"]
+|===
+| Boundary | What is assumed, and why | Claims
+
+| Ingress labelling
+| The code that reads the channel, the lock and the host calls the matching entry point (`fromChannel`, `fromLock`, `fromHost`). The model cannot see that code: a `String` read from the channel and handed to `fromHost` would be mislabelled. The model proves non-flow *after* labelling, and rejects relabelling of rendered output (negative case 8). The Rust launcher must make this boundary small and reviewable.
+| DX-PROV-1, DX-PROV-2
+
+| Format checks
+| `checkDigest` and `checkVersion` are trusted by inspection, not proved, to admit no shell syntax: a digest is 64 characters from `0-9a-f`, a version is two to four runs of decimal digits separated by dots. The prototype applies the same checks in `scripts/proto/idris2x.sh` `resolve`.
+| DX-PROV-1
+|===
 
 == Verification commands
 
