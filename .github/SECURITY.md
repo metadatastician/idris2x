@@ -36,7 +36,7 @@ We take security seriously. We appreciate your efforts to responsibly disclose v
 
 The preferred method for reporting security vulnerabilities is through GitHub's Security Advisory feature:
 
-1. Navigate to [Report a Vulnerability](https://github.com/hyperpolymath/rsr-template-repo/security/advisories/new)
+1. Navigate to [Report a Vulnerability](https://github.com/metadatastician/idris2x/security/advisories/new)
 2. Click **"Report a vulnerability"**
 3. Complete the form with as much detail as possible
 4. Submit — we'll receive a private notification
@@ -54,7 +54,7 @@ If you cannot use GitHub Security Advisories, you may email us directly:
 
 | | |
 |---|---|
-| **Email** | {{SECURITY_EMAIL}} |
+| **Email** | j.d.a.jewell@open.ac.uk |
 
 This mailbox is not encrypted. For anything sensitive enough to need
 encryption, prefer GitHub Security Advisories above — the report stays private
@@ -190,7 +190,7 @@ If we cannot reach agreement on disclosure timing, we default to 90 days from yo
 
 The following are within scope for security research:
 
-- This repository (`hyperpolymath/rsr-template-repo`) and all its code
+- This repository (`metadatastician/idris2x`) and all its code
 - Official releases and packages published from this repository
 - Documentation that could lead to security issues
 - Build and deployment configurations in this repository
@@ -309,7 +309,7 @@ Recognition includes:
 To stay informed about security updates:
 
 - **Watch this repository**: Click "Watch" → "Custom" → Select "Security alerts"
-- **GitHub Security Advisories**: Published at [Security Advisories](https://github.com/hyperpolymath/rsr-template-repo/security/advisories)
+- **GitHub Security Advisories**: Published at [Security Advisories](https://github.com/metadatastician/idris2x/security/advisories)
 - **Release notes**: Security fixes noted in [CHANGELOG](../CHANGELOG.adoc)
 
 ### Update Policy
@@ -335,7 +335,7 @@ To stay informed about security updates:
 
 ## Security Best Practices
 
-When using rsr-template-repo, we recommend:
+When using idris2x, we recommend:
 
 ### General
 
@@ -357,7 +357,7 @@ When using rsr-template-repo, we recommend:
 
 ## Additional Resources
 
-- [Security Advisories](https://github.com/hyperpolymath/rsr-template-repo/security/advisories)
+- [Security Advisories](https://github.com/metadatastician/idris2x/security/advisories)
 - [Changelog](../CHANGELOG.adoc)
 - [Contributing Guidelines](../CONTRIBUTING.adoc)
 - [CVE Database](https://cve.mitre.org/)
@@ -369,8 +369,8 @@ When using rsr-template-repo, we recommend:
 
 | Purpose | Contact |
 |---------|---------|
-| **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/rsr-template-repo/security/advisories/new) or {{SECURITY_EMAIL}} |
-| **General questions** | [GitHub Discussions](https://github.com/hyperpolymath/rsr-template-repo/discussions) |
+| **Security issues** | [Report via GitHub](https://github.com/metadatastician/idris2x/security/advisories/new) or j.d.a.jewell@open.ac.uk |
+| **General questions** | [GitHub Discussions](https://github.com/metadatastician/idris2x/discussions) |
 | **Other enquiries** | See [README](../README.adoc) for contact information |
 
 ---
@@ -385,8 +385,8 @@ This security policy may be updated from time to time. Significant changes will 
 
 ---
 
-*Thank you for helping keep rsr-template-repo and its users safe.* 🛡️
+*Thank you for helping keep idris2x and its users safe.* 🛡️
 
 ---
 
-<sub>Last updated: {{CURRENT_YEAR}} · Policy version: 1.0.0</sub>
+<sub>Last updated: 2026 · Policy version: 1.0.0</sub>

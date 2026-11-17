@@ -1,0 +1,79 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Best-practice comparison
+:toc: macro
+
+How idris2x measures against named industry frameworks, as of 2026-11-16. *Present* means the file or mechanism exists in
+this repository today. *Planned* means designed in an ADR but not built. *Gap* means neither. Nothing here is a
+certification: badges and scores are earned by external tools, not by this table.
+
+toc::[]
+
+== Repository and community health (GitHub community standards, CHAOSS basics)
+
+[cols="3,1,4",options="header"]
+|===
+| Practice | Status | Where
+| README with purpose, status and audience routing | Present | `README.adoc`
+| Licence detectable by the forge; REUSE-style per-file SPDX | Present | `LICENSE`, `LICENSES/`, SPDX headers
+| Contributing guide, code of conduct, support policy | Present | `CONTRIBUTING.adoc`, `CODE_OF_CONDUCT.adoc`, `SUPPORT.adoc`
+| Security policy with private reporting | Present | `.github/SECURITY.md`, issue chooser links to security advisories
+| Issue forms that collect exactly what triage needs | Present | `.github/ISSUE_TEMPLATE/` (error report generated from the taxonomy; capsule, canary, DX feedback)
+| PR template with project-specific checks | Present | `.github/pull_request_template.md` (risk class, channel rules, transcripts)
+| CODEOWNERS, labels, triage automation | Present | `.github/CODEOWNERS`, `.github/labels-idris2x.toml`, estate label set
+| Governance and maintainer handoff | Present | `docs/MAINTAINERS.adoc` (abandonment contract), `.github/GOVERNANCE.adoc`
+| Discussions enabled | Gap | owner setting; the issue chooser already links to it
+| Second maintainer | Gap | the single largest survivability risk (MAINTAINERS.adoc)
+|===
+
+== Documentation (Diátaxis)
+
+[cols="3,1,4",options="header"]
+|===
+| Quadrant | Status | Where
+| Tutorials | Present (planned surface) | Wiki: Getting started
+| How-to guides | Present (planned surface) | Wiki: Install, Uninstall, CI usage, Offline, Self-hosted channel, Mirrors
+| Reference | Present | Wiki: Error reference (generated), Supported platforms (generated); runbooks per error ID
+| Explanation | Present | Wiki: Architecture, Theory overview, Formal model, Trust and freshness; ADRs
+| Docs as code, reviewed and drift-checked | Present | `docs/wikis/` → wiki via `scripts/sync-wiki.sh`; generators run with `--check` in CI
+|===
+
+== Supply chain (OpenSSF Scorecard, SLSA, Best Practices badge)
+
+[cols="3,1,4",options="header"]
+|===
+| Practice | Status | Where
+| Pinned workflow dependencies, least-privilege tokens | Present | estate `actions.lock`, per-job `permissions`
+| Branch protection, signed commits, linear history, immutable tags | Present (rulesets as files) | `.github/rulesets/*.json`; must be applied by the owner (Configure stage)
+| Dependency update automation | Present | `.github/dependabot.yml` (cargo included)
+| SAST and secret scanning | Present | `codeql.yml`, `secret-scanner.yml`, gitleaks config
+| Scorecard workflow | Present | `scorecard.yml`; the score itself appears after the first runs
+| OpenSSF Best Practices badge | Gap | needs a project entry at bestpractices.dev (owner)
+| SLSA build provenance for capsules and launcher | Planned | ADR 0010; attestation-gated channel signing
+| Immutable releases | Planned | ADR 0010; organisation setting
+| SBOM per capsule | Planned | capsule factory (syft)
+| Reproducible, bit-for-bit builds | Gap (stated non-goal for v1) | later phase
+|===
+
+== Toolchain-distribution practice (compared with rustup, uv, Zig, ghcup, mise)
+
+[cols="3,1,4",options="header"]
+|===
+| Practice | idris2x | Best-in-class reference
+| Per-artifact digest pinned in a project lockfile | Planned (prototyped) | uv, Bazel `http_archive`, Nix fixed-output derivations
+| Signed metadata, *enforced* by the client | Planned (prototyped, drilled) | ghcup (GPG, strict mode); rustup signs but does not enforce
+| Rollback and freeze protection | Planned (prototyped, drilled) | TUF; most toolchain managers have neither
+| Mirrors untrusted by construction, ordered fallback | Planned (prototyped, drilled) | Zig community mirrors, Bazel
+| Offline / air-gap path as a first-class command | Planned (prototyped, drilled) | rare; usually ad hoc
+| Typed, stable error IDs with runbooks and exact fixes | Planned (taxonomy and runbooks present) | Rust compiler error index, Elm compiler messages
+| Complete, checkable uninstall | Planned (documented) | uv, bun (single directory)
+| Chaos drills of failure modes in CI | Prototyped (121 checks, not yet in CI) | uncommon in this category
+| Zero telemetry, documented network surface | Designed | uv (opt-in), Zig
+|===
+
+== What would move the most gaps
+
+. Apply the rulesets and enable Discussions and immutable releases (owner settings, minutes).
+. Register at bestpractices.dev.
+. Ship the Rust launcher with the chaos suite as its CI gate (Phase 1).
+. Recruit a second maintainer with their own signing key.

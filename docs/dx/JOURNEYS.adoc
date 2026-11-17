@@ -1,0 +1,460 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Journeys: what a person types and what they see, end to end
+:toc: macro
+
+[NOTE]
+====
+Every transcript on this page carries one of two labels.
+
+*RAN* means the block is the real output of the bash prototype (`scripts/proto/idris2x.sh`) on 2026-11-16, on
+Ubuntu 24.04 x86_64, against a local fixture server and a test capsule (Idris 2 0.8.0 built from source, Debian's
+Chez Scheme 9.5.8). Home directory and host names are replaced by `/home/ada` and example names; nothing else is edited.
+
+*PLANNED* means a design for the Rust launcher, which does not exist. Nothing marked PLANNED has run.
+====
+
+Error text below uses style B, the default. Set `IDRIS2X_STYLE=a` for the conversational style; both are tested.
+
+toc::[]
+
+== Conventions used in every journey
+
+=== Exit codes
+
+[cols="1,3",options="header"]
+|===
+| Code | Meaning
+| 0 | Success.
+| 2 | `E-USAGE`: the command line was not understood.
+| 10 to 24 | One idris2x failure each, listed by `idris2x explain`. Append-only; 25 to 29 are reserved for new IDs.
+| 70 | `E-INTERNAL`: a launcher bug.
+| any | From `idris2x exec`: the child's own exit code, passed through unchanged.
+| never | idris2x itself never exits 126, 127 or above 128; those belong to the shell and to signals.
+|===
+
+Because a child may itself exit 10 to 24, a script that must know who failed sets `IDRIS2X_ERROR_FILE`:
+
+.RAN in chaos drill T3 (abridged at the `...` line)
+[source,text]
+----
+$ IDRIS2X_ERROR_FILE=/tmp/idris2x-error.json idris2x install --locked ; echo "exit $?"
+idris2x: error[E-HASH-MISMATCH]: downloaded capsule does not match idris2x.lock
+  ...
+exit 11
+$ jq -r '.id, .fix.command, .fix.auto' /tmp/idris2x-error.json
+E-HASH-MISMATCH
+idris2x install --locked
+safe
+----
+
+The file is written only when idris2x itself failed. *PLANNED:* the Rust launcher also accepts `--error-fd N`, and
+removes a stale file at start so that its absence is trustworthy.
+
+=== Progress
+
+.PLANNED: on a terminal, one line, redrawn in place
+[source,text]
+----
+idris2x: downloading idris2 0.8.0 for x86_64-unknown-linux-gnu  18.4 / 33.8 MB  54%  6.1 MB/s
+----
+
+.PLANNED: not a terminal (CI, a pipe, a screen reader session with `IDRIS2X_PROGRESS=plain`)
+[source,text]
+----
+idris2x: downloading idris2 0.8.0 for x86_64-unknown-linux-gnu (33.8 MB) from mirror.example.org
+idris2x: downloaded 33.8 MB in 5.6 s
+idris2x: verified sha256:d99736595a6c… and unpacked into the store
+idris2x: ready in 6.9 s
+----
+
+Rules: every step has a start line and an end line; no carriage returns, spinners or percentages in the plain form;
+times are whole numbers with units. A warm run prints nothing at all.
+
+== 1. First install
+
+.PLANNED: get the launcher (no `curl | sh`; see the Install wiki page)
+[source,text]
+----
+$ sha256sum -c idris2x-0.1.0-x86_64-unknown-linux-gnu.sha256
+idris2x-0.1.0-x86_64-unknown-linux-gnu: OK
+$ install -m 0755 idris2x-0.1.0-x86_64-unknown-linux-gnu ~/.local/bin/idris2x
+----
+
+.RAN: the first command a new user is likely to type, before pinning anything
+[source,text]
+----
+$ idris2x install --locked
+idris2x: error[E-PIN-NOT-FOUND]: no idris2x.lock in /home/ada/proofs
+    directory: /home/ada/proofs
+    looked-for: idris2x.lock
+  state: Nothing was downloaded or changed.
+  why: idris2x never guesses a version. Every run is tied to a lock file, so the same command gives the same compiler on every machine.
+  fix: idris2x pin <version>
+  note: If the project already has a lock file, change to the directory that holds it: the lock is read from the current directory only.
+  see: idris2x explain E-PIN-NOT-FOUND
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+[exit 10]
+----
+
+.RAN: pin, install, run
+[source,text]
+----
+$ idris2x pin 0.8.0
+idris2x: pinned idris2 0.8.0 (channel v1) into idris2x.lock for: x86_64-unknown-linux-gnu
+[exit 0]
+$ idris2x install --locked
+/home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
+[exit 0]
+$ idris2x exec -- --version
+Idris 2, version 0.8.0
+[exit 0]
+----
+
+What the design changes here. *PLANNED:* `pin` ends with the next step ("commit idris2x.lock; run with
+`idris2x exec -- idris2 …`"), `install` shows the progress lines above on a cold run, and `exec` takes the command
+name (`idris2x exec --locked -- idris2 --version`) as the wiki already documents.
+
+.RAN: `idris2x doctor` today
+[source,text]
+----
+$ idris2x doctor
+[info] idris2x 0.0.0-proto  target=x86_64-unknown-linux-gnu  glibc=2.39  cache=/home/ada/.cache/idris2x
+[OK] store writable, flock works
+[OK] capsule sha256:d99736595a6c installed (idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1)
+[OK] mirror reachable 0.000503s http://127.0.0.1:8131/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
+[OK] probes: pure_eval, version_match
+[exit 0]
+----
+
+.RAN: `doctor` notes a variable it will ignore, and says how to silence the note
+[source,text]
+----
+$ IDRIS2_PATH=/opt/old-idris2 idris2x doctor
+[info] idris2x 0.0.0-proto  target=x86_64-unknown-linux-gnu  glibc=2.39  cache=/home/ada/.cache/idris2x
+[OK] store writable, flock works
+[OK] capsule sha256:d99736595a6c installed (idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1)
+[OK] mirror reachable 0.000655s http://127.0.0.1:8131/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
+[OK] probes: pure_eval, version_match
+note: IDRIS2_PATH is set in your shell and idris2x will ignore it. Pass --inherit-env to keep it.
+note: silence this note with IDRIS2X_ADVICE_ENV=0
+[exit 0]
+----
+
+Each note is an `[[advice]]` entry with a review date; `scripts/check-advice-review.sh` fails when one is overdue.
+The note about a mismatched `idris2-lsp` exists too, and has been tested only against a stand-in program.
+
+.PLANNED: `idris2x doctor` in the Rust launcher
+
+[source,text]
+----
+$ idris2x doctor
+idris2x 0.1.0 on x86_64-unknown-linux-gnu (glibc 2.39)
+
+ok    store: /home/ada/.cache/idris2x is writable and locks work
+ok    lock: idris2x.lock pins idris2 0.8.0 for this machine
+ok    capsule: sha256:d99736595a6c… is installed and matches its checksums
+ok    probes: Chez evaluates, Idris 2 reports 0.8.0
+ok    mirror: mirror.example.org answered in 41 ms
+note  environment: IDRIS2_PREFIX is set in your shell and will be ignored (use --inherit-env to keep it)
+note  editor: idris2-lsp on PATH was built for Idris 2 0.7.0; this project pins 0.8.0
+
+0 problems, 2 notes. Nothing was changed. No data left this machine except the mirror check.
+----
+
+Design points: the status word comes first and is a word, not a colour or a bracket glyph; a problem line ends with
+the error ID it would cause (`-> E-STORE-IO`), as the prototype already does; the last line states what `doctor`
+did not do. `doctor --json` prints one object with the same fields and is the attachment the issue form asks for.
+`doctor --offline` skips the mirror check.
+
+== 2. Pin and upgrade
+
+.PLANNED
+[source,text]
+----
+$ idris2x pin 0.8.1
+idris2x: channel v7 verified (signed 2026-11-02, expires 2027-01-31)
+idris2x: idris2x.lock: idris2 0.8.0 -> 0.8.1, chez 10.4.1 unchanged, 4 platforms
+idris2x: next: review `git diff idris2x.lock`, then commit it. Nothing was downloaded.
+----
+
+.RAN: asking for a version the channel lacks
+[source,text]
+----
+$ idris2x pin 9.9.9
+idris2x: error[E-PIN-NOT-FOUND]: the channel has no idris2 9.9.9
+    asked-for: 9.9.9
+    available: 0.8.0
+  state: idris2x.lock was not changed.
+  why: Only versions with a published, signed capsule can be pinned.
+  fix: idris2x pin <version>
+  see: idris2x explain E-PIN-NOT-FOUND
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+[exit 10]
+----
+
+== 3. Two versions side by side
+
+.PLANNED (the `-p` flag is documented in the wiki and not implemented in the prototype)
+[source,text]
+----
+$ idris2x -p idris2@0.7.0 -- idris2 --check src/Proof.idr
+$ idris2x -p idris2@0.8.0 -- idris2 --check src/Proof.idr
+$ idris2x list
+idris2 0.8.0  sha256:d99736595a6c…  137 MB  used by /home/ada/proofs  last run today
+idris2 0.7.0  sha256:4be1090c77aa…  131 MB  not pinned by any known project  last run 3 weeks ago
+----
+
+Capsules are content-addressed, so the two never share or overwrite a file. `list` prints one record per line with
+no table borders, so it reads aloud and greps.
+
+== 4. CI with a cache
+
+.PLANNED: cold cache, plain progress, one line per step
+[source,text]
+----
+$ idris2x exec --locked -- idris2 --build my.ipkg
+idris2x: downloading idris2 0.8.0 for x86_64-unknown-linux-gnu (33.8 MB) from mirror.example.org
+idris2x: downloaded 33.8 MB in 5.6 s
+idris2x: verified sha256:d99736595a6c… and unpacked into the store
+idris2x: ready in 6.9 s
+1/3: Building Main (src/Main.idr)
+----
+
+.RAN: warm cache. The launcher prints nothing; every line is Idris 2's.
+[source,text]
+----
+$ idris2x exec -- --version
+Idris 2, version 0.8.0
+[exit 0]
+----
+
+.RAN: a runner whose platform the lock does not cover
+[source,text]
+----
+$ idris2x install --locked
+idris2x: error[E-PIN-NOT-FOUND]: idris2x.lock pins no capsule for x86_64-unknown-linux-gnu
+    this-machine: x86_64-unknown-linux-gnu
+    lock-covers: riscv64-unknown-linux-gnu
+  state: Nothing was downloaded or changed.
+  why: The lock records one capsule per platform. It was written when the channel had none for this platform.
+  fix: idris2x pin 0.8.0
+  note: If x86_64-unknown-linux-gnu is still missing afterwards, no capsule is published for it yet: see the supported platforms page.
+  see: idris2x explain E-PIN-NOT-FOUND
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+[exit 10]
+----
+
+.RAN: two jobs on one machine, the second gives up waiting
+[source,text]
+----
+$ IDRIS2X_LOCK_TIMEOUT=1 idris2x install --locked
+idris2x: error[E-LOCK-TIMEOUT]: waited 1s for another install of the same capsule
+    capsule: sha256:d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
+    lock-file: /home/ada/.cache/idris2x/locks/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1.lock
+    held-by: process 48213 (still running)
+  state: This run installed nothing. The other install is not affected.
+  why: Installs of one capsule take turns, so two processes never write the same store entry. A slow download in the other process is the usual cause.
+  fix: IDRIS2X_LOCK_TIMEOUT=1800 idris2x install --locked
+  note: Do not delete the lock file while its holder is running: two installs would then write at once. The lock is released by itself when the holder exits.
+  see: idris2x explain E-LOCK-TIMEOUT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+[exit 15]
+----
+
+(The process id is replaced by an example value; nothing else is edited.) In CI, `--json` gives the same failure as one
+line, and `fix.auto` tells a workflow whether retrying unattended is sound: here it is `safe`.
+
+== 5. Air-gapped install
+
+.RAN: on the connected machine
+[source,text]
+----
+$ idris2x fetch -o /home/ada/proofs/capsule.tar.gz
+idris2x: fetched sha256:d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1 -> /home/ada/proofs/capsule.tar.gz (28447141 bytes); copy it with idris2x.lock to the air-gapped host
+[exit 0]
+----
+
+.RAN: on the isolated machine, before the bundle arrives
+[source,text]
+----
+$ IDRIS2X_OFFLINE=1 idris2x exec -- --version
+idris2x: error[E-OFFLINE]: a pinned capsule is not in the store and IDRIS2X_OFFLINE=1 is set
+    capsule: sha256:d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
+    store: /home/ada/.cache/idris2x/store
+    offline-because: IDRIS2X_OFFLINE=1
+  state: Nothing was downloaded, as you asked. The store is unchanged.
+  why: Offline mode never touches the network, so the capsule has to arrive another way.
+  fix: idris2x fetch -o capsule.tar.gz
+  note: Run that on a connected machine with the same idris2x.lock, copy capsule.tar.gz here, then run: idris2x install --from capsule.tar.gz
+  see: idris2x explain E-OFFLINE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OFFLINE.adoc
+[exit 20]
+----
+
+.RAN: after copying the bundle across
+[source,text]
+----
+$ IDRIS2X_OFFLINE=1 idris2x install --from /home/ada/proofs/capsule.tar.gz
+/home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
+[exit 0]
+----
+
+A damaged bundle is refused with the `bundle` case of `E-HASH-MISMATCH`, and the user's file is left untouched
+(chaos drill T9). *PLANNED:* the runbook link is a problem on an isolated machine, so `idris2x explain <ID>` carries the
+runbook's triage section too, embedded in the binary.
+
+== 6. Debugging a broken capsule
+
+.RAN: a file in the store has been changed
+[source,text]
+----
+$ idris2x verify
+idris2x: error[E-HASH-MISMATCH]: an installed capsule was modified after installation
+    capsule: sha256:d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
+    store-entry: /home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1
+  state: The capsule was left in place so that you can inspect it.
+  why: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
+  fix: rm -rf /home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1 && idris2x install --locked
+  note: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
+  see: idris2x explain E-HASH-MISMATCH
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+[exit 11]
+----
+
+Chaos drill T13b runs the printed fix command exactly as printed and then checks that `verify` passes.
+
+.RAN: the healthy case
+[source,text]
+----
+$ idris2x verify
+idris2x: OK sha256:d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1 verified (idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1)
+[exit 0]
+----
+
+.RAN: `idris2x explain`, offline, from the same data as the message
+[source,text]
+----
+$ idris2x explain E-LOCK-TIMEOUT
+E-LOCK-TIMEOUT (exit 15): another idris2x is installing the same capsule
+
+Meaning: another install of the same capsule held the lock too long
+Usual fix: wait for the other install, or raise IDRIS2X_LOCK_TIMEOUT; never delete a lock that is held
+
+It takes 1 shape(s). Words in {braces} are filled in when it happens.
+
+  held: waited {seconds}s for another install of the same capsule
+    why: Installs of one capsule take turns, so two processes never write the same store entry. A slow download in the other process is the usual cause.
+    now: This run installed nothing. The other install is not affected.
+    fix: IDRIS2X_LOCK_TIMEOUT=1800 idris2x install --locked
+    note: Do not delete the lock file while its holder is running: two installs would then write at once. The lock is released by itself when the holder exits.
+
+Runbook: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+[exit 0]
+----
+
+`idris2x explain` with no argument lists every ID with its exit code. *PLANNED:* `explain` also prints the
+hand-written triage section of the runbook, and `explain --json` gives the table to tools.
+
+.PLANNED: the last error is replayable
+[source,text]
+----
+$ idris2x explain --last
+----
+
+This would re-print the most recent failure in full from a small record in the cache directory, for the common case
+where the message scrolled away under a build log. It needs an owner decision: it is a new file written on failure.
+
+== 7. Garbage collection
+
+.RAN: today's `gc` removes without warning
+[source,text]
+----
+$ idris2x gc --keep-last 0
+idris2x: gc: removing old /home/ada/.cache/idris2x/store/sha256-d99736595a6c67be48446f5afd427c1fb908a59e020d0885f575b956e4e682f1/
+[exit 0]
+----
+
+This is the gap ADR 0005 names: programs compiled with `--cg chez` begin with `#!<store>/bin/scheme --program`, so
+removing the capsule breaks them. The design:
+
+.PLANNED: `gc` says what it will remove, what that breaks, and how to avoid it, before removing anything
+[source,text]
+----
+$ idris2x gc --keep-last 1
+idris2x: would remove 1 capsule and free 131 MB:
+    idris2 0.7.0  sha256:4be1090c77aa…  last run 3 weeks ago  not pinned by any known project
+idris2x: keeping 1 capsule:
+    idris2 0.8.0  sha256:d99736595a6c…  pinned by /home/ada/proofs
+hint: programs you compiled with a removed capsule and `--cg chez` will stop starting,
+hint: because each begins with the line `#!<that capsule>/bin/scheme --program`.
+hint: Recompile them afterwards, or build long-lived programs with `--cg refc`.
+hint: Silence this hint with IDRIS2X_ADVICE_GC=0.
+Remove 1 capsule? Type yes to continue:
+----
+
+Not on a terminal there is no prompt: `gc` prints the same lines and removes nothing unless `--yes` is given.
+`gc --dry-run` always stops after the list. Incomplete installs and staging debris are removed without asking,
+because nothing can depend on them.
+
+Limit, stated plainly: idris2x cannot find the compiled programs that embed a store path. The hint is unconditional
+advice, not a detection.
+
+== 8. Full uninstall
+
+.PLANNED: one command that says where everything is, then the two removals the Uninstall wiki page documents
+[source,text]
+----
+$ idris2x uninstall --dry-run
+idris2x keeps files in two places and nowhere else:
+    /home/ada/.cache/idris2x     2 capsules, 268 MB, manifests, locks
+    /home/ada/.local/bin/idris2x the launcher itself
+It has added nothing to your shell profile, installed no service and sent no data.
+hint: programs compiled with `--cg chez` from these capsules will stop starting once the cache is removed.
+To remove everything:
+    rm -rf '/home/ada/.cache/idris2x' && rm '/home/ada/.local/bin/idris2x'
+Your projects' idris2x.toml and idris2x.lock files are yours and were not listed.
+----
+
+.RAN equivalent today (from the Uninstall wiki page; `rm` of the cache was exercised by `gc --keep-last 0` above)
+[source,bash]
+----
+rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/idris2x"
+rm "$(command -v idris2x)"
+----
+
+`uninstall` prints the command and does not run it: the tool that removes itself is the one case where printing
+beats doing. Whether `uninstall` should exist at all, given the launcher's line budget, is an owner decision.
+
+== 9. Self-update
+
+.PLANNED
+[source,text]
+----
+$ idris2x self-update
+idris2x: this is 0.1.0; the channel offers 0.1.2 (signed, released 2026-12-01)
+idris2x: downloaded and verified idris2x 0.1.2 for x86_64-unknown-linux-gnu
+idris2x: replaced /home/ada/.local/bin/idris2x; the old binary is at /home/ada/.cache/idris2x/previous/idris2x-0.1.0
+idris2x: your pinned toolchains are unaffected. Undo with: idris2x self-update --rollback
+----
+
+.PLANNED: installed by a package manager
+[source,text]
+----
+$ idris2x self-update
+idris2x: error[E-USAGE]: this idris2x was installed by Homebrew, which owns its updates
+  state: Nothing was changed.
+  fix: brew upgrade idris2x
+----
+
+Rules: `self-update` is the only command that changes the launcher; it never runs implicitly; no other command
+checks for or mentions a newer launcher (H3). An update is the answer to `E-CHANNEL-SCHEMA`, so that message's fix
+line names this command once it exists.
+
+== What these journeys still lack
+
+* No transcript on macOS or Windows; none was run.
+* No measured cold-install timing with real progress output; the progress lines are a design.
+* The `gc` prompt, `list`, `uninstall`, `self-update`, `explain --last` and `-p` are not in the prototype.
+* A terminal session was not recorded; the terminal form of each error is on
+  link:ERROR-CATALOGUE-RENDERED.adoc[the generated page], produced by forcing colour.

@@ -105,6 +105,14 @@ predecessors did.
 | optional
 | estate docs gate (standards scripts/check-docs-presence.sh) requires CONTRIBUTING at the ROOT; this is the copy it verifies
 
+| `Cargo.lock`
+| optional
+| rust-cli archetype: `just repo-init` generates it (cargo generate-lockfile) because the minted CI builds with --locked
+
+| `Cargo.toml`
+| optional
+| rust-cli archetype: Cargo reads the package manifest from the package root only; the overlay mints it from Cargo.toml.in
+
 | `Justfile`
 | yes
 | thin; delegates phases to build/just/*.just
@@ -128,10 +136,6 @@ predecessors did.
 | `SUPPORT.adoc`
 | optional
 | community health file; GitHub accepts it at root, docs/ or .github/
-
-| `archetypes/`
-| optional
-| template-only variation seam (ADR-0003); `just repo-init` removes it from minted repos
 
 | `benches/`
 | optional
@@ -161,6 +165,10 @@ predecessors did.
 | optional
 | optional feature packs
 
+| `idris2x_chora.deed`
+| yes
+| the repo deed: universal AI entry point; family-7 allocation manifest + ply tree folded in (standards#837 pilot). Filename carries the repo slug (deed dispatch <stem>_chora.deed), so repo-init renames it at mint
+
 | `launcher.sh`
 | yes
 | --setup/--doctor/--heal/--ai-setup (launcher-standard 0.6.0); the one file a newcomer runs first
@@ -172,10 +180,6 @@ predecessors did.
 | `mise.toml`
 | yes
 | the toolchain: every tool at "latest" (PROVISIONING-STANDARD §4)
-
-| `rsr-template-repo_chora.deed`
-| yes
-| the repo deed: universal AI entry point; family-7 allocation manifest + ply tree folded in (standards#837 pilot). Filename carries the repo slug (deed dispatch <stem>_chora.deed), so repo-init renames it at mint
 
 | `scripts/`
 | yes
@@ -217,6 +221,7 @@ your own repo - but do not read their emptiness as neglect here.
 
 [cols="1"]
 |===
+| `.machine_readable/ai/`
 | `.machine_readable/bot_directives/`
 | `.machine_readable/descriptiles/anchors/`
 | `.machine_readable/scripts/verification/`
@@ -248,7 +253,6 @@ your own repo - but do not read their emptiness as neglect here.
 | `docs/whitepapers/academic/`
 | `docs/whitepapers/industry/`
 | `docs/whitepapers/outreach/`
-| `examples/`
 | `features/boj-server/`
 | `features/panic-attacker/`
 | `src/aspects/`
@@ -256,12 +260,7 @@ your own repo - but do not read their emptiness as neglect here.
 | `src/aspects/observability/`
 | `src/aspects/security/`
 | `src/bridges/`
-| `src/contracts/`
 | `src/core/`
-| `src/definitions/`
-| `src/errors/`
-| `src/interface/generated/`
-| `src/interface/generated/abi/`
 | `tests/fuzz/`
 | `verification/benchmarks/`
 | `verification/coverage/`

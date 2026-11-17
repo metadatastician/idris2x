@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= FAQ
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+*Is this the official Idris 2 installer?* No. It is an unofficial distribution that replays upstream releases with their own build files, unmodified, and ships their licences.
+
+*How is this different from pack?* pack is the Idris 2 package manager and builds the compiler from source against your system's Chez. idris2x supplies a prebuilt, verified compiler + Chez pair; pack can run on top of it.
+
+*Why not Homebrew, Nix or my distro?* They are fine if they serve you. idris2x exists for pinned, identical toolchains across laptops, CI, servers and air-gapped hosts, years apart, with one lockfile.
+
+*Does it phone home?* No. The only network traffic is fetching the manifest and capsules, on explicit commands, with a generic user agent.
+
+*What happens if the project is abandoned?* Existing lockfiles keep working as long as the capsule bytes exist (GitHub release assets survive archiving; a second mirror and archival copies cover deletion). See the abandonment contract in MAINTAINERS.
+
+*Windows?* Tier 2, experimental, after Linux and macOS.

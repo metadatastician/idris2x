@@ -61,6 +61,14 @@ for f in push-email-notify release build-notification dependabot-automerge label
     security-policy quality dot-wellknown-enforcement static-analysis-gate; do
     printf 'x\n' > "$root/.github/workflows/$f.yml"
 done
+# Mirror every other path the shipped file names, but only when it really exists in this
+# repository, so a stale entry still fails here exactly as it does in the real tree.
+while IFS= read -r entry; do
+    frag=${entry#*:}
+    [ -e "$REPO_DIR/$frag" ] || continue
+    if [ -d "$REPO_DIR/$frag" ]; then mkdir -p "$root/$frag"
+    else mkdir -p "$(dirname "$root/$frag")"; printf 'x\n' > "$root/$frag"; fi
+done < <(grep -vE '^[[:space:]]*(#|$)' "$REPO_DIR/.hypatia-ignore" | sed -E 's/[[:space:]]+#.*$//')
 expect_rc 0 "the shipped .hypatia-ignore passes its own checker" "$root"
 
 echo "=== 2. Rules that must fail ==="

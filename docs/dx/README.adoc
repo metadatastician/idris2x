@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Developer experience design
+
+The specification the Rust launcher's messages and command-line behaviour will be built to. The launcher does not
+exist yet; what runs today runs in the bash prototype under `scripts/proto/`.
+
+* link:DX-PRINCIPLES.adoc[DX principles]: the rules, each with its source and how it is checked.
+* link:ERROR-CATALOGUE.adoc[Error catalogue]: all 17 IDs in two switchable styles, the `errors.toml` schema change, defects found.
+* link:ERROR-CATALOGUE-RENDERED.adoc[Rendered messages]: generated; the exact text in every form, regression-tested.
+* link:JOURNEYS.adoc[Journeys]: end-to-end transcripts, each labelled as run or planned.
+* link:ADOPTION.adoc[Adoption]: what would make the Idris 2 community want this, and the decisions that are the owner's.
+* link:../decisions/0012-provenance-typed-diagnostics.adoc[ADR 0012]: provenance-typed diagnostics (proposed).
+
+== Checking it
+
+[source,bash]
+----
+scripts/proto/dx-golden.sh --check     # wording contract: needs bash, jq, awk only
+scripts/proto/chaos.sh <chez-prefix>   # live failure sites print exactly the catalogue text (see the script header)
+scripts/check-advice-review.sh         # advice past its review date fails here
+scripts/check-proofs.sh idris2         # includes the ADR 0012 design model
+----

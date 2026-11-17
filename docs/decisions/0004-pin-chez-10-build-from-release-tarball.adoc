@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0004. Pin the Chez Scheme 10.x line for every target and build it from the upstream release tarball
+
+Date: 2026-11-09
+
+== Status
+
+Accepted (Phase 0 spike, measured).
+
+== Context
+
+The plan assumed "reuse cisco/ChezScheme release binaries where available" and paired Idris 2 with Chez 9.6.4.
+Checked against upstream: releases ship only a Windows installer and the source tarball; 9.6.4 exists (2023-10-16) but
+refuses Apple Silicon and has no arm64 boot files; Idris 2 v0.8.0 needs a *threaded* Chez and >= 10.0.0 on any AArch64 target.
+Measured here: `csv10.4.1.tar.gz` (sha256 `2e74952db7bc177f0c3602e2217a341ba677d733eec4cd7726418c3a4e1ef308`) configures, builds and
+installs in 2 min 44 s on 4 cores, producing a 6 MB tree whose `bin/scheme` is a relative symlink into `lib/csv10.4.1/<machine>/`.
+
+== Decision
+
+* One Chez line for all capsules: 10.4.1 (latest, 2026-05-12). A capsule name always carries it: `idris2-0.8.0-<triple>-chez10.4.1`.
+* The factory builds Chez from the sha256-pinned release tarball on native runners, with `./configure --disable-x11 --disable-curses`
+  (X11 is only dlopen'ed for the REPL clipboard; curses only serves the REPL line editor; dropping both removes the `libtinfo` runtime dependency).
+* Keep upstream's install layout and the executable basename `scheme` (the boot file name is derived from it), so the tree is relocatable with no environment variables.
+* Ship `LICENSE`, `NOTICE`, and the LZ4/zlib notices under `licenses/`; never ship the csug Cisco logo files.
+
+== Consequences
+
+=== Positive
+* Apple Silicon and Linux arm64 are first-class with the same Chez everywhere; one compat row per Idris 2 version.
+* No dependency on third-party binary distributions (Homebrew bottles, distro packages) whose versions drift (Ubuntu noble ships 9.5.8).
+
+=== Negative
+* Every capsule build pays ~3 minutes of Chez compilation per target (cacheable by tarball digest).
+* Windows x64 needs MSVC (vcruntime140.dll) or MSYS2; stays Tier 2.
+
+=== Neutral
+* Chez 9.5.x would still work for x86_64 Linux users who bring their own (Tier 2 BYO), but we do not build 9.x capsules.

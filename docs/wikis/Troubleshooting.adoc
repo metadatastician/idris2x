@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Troubleshooting
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+== Read the error; it was written for you
+
+Every failure looks like this:
+
+[source,text]
+----
+idris2x: E-HASH-MISMATCH: capsule bytes do not match the lock: got sha256:3f…, expected sha256:0d…
+  fix: idris2x gc && idris2x install --locked
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+* The *ID* is stable across versions and searchable.
+* The *fix* line is a command you can paste.
+* The *runbook* explains causes and triage. Full list: link:Error-Reference[Error reference].
+
+== Gather facts in one command
+
+[source,bash]
+----
+idris2x doctor --json > doctor.json     # platform, libc, store state, mirrors, probes; no secrets, no telemetry
+----
+
+== Common situations
+
+[cols="1,2",options="header"]
+|===
+| Symptom | What to do
+| Programs compiled earlier stopped running after `gc` | They embed the removed capsule's path; recompile, or use `--cg refc` for long-lived binaries.
+| Compiled programs fail when the cache path contains spaces | The kernel splits shebang lines at spaces; set `IDRIS2X_CACHE` to a path without spaces. The launcher itself works.
+| Build fails for a project in a directory with non-ASCII characters | Upstream Idris 2 0.8.0 bug in the Chez backend; move the project or wait for the upstream fix.
+| `E-GLIBC-FLOOR` on an old distribution | The host libc is older than the capsule supports (glibc 2.28); upgrade or use a container.
+|===
+
+Still stuck: open an issue with the *idris2x printed an error* form; it asks for exactly what is needed.

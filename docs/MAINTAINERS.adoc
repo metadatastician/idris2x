@@ -1,63 +1,85 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Maintainers
-:toc: preamble
+:toc: macro
 
-This is the single maintainer roster for this repository. It supersedes the
-earlier duplicates at `.github/MAINTAINERS` and `docs/attribution/MAINTAINERS.adoc`.
+Written first, before any launcher code, because it forces the question this project exists to answer:
+*what keeps working after the maintainer stops?*
+
+toc::[]
 
 == Current maintainers
 
-[cols="2,3,2",options="header"]
-|===
-| Name | Role | Contact
+* Jonathan D.A. Jewell (`@hyperpolymath`, metadatastician estate) — sole maintainer, holder of the offline root key.
+* A mid-range AI agent runs the bounded weekly loop (link:#the-weekly-loop[below]). It proposes; it never signs, never merges Class B/C, never widens the support matrix.
 
-| {{AUTHOR}}
-| Lead Maintainer
-| https://github.com/{{OWNER}}[@{{OWNER}}]
+== What survives abandonment (the archive-mode contract)
+
+The design splits into three pieces, and only one of them is code:
+
+[cols="1,2,3",options="header"]
 |===
+| Piece | What it is | Why it outlives the maintainer
+| Capsules | Immutable `idris2-<v>-<triple>-chez<v>.tar.gz` on GitHub Releases, mirrored to object storage | Content-addressed by sha256 in every lockfile; never rewritten; a dead maintainer cannot change them
+| Channel | One signed JSON document (`channel/v1.json` + detached Ed25519 signature) | Pure data: no scripts. The *last* signed version stays valid for resolution until its `expires` date and is never required to *execute* an existing pin
+| Launcher | One static binary (Rust, vendored audited crates), under 1,000 lines of our own code | Old digests run under new launchers (I4). The binary itself is pinned by sha256 in each estate repo's CI
+|===
+
+Invariant to protect above all others: `idris2x install --locked` and `idris2x exec --locked` need *only* the lockfile and the capsule bytes.
+They never contact the channel. Expiry, rollback protection and deprecation gate *resolution* (`pin`, `update`), never *execution*.
+Proven by the Phase 0 prototype drill "offline cache miss" and "install --from bundle" (see link:status/PHASE0-REPORT.adoc[]).
+
+If this repository is archived:
+
+. Existing locks keep working as long as the release assets are reachable (GitHub serves release assets of archived repositories).
+. A final "sunset" channel is signed with `expires` ten years out and every bundle marked in `deprecated` with a plain-English note.
+. The root public key, the capsule digests and the factory recipes are in this repository; anyone can fork, re-key and republish without our cooperation. Forks must change the channel URL and key; the launcher refuses a key change silently (E-SIG-INVALID), which is the intended behaviour.
 
 == Responsibilities
 
-Maintainers are responsible for:
+* *Approve data, not write code.* Routine maintenance is a channel patch: a JSON diff, `channel_version + 1`, a new signature. The launcher changes rarely (monthly "engine train" at most).
+* *Keep the canaries green.* The nightly matrix runs the 12 canaries in `tests/canaries/` against every Tier 1 capsule. Red is triaged within the week.
+* *Hold the human gates:* signing keys, the support matrix (`src/definitions/targets.toml`), Class B/C merges, releases of the launcher.
+* *Announce deprecations two quarters ahead* in the channel's `deprecated` list and in CHANGELOG.adoc.
 
-* Reviewing and merging pull requests
-* Triaging issues and feature requests
-* Ensuring code quality and security standards
-* Managing releases and versioning
-* Upholding the project's Code of Conduct
-* Maintaining documentation and examples
-* Responding to security vulnerabilities
+== The weekly loop (target 15–30 minutes)
+
+. Look at the canary badge. Green: done.
+. Red: read the auto-filed failure record (stable issue title). Classify: data fix (review the agent's channel patch PR), engine fix (schedule for the monthly train), upstream outage (document, wait).
+. Merge by risk class. Class A (mirror URL, docs): auto-merge after two green rehearsals. Class B (new version pins, checksums): one human click. Class C (launcher, schema): human only, needs an ADR.
+. The channel version ticks. Done.
+
+Monthly: engine train if needed. Quarterly: chaos drill (`scripts/proto/chaos.sh` lineage) and key dry-run. Yearly: glibc floor review, upstream roadmap scan, key rotation rehearsal.
+
+== Key ceremony (solo)
+
+* Root key: Ed25519, generated offline, stored on two USB sticks plus a paper seed in separate places. Public key is embedded in the launcher and committed as `channel/root.pub`.
+* CI signing key: a separate Ed25519 key whose public half is *listed in the root-signed channel header* (planned for Phase 2; Phase 0/1 sign with the root key only).
+* Rotation: publish a channel that lists both old and new keys for two quarters; launchers released in that window accept either; then drop the old one.
+* The AI agent never has access to any private key. Signing happens in a protected GitHub environment with a required reviewer, or offline.
 
 == Contribution process
 
-Contributions are welcome via:
-
-. **Issues** — report bugs, request features, ask questions
-. **Pull requests** — submit improvements for review
-. **Discussions** — engage with the wider project
+* Channel patches: PR against `channel/v1.json`; CI validates against `src/contracts/channel-v1.schema.json`, checks `channel_version` is exactly +1, re-resolves every example lock, and runs the full canary matrix on three targets before any merge.
+* Capsule changes: a new revision (`idris2@0.8.0-2`), never a rewrite of an existing asset.
+* Launcher changes: keep under 1,000 lines of our own code, dependencies vendored and allow-listed in `deny.toml`, every failure typed (`src/errors/errors.toml`), every error with a runbook. Property tests for the pure core (resolution, verification, lock parsing).
+* Zero-fork policy: we never patch Idris 2 or Chez Scheme. Problems go upstream as well-formed reports (see link:status/UPSTREAM-NOTES.adoc[]).
 
 == Decision making
 
-* Routine decisions (bug fixes, minor improvements) may be made by any maintainer.
-* Significant changes require discussion and consensus among maintainers.
-* Breaking changes should be discussed in an issue, with a migration path, before
-  implementation.
+Architecture Decision Records live in `docs/decisions/`. A decision that changes the channel schema, the lock schema, the error taxonomy's exit codes, or the support matrix requires an ADR and is Class C.
 
 == Becoming a maintainer
 
-Contributors who demonstrate consistent, high-quality contributions, an
-understanding of the project's goals and standards, constructive participation,
-and commitment to its long-term health may be invited to become maintainers at
-the discretion of the existing maintainers.
+Open an issue describing which of the human gates you would hold. Co-maintainers receive their own CI signing key; the root key is never shared.
+A second human holding a root-signed key is the single most valuable survivability upgrade this project can get.
 
 == Contact
 
-For questions about project governance, open an issue in this repository.
+Issues on this repository. Security reports: see `.github/SECURITY.md`. This project is not affiliated with the Idris 2 or Chez Scheme projects.
 
 == See also
 
-* link:GOVERNANCE.adoc[Governance model]
-* link:../CODE_OF_CONDUCT.adoc[Code of Conduct]
-* link:../CONTRIBUTING.adoc[Contributing guide]
-* link:attribution/CODEOWNERS.adoc[Code owners]
+* link:decisions/README.adoc[Architecture decisions]
+* link:architecture/THREAT-MODEL.adoc[Threat model]
+* link:status/PHASE0-REPORT.adoc[Phase 0 empirical report]

@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Getting started
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+== Five minutes, start to finish
+
+[source,bash]
+----
+# 1. Install the launcher (one static binary, no root). See Install for every method.
+# 2. In your Idris 2 project:
+idris2x init                 # writes idris2x.toml:  [toolchain] idris2 = "0.8.0"
+idris2x pin 0.8.0            # verifies the signed channel and writes idris2x.lock (commit it)
+idris2x exec --locked -- idris2 --build my.ipkg
+----
+
+The first `exec` downloads about 35 MB, verifies it and runs the canaries; later runs start in milliseconds.
+
+== What just happened
+
+* `idris2x.toml` says what you *want*; `idris2x.lock` records exactly which capsule (sha256) satisfies it on each platform. Commit both.
+* The capsule lives in `~/.cache/idris2x/store/sha256-<digest>/` (or `$XDG_CACHE_HOME`). It contains Idris 2, the matching Chez Scheme, the standard libraries and their licences.
+* Nothing is installed system-wide and nothing outside the cache and your project is written.
+
+== Next
+
+* Several projects on different Idris 2 versions: link:Daily-Use[Pinning and upgrading].
+* CI: link:CI-Usage[Using in CI].
+* Something failed: every error names its fix and a runbook; see link:Troubleshooting[Troubleshooting].

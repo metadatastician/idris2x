@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Release and signing
+
+[NOTE]
+====
+*Planned (Phase 1).* Describes the agreed design (ADRs in `docs/decisions/`); not yet shipped.
+====
+
+* Root key: Ed25519, generated offline, two USB copies plus a paper seed; its public half is embedded in the launcher.
+* Channel publishes happen in a protected environment with a required reviewer; the factory verifies build attestations before signing.
+* Releases are immutable (draft → attach every asset → publish).
+* Key rotation: a channel listing both keys for two quarters, then the old one is dropped.
+* The maintenance agent never has access to any private key.

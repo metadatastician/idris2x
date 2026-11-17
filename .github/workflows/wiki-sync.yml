@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+name: Wiki sync
+
+# Checks on every pull request that generated wiki pages, runbooks and the error-report form are not
+# stale, and publishes docs/wikis/*.adoc to the GitHub wiki after merge to main.
+#
+# Two jobs on purpose: `check` runs repository scripts from pull requests with a READ-ONLY token;
+# only `publish` (push to main, after `check`) gets contents: write. The token is never embedded in
+# a URL: git receives it as a masked Authorization header through GIT_CONFIG_* environment variables.
+#
+# NO `uses:` ANYWHERE, deliberately (same reason as labels.yml): .github/workflows/actions.lock is
+# keyed by workflow path, and a workflow that pulls an unlisted action fails before any step.
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/wikis/**', 'src/errors/errors.toml', 'src/definitions/targets.toml', 'scripts/**']
+  pull_request:
+    paths: ['docs/wikis/**', 'docs/dx/**', 'docs/runbooks/**', 'src/errors/errors.toml', 'src/definitions/targets.toml', 'scripts/**', '.github/ISSUE_TEMPLATE/**', '.github/workflows/wiki-sync.yml']
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"   # weekly: advice whose review date has passed must fail even when nothing changed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wiki-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch the commit (plain git, token as a masked header)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); echo "::add-mask::$auth"
+          git init -q src && cd src
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Check generated sources are current
+        working-directory: src
+        run: |
+          set -euo pipefail
+          scripts/gen-runbooks.sh --check
+          scripts/gen-issue-forms.sh --check
+          scripts/sync-wiki.sh --check
+          scripts/proto/dx-golden.sh --check     # the wording contract: errors.toml vs docs/dx/ERROR-CATALOGUE-RENDERED.adoc
+          bash scripts/check-advice-review.sh       # advice entries past their review date fail
+
+  publish:
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write   # the wiki repository is written with the workflow token
+    steps:
+      - name: Fetch the commit and publish the wiki (token as a masked header)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); echo "::add-mask::$auth"
+          # Every git process below (including those inside sync-wiki.sh) inherits the header
+          # from the environment; no URL carries the token.
+          export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          git init -q src && cd src
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth 1 origin "$GITHUB_SHA" && git checkout -q FETCH_HEAD
+          scripts/sync-wiki.sh --publish "https://github.com/${GITHUB_REPOSITORY}.wiki.git"

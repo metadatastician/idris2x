@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= CI fleet operations
+
+[NOTE]
+====
+*Planned (Phase 1).* Describes the agreed design (ADRs in `docs/decisions/`); not yet shipped.
+====
+
+[cols="1,3",options="header"]
+|===
+| Task | How
+| Health check | `idris2x doctor --json`; alert on non-zero exit and on any `[FAIL]` probe.
+| Pre-warm images | Run `idris2x install --locked` for your common locks while building the image.
+| Disk budget | `idris2x gc --keep-last N` on a schedule; capsules are about 137 MB unpacked.
+| Stale locks | Locks die with their process; `E-LOCK-TIMEOUT` names the lock file if one must be removed by hand.
+| Proxies | Standard `HTTPS_PROXY`/`NO_PROXY`; the only hosts contacted are the channel and capsule URLs in your lock.
+| Monitoring | Exit codes are stable (link:Error-Reference[error reference]); `--json` errors carry `error`, `message`, `fix`, `runbook`.
+|===

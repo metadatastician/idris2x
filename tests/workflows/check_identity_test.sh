@@ -72,7 +72,7 @@ rc=0; bash "$CHECKER" "$FIXTURE/none.deed" >/dev/null 2>&1 || rc=$?; [[ "$rc" -e
 # test is carried into every child, so other trees skip this one control with a notice.
 ROOT="$(cd "$(dirname "$CHECKER")/.." && pwd)"
 if bash "$ROOT/scripts/is-template-tree.sh" "$ROOT"; then
-    expect_pass "the template's own deed" "$ROOT/rsr-template-repo_chora.deed"
+    expect_pass "the template's own deed" "$ROOT/idris2x_chora.deed"
 else
     echo "SKIP: the template's-own-deed control (not the template tree; is-template-tree.sh says no)"
 fi

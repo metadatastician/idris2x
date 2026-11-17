@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell
+# Forge identity for the Configure stage (ADR 0011). Applied by the OWNER with scripts/configure-repo.sh,
+# never by CI (estate rule: .github/settings.yml must not declare repository identity).
+schema = 1
+
+[[repo]]
+description = "Hermetic, lockfile-pinned toolchain for Idris 2 + Chez Scheme: signed, self-testing capsules, loud typed errors, offline and air-gap installs; designed to survive abandonment. Unofficial. Phase 0 (design) complete."
+homepage = "https://github.com/metadatastician/idris2x/wiki"
+
+[[topic]]
+name = "idris2"
+[[topic]]
+name = "idris"
+[[topic]]
+name = "chez-scheme"
+[[topic]]
+name = "dependent-types"
+[[topic]]
+name = "toolchain"
+[[topic]]
+name = "toolchain-manager"
+[[topic]]
+name = "version-manager"
+[[topic]]
+name = "hermetic-builds"
+[[topic]]
+name = "reproducible-builds"
+[[topic]]
+name = "lockfile"
+[[topic]]
+name = "content-addressable-storage"
+[[topic]]
+name = "supply-chain-security"
+[[topic]]
+name = "signed-releases"
+[[topic]]
+name = "air-gapped"
+[[topic]]
+name = "ci-cd"
+[[topic]]
+name = "formal-verification"
+[[topic]]
+name = "rust"
+[[topic]]
+name = "cli"
+[[topic]]
+name = "rsr"
+[[topic]]
+name = "hyperpolymath"

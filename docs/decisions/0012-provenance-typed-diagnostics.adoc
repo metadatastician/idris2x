@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0012. Diagnostic text carries its provenance; channel text may reach an advisory slot only
+
+Date: 2026-11-16
+
+== Status
+
+Proposed. A design model is machine-checked (Idris 2 0.8.0); nothing is built in the launcher, which does not exist.
+The number 0012 was free on `claude/dx-design` when this was written; renumber if the main thread has taken it.
+
+== Context
+
+Message wording lives in `src/errors/errors.toml` and will be compiled into the launcher (ADR 0009). It was asked
+whether wording could instead ship in the signed channel, so that a misleading hint is fixed without a release.
+
+Two facts constrain the answer.
+
+* Some errors cannot be worded by the channel: `E-NETWORK`, `E-SIG-INVALID`, `E-CHANNEL-EXPIRED` and
+  `E-CHANNEL-ROLLBACK` are failures of the channel, and `install --locked` / `exec --locked` must not read it at all
+  (ADR 0008). An embedded table is therefore always needed, and channel wording could only override it.
+* The channel is data only: no scripts and no commands (ADR 0008). A `fix` line is a command people paste. Channel-supplied
+  fix text would let a stolen channel key instruct every user at the moment they are most likely to comply.
+
+An override also means one ID prints different text on different days, which defeats wording as a tested contract
+(`scripts/proto/dx-golden.sh`).
+
+The owner asked whether information-flow ("secret"), epistemic or choreographic typing could resolve the split.
+It cannot remove the two tiers. It can make the separation a checked property instead of a convention.
+
+== Decision (proposed)
+
+. Wording stays embedded. The channel never supplies `summary`, `state`, `why`, `fix_cmd` or `fix_note`.
+. The channel may later carry one optional *advisory* string per error ID: free text, sanitised, shown under a label
+  that names its source, on `pin` and `update` only.
+. In the launcher, message text is typed by provenance: `Embedded`, `Host`, `Lock`, `Checked`, `Channel`. `Checked`
+  is lock text that passed a format check (a 64-hex digest, or a version of two to four dot-separated digit runs); only
+  the trusted module can produce it. A policy table says which provenance may fill which slot for which role:
++
+[cols="1,1,1,1,1,1",options="header"]
+|===
+| Slot | Embedded | Host | Lock | Checked | Channel
+| fix | yes | yes | no | yes | no
+| prose (summary, state, why, note) | yes | yes | no | no | no
+| fact | yes | yes | yes | yes | resolver only
+| advisory | no | no | no | no | resolver only
+|===
++
+The executor (`install --locked`, `exec --locked`) can show no channel text in any slot.
+. The property to keep is non-interference: the rendered fix command, and everything the executor prints, is the
+  same whatever the channel says.
+. Rendered output is opaque: the only way out of a rendered message is to print it, so rendered channel text
+  cannot be turned back into a string and relabelled.
+
+== Evidence
+
+`verification/proofs/idris2/Diagnostics/Provenance.idr` models the table and proves, totally and without escape hatches:
+
+[cols="1,4",options="header"]
+|===
+| ID | Statement
+| T1 | No fragment of a fix command has channel provenance, for either role.
+| T2 | No fragment the executor prints, in any slot, has channel provenance.
+| T3 | Erasing all channel text leaves every rendered fix command unchanged.
+| T4 | Erasing all channel text leaves everything the executor renders unchanged.
+| T5 | The policy is not vacuous: for the resolver, an advisory does change when channel text is erased.
+|===
+
+`Diagnostics/ProvenanceClient.idr` holds nine `failing` blocks: channel text in the fix slot, in prose, or anywhere
+for the executor; relabelling channel text as embedded; forging a label through the private constructor; raw lock
+text in a fix; relabelling rendered output as host text; and `Checked` text built without the check. It also
+accepts a checked digest naming a store entry, and a checked version completing `idris2x pin`. The file compiles
+only if each `failing` block is rejected with its stated error (a wrong expected error was checked to break the build).
+
+A mutation test was run by hand: adding a rule that allows channel text in the fix slot makes the module fail to
+check. That mutant is not kept in the repository.
+
+Limits. This is a model of the design, in Idris 2, of four provenances and four slots. It does not check any Rust.
+T3 and T4 are stated over erasure of channel fragments, which is weaker than a semantic non-interference theorem
+over arbitrary message-building programs. The model assumes text enters only through the labelled entry points: a string read from the channel and handed to
+`fromHost` would be mislabelled, and no type can see that. In Rust that assumption is carried by private fields and a
+small, reviewed ingress, and nothing has verified it. `checkDigest` and `checkVersion` are trusted by inspection, not
+proved, to admit no shell syntax. Both boundaries are listed in `docs/status/PROOF-STATUS.adoc`.
+
+== Options considered
+
+[cols="1,3,1,1",options="header"]
+|===
+| | Approach | Elegance | Dependability
+| A | Embedded wording only; no channel text ever | 4 | 5
+| B | Embedded wording plus a typed advisory slot (this ADR) | 5 | 4
+| C | Channel wording overrides embedded wording | 3 | 2
+| D | Choreography: write the publisher, resolver and executor as one global protocol and project each role, so the
+      executor has no channel communication by construction | 5 | 2
+|===
+
+B is recommended. A is the fallback if the advisory slot is not worth its lines. D is the more complete answer and
+subsumes ADR 0008 as a projection property, but it needs choreographic tooling the estate does not have for Rust;
+record it as a direction, not a plan.
+
+== Consequences
+
+=== Positive
+* A stolen channel key cannot put a command in front of users, and that is a typed fact, not a review habit.
+* Wording stays a tested contract: one ID, one text.
+* ADR 0008's "execution never reads the channel" gains a typed counterpart for what is printed.
+
+=== Negative
+* A wrong hint still needs a launcher release to fix.
+* Provenance types cost lines in a launcher capped at 1,000. Estimated, not measured: four newtypes and one enum.
+
+=== Neutral
+* The Rust obligation is separate and open: state T1 to T4 with Creusot (Pearlite) and with Verus on the launcher's
+  message module once it exists. Neither has been run; see `docs/status/PROOF-STATUS.adoc`.
+* The pattern is not specific to idris2x and is recorded in `docs/status/BEYOND-REPO.adoc`.
+
+== Experiment proposed before any build
+
+When the Rust message module exists: write the seven negative cases as `compile_fail` tests, add the
+"channel text in fix" mutant as a CI check that must fail, and only then add the advisory field to
+`src/contracts/channel-v1.schema.json`.

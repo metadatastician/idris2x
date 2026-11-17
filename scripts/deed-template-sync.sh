@@ -16,7 +16,7 @@
 #
 # DEED is the child's deed. BASE and NEW are the template's own deed at the
 # commit the child was cut from (or last upgraded to) and at the upgrade
-# target, e.g. `git -C <template> show <pin>:rsr-template-repo_chora.deed`.
+# target, e.g. `git -C <template> show <pin>:idris2x_chora.deed`.
 #
 # A three-way rule on (ply), after each deed's self-name (<name>_chora.deed)
 # is renamed to the child's, as the mint renames it:

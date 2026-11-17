@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Uninstall
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+idris2x keeps everything it owns in two places, so removal is complete and checkable.
+
+== Remove capsules only (keep the launcher)
+
+[source,bash]
+----
+idris2x gc --keep-last 0        # removes every capsule
+idris2x gc --keep-last 3        # or keep the three most recently used
+----
+
+`gc` removes incomplete installs and staging debris first. It warns before deleting a capsule that programs you compiled with
+`--cg chez` may still reference: such programs embed `#!<store>/bin/scheme --program` and stop working once that capsule is gone.
+Recompile them, or build long-lived artifacts with `--cg refc`.
+
+== Remove everything
+
+[source,bash]
+----
+rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/idris2x"   # all capsules, manifests, locks, staging
+rm "$(command -v idris2x)"                         # the launcher (or uninstall it with the tool that installed it)
+----
+
+That is all: idris2x writes no files elsewhere, sets no shell profile entries, installs no services and sends no telemetry.
+Your projects' `idris2x.toml` and `idris2x.lock` remain yours to keep or delete.
+
+== Check nothing is left
+
+[source,bash]
+----
+ls "${XDG_CACHE_HOME:-$HOME/.cache}/idris2x" 2>/dev/null || echo "idris2x cache: gone"
+command -v idris2x || echo "idris2x binary: gone"
+----

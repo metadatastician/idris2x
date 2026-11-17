@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+name: Canary or churn-drill failure
+description: A canary failed on a capsule, or an upstream asset changed. Used by humans and by the maintenance agent.
+title: "[canary] <canary-name> on <target> (idris2@<v>, chez@<v>)"
+labels: ["area:canary", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the title format exactly: the maintenance loop de-duplicates on it. One issue per canary and target.
+  - type: dropdown
+    id: canary
+    attributes:
+      label: Canary
+      options: [pure_eval, chez_codegen, refc_codegen, c_ffi_support, ipkg_multi_module, relocatable_artifact, prelude_base, concurrent_build, unicode_paths, large_module, chez_threads, version_match, "churn drill (upstream asset changed)"]
+    validations:
+      required: true
+  - type: input
+    id: digest
+    attributes:
+      label: Capsule digest
+      placeholder: "sha256:0dc9ae68..."
+    validations:
+      required: true
+  - type: textarea
+    id: record
+    attributes:
+      label: Failure record
+      description: Stage, triple, versions, log excerpt, host fingerprint (the JSON the canary runner emits).
+      render: json
+    validations:
+      required: true
+  - type: dropdown
+    id: class
+    attributes:
+      label: First classification
+      options: ["data fix (channel patch)", "engine fix (launcher)", "upstream outage or regression", "flaky / infrastructure", "unknown"]
