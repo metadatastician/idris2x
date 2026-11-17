@@ -12,7 +12,7 @@ Phase 1 not started. Nothing is released.
 === Phase 0 — Spike (done)
 * [x] Build Chez 10.4.1 and Idris 2 v0.8.0 from pinned sources; measure
 * [x] Prove relocation (11 of 12 canaries on a relocated copy; one upstream bug)
-* [x] Prototype launcher, factory and chaos suite (43 checks green)
+* [x] Prototype launcher, factory and chaos suite (43 checks green at Phase 0; 121 after the DX design work, 2026-11-17)
 * [x] Fact-check the plan against primary sources; record ADRs
 
 === Phase 1 — MVP (Rust launcher + factory)
