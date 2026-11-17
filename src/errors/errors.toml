@@ -200,6 +200,19 @@ fix_note = ""
 auto = "safe"
 
 [[case]]
+error = "E-PIN-NOT-FOUND"
+case = "malformed-lock"
+summary = "{lock} has a malformed {field} for this machine"
+story = "{lock} records a {field} for this machine that is not well formed."
+facts = "this-machine=target field=field"
+state = "Nothing was downloaded or changed."
+why = "A digest is exactly 64 lowercase hexadecimal characters and a version is numbers separated by dots. Anything else means the lock was edited by hand or damaged, and it is refused before it can reach a download, a store path or a printed command."
+fix_lead = "Write the lock again from the channel:"
+fix_cmd = "idris2x pin <version>"
+fix_note = "If the lock is under version control, compare it with the last committed version first."
+auto = "placeholder"
+
+[[case]]
 error = "E-HASH-MISMATCH"
 case = "download"
 summary = "downloaded capsule does not match {lock}"

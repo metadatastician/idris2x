@@ -23,6 +23,7 @@ E-PIN-NOT-FOUND|no-version|lock=idris2x.lock|version=0.9.0|available=0.7.0, 0.8.
 E-PIN-NOT-FOUND|not-installed|digest=sha256:$A
 E-PIN-NOT-FOUND|no-idris2|name=chez-10.4.1-x86_64-unknown-linux-gnu
 E-PIN-NOT-FOUND|no-urls|lock=idris2x.lock|digest=sha256:$A|version=0.8.0
+E-PIN-NOT-FOUND|malformed-lock|lock=idris2x.lock|target=x86_64-unknown-linux-gnu|field=digest
 E-HASH-MISMATCH|download|lock=idris2x.lock|want=sha256:$A|got=sha256:$B|bytes=17706495 bytes (the lock says 35412990)|source=https://mirror.example.org/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
 E-HASH-MISMATCH|bundle|lock=idris2x.lock|want=sha256:$A|got=sha256:$B|bytes=35412990 bytes (the lock says 35412990)|source=/media/usb/capsule.tar.gz
 E-HASH-MISMATCH|store-modified|digest=sha256:$A|dir=/home/ada/.cache/idris2x/store/sha256-$A
