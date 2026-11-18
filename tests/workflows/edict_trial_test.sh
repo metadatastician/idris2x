@@ -72,7 +72,7 @@ cat > "$work/fork_chora.deed" <<'DEED'
   (lineage :type fork :parent "example/upstream"))
 DEED
 
-chora="$repo_root/rsr-template-repo_chora.deed"
+chora="$repo_root/idris2x_chora.deed"
 expect template-holds    0 "must/standalone-declares-state: holds"          "$chora" "$work/STATE-holds.deed"
 expect template-violated 1 "violated [blocking]: (maturity :level) is unknown" "$chora" "$work/STATE-broken.deed"
 expect template-missing  1 "unresolved [blocking]: (maturity) is absent"    "$chora" "$work/STATE-missing.deed"

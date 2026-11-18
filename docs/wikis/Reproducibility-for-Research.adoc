@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Reproducibility for research
+
+For papers, artefact evaluations and course material:
+
+* Commit `idris2x.lock` with your artefact. It names the exact compiler, runtime and standard libraries by sha256, per platform.
+* Cite the capsule digest and the channel version in the paper; a reader runs `idris2x exec --locked -- idris2 ...` years later and
+  gets the same toolchain or a typed error, never a silent substitute.
+* For artefact evaluation boxes without network, ship `idris2x fetch`'s bundle with the artefact (link:Offline-and-Air-Gapped[offline use]).
+* Capsule provenance (source digests, build attestations, SBOM) is recorded with each release.
+
+Bit-for-bit identical capsules across rebuilds are a later goal, not a current claim.

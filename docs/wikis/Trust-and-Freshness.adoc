@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Trust and freshness
+
+The channel uses a deliberately small subset of The Update Framework's threat model ("TUF-lite").
+
+[cols="2,2,3",options="header"]
+|===
+| Attack (TUF §1.5.2) | Covered by | Residual
+| Arbitrary software | Ed25519 signature + per-capsule sha256 | Root key compromise (rotation list planned)
+| Rollback | Monotonic `channel_version` recorded in the lock | A *fresh* client with no lock accepts any manifest still inside its expiry window
+| Indefinite freeze | `expires` on every manifest | A frozen-but-unexpired manifest is accepted until it expires
+| Mix-and-match | One manifest covers every target and version | none known
+| Endless data | Sizes in the manifest and lock | none known
+| Fast-forward / key compromise | Not yet | Two-tier keys (offline root signs a rotatable channel key list), Phase 2
+|===
+
+The design choice that makes this small model sufficient: *execution never consults the channel*. Freshness matters only when you
+choose a new version; once chosen, integrity is a digest, which needs no freshness at all.

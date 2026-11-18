@@ -14,6 +14,22 @@ reviews:
         project's approved language and runtime. Pre-existing third-party
         code is not permission to author new Python. Do not demand language
         migrations of unrelated upstream dependencies as cosmetic PR work.
+    - path: "src/**"
+      instructions: >-
+        idris2x launcher. Flag any silent fallback, untyped error, network
+        access on the exec path, inherited IDRIS2_/LD_LIBRARY_PATH/DYLD_ values,
+        resumed download of a mutable document, or archive extraction without
+        a containment check. Every failure must map to an ID in
+        src/errors/errors.toml. Exit codes are append-only.
+    - path: "src/errors/errors.toml"
+      instructions: >-
+        Exit codes must never be renumbered or reused. Each entry needs a
+        one-line meaning and an exact, copy-pasteable fix. Remind the author to
+        run scripts/gen-runbooks.sh and scripts/gen-issue-forms.sh.
+    - path: "docs/wikis/**"
+      instructions: >-
+        Wiki source. Check that planned behaviour is labelled as planned, that
+        commands are copy-pasteable, and that pages stay within their persona.
   pre_merge_checks:
     docstrings:
       mode: warning

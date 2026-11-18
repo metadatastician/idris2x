@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Error taxonomy workflow
+
+The taxonomy is data (ADR 0009). One file, `src/errors/errors.toml`, feeds:
+
+* the launcher's error table and `--json` output (Phase 1),
+* `docs/runbooks/<ID>.adoc` headers (`scripts/gen-runbooks.sh`; hand-written triage below the marker survives),
+* the *idris2x printed an error* issue form (`scripts/gen-issue-forms.sh`),
+* the link:Error-Reference[error reference] page.
+
+Rules: exit codes are append-only; every entry has a one-line meaning and a copy-pasteable fix; CI runs both generators with `--check`.

@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Proof plan
+
+Estate PROOF-POLICY assigns verifiers by obligation. Nothing below has been run yet; this is the plan.
+
+[cols="2,2,3",options="header"]
+|===
+| Obligation | Verifier | Scope
+| Pure core of the launcher: resolution, lock parsing, digest comparison, archive path containment | *Creusot* with *Pearlite* contracts, and *Verus* | Totality, no panics, containment (`normalise(join(root, p))` stays under `root`)
+| Interface contracts: `idris2x.lock` and `capsule.json` | *Idris 2* | Total decoders; every accepted document satisfies the schema
+| Store state machine (I2) | TLA+ model, checked with TLC | All interleavings of N installers and crashes; readers see Absent or Complete
+| Archive extraction against adversarial inputs | Property tests and fuzzing | Escaping paths and links always rejected
+|===
+
+Status is tracked with denominators in
+link:https://github.com/metadatastician/idris2x/blob/main/docs/status/PROOF-STATUS.adoc[PROOF-STATUS]. A property is reported as proven only with current receipts.

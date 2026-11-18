@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Glossary
+
+[cols="1,4",options="header"]
+|===
+| Term | Meaning
+| Capsule | An immutable archive containing Idris 2, its matching Chez Scheme, the standard libraries, licences, `capsule.json` and `sha256sums.txt`, named by its sha256.
+| Channel | The signed, data-only JSON manifest mapping versions and targets to capsule digests and URLs.
+| Lock (`idris2x.lock`) | The project's record of which capsule digest satisfies its pin on each platform. Execution needs only this and the capsule bytes.
+| Store | The content-addressed cache of complete capsules, `$XDG_CACHE_HOME/idris2x/store/`.
+| Canary | One of twelve small checks every capsule must pass before use.
+| Probe | The subset of canaries run at install time on the user's host.
+| Tier | Support level of a target: 1 built and canaried nightly, 2 experimental, 3 source only.
+| Risk class | A, B or C: how much human review a change needs.
+| Environment contract | The exact set of variables the launcher sets, and resets, before exec.
+|===

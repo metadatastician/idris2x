@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Pinning and upgrading
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+== Resolution order (no network involved)
+
+CLI flag → `IDRIS2X_VERSION` → `idris2x.toml` → `*.ipkg` hint → `idris2x.lock`.
+
+== Upgrade a project
+
+[source,bash]
+----
+idris2x pin 0.8.1        # when it exists: verifies the channel, rewrites the lock
+git diff idris2x.lock    # review: one digest per platform changes
+----
+
+`--locked` (the default in CI) never changes the lock; only `pin` and `update` resolve new versions.
+
+== Two versions side by side
+
+Capsules are content-addressed, so versions never collide:
+
+[source,bash]
+----
+idris2x -p idris2@0.7.0 -- idris2 --check src/Proof.idr
+idris2x -p idris2@0.8.0 -- idris2 --check src/Proof.idr
+----
+
+== Use the compiler from a script or editor
+
+[source,bash]
+----
+eval "$(idris2x env)"            # exports IDRIS2_PREFIX, CHEZ, PATH, ... for this shell only
+idris2x env --json                # the same, for tools
+----

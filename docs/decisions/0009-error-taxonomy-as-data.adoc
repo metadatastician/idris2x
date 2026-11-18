@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0009. The error taxonomy is data: stable IDs and exit codes in `src/errors/errors.toml`, runbooks and tables generated
+
+Date: 2026-11-09
+
+== Status
+
+Accepted (generators in `scripts/gen-runbooks.py`, `scripts/gen-matrix.py`; `--check` mode for CI drift).
+
+== Context
+
+"Every failure has a stable ID, a runbook page and an exact fix" only stays true if the three cannot drift apart.
+
+== Decision
+
+* `src/errors/errors.toml` is the single source: ID, exit code, meaning, fix. Exit codes are append-only; never renumbered.
+* `docs/runbooks/<ID>.adoc` are generated stubs with a protected hand-written triage section; CI runs the generator in `--check` mode.
+* The launcher's error table and `--json` output are generated from the same file (Phase 1).
+* Phase 0 added five IDs the plan lacked: `E-CAPSULE-INVALID`, `E-CHANNEL-ROLLBACK`, `E-CHANNEL-EXPIRED`, `E-STORE-IO`, `E-INTERNAL`.
+
+== Consequences
+
+=== Positive
+* `idris2x explain` and the AI triage loop can key on IDs with confidence; docs cannot lie about exit codes.
+
+=== Negative
+* Adding an error is a data change plus a regenerate, not a one-line edit.
+
+=== Neutral
+* The same pattern drives `src/definitions/targets.toml` → CI matrix and support table.

@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Capsule lifecycle
+
+* *Built* from pinned upstream sources (Chez tarball sha256, Idris 2 tag commit) by the factory; never patched.
+* *Canaried*: twelve atomic canaries, including a relocation probe into a path with spaces.
+* *Published* as an immutable release asset plus a mirror copy; never rewritten. A fix is a new revision (`idris2@0.8.0-2`).
+* *Deprecated* two quarters ahead in the channel's `deprecated` list and the changelog; deprecated capsules still run for existing locks.
+* *Archived* in long-term copies so that I4 (the past never breaks) holds even after deletion of the original hosting.

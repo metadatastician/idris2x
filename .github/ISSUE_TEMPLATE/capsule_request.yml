@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+name: Request a capsule (new Idris 2 version or target)
+description: Ask for an Idris 2 release, a Chez Scheme pairing or a platform that has no capsule yet.
+title: "[capsule] idris2@<version> on <target>"
+labels: ["enhancement", "area:capsule", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Capsules are built from pinned upstream sources and are immutable once published. Adding one is a
+        Class B change (one human approval) after the full canary matrix passes. New *targets* change the
+        support matrix (`src/definitions/targets.toml`) and are Class C: they need an ADR.
+  - type: input
+    id: version
+    attributes:
+      label: Idris 2 version or tag
+      placeholder: "0.8.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target
+      options: ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc (Tier 2)", "Other (describe below)"]
+      multiple: true
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What do you need it for?
+      description: CI, teaching, a paper, a production service... It decides priority and tier.
+    validations:
+      required: true
+  - type: textarea
+    id: host
+    attributes:
+      label: Host details for unusual targets
+      description: OS release, libc and version (`ldd --version`), CPU, container base image.

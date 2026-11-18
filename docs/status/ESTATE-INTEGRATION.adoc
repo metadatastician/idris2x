@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Estate integration (plan §15, corrected by the Phase 0 estate audit)
+:toc: macro
+
+== Where Idris 2 comes from today
+
+* The RSR template's `mise.toml` says Idris 2 "is not a mise tool: it comes from pack"; `build/just/provision-lib.sh` remedies a missing
+  compiler with `pack install-app idris2` (unpinned source build) and lists OS packages `chezscheme libgmp-dev` (Ubuntu noble ships Chez 9.5.8,
+  which cannot target arm64). `doctor` only warns when pack is missing.
+* The template's proof lane (`proven-tests.yml` → `run-proven-suite.sh`) never installs or executes Idris 2; it degrades to "Static-Checked".
+  Five of the six shipped Idris 2 proof modules are quarantined as never having compiled.
+* `PROOF-POLICY.adoc` §6: proof toolchains used in CI come from the repo's Guix manifest or container, otherwise a recorded *deviation* naming
+  the tool, its asserted version and a digest of what was installed; the run must assert the version and fail on mismatch.
+* The proof census lives in `hyperpolymath/mathesis`; it catalogues receipts and derives grades, it never assigns them.
+
+== What idris2x plugs into
+
+[cols="1,3",options="header"]
+|===
+| Seam | Change
+| `provision-lib.sh` (`lang_remedy`/`lang_run idris2`) | remedy becomes `idris2x install --locked`; run becomes `idris2x exec --locked -- idris2 …`; doctor delegates to `idris2x doctor --json`
+| `mise.toml` comment | "Idris 2 comes from idris2x (pinned, sha256-verified capsule); see idris2x.toml"
+| Proof lane | `idris2x verify` + `idris2x exec --locked -- idris2 --check …`; the lock's digest and `idris2x --version` are the §6 version-and-digest assertion
+| PROOF-POLICY §6 | file a canon change request to list "idris2x lock (sha256-pinned capsule, signed channel)" as a sanctioned installation route; until then each repo records the deviation (template below)
+| mathesis census | idris2x's own properties become receipts: the Idris 2 ABI contract for `idris2x.lock`/`capsule.json` (total decoders), the error-taxonomy completeness check (every ID in `src/errors/errors.toml` has a runbook and an exit code), the store state machine model
+| Multi-version testing | `idris2x -p idris2@0.7.0 -- …` and `idris2x -p idris2@0.8.0 -- …` side by side, since the store is content-addressed (Phase 1 flag)
+|===
+
+== §6 deviation template (until the canon lists idris2x)
+
+----
+deviation:
+  tool: idris2 (+ chez-scheme), installed by idris2x <launcher version> from capsule sha256:<digest>
+  asserted: idris2 0.8.0, chez 10.4.1   # from idris2x.lock [toolchain]
+  check: idris2x verify && idris2x exec --locked -- idris2 --version   # fails the run on mismatch
+  why: Guix has no idris2 package; mise cannot provide it; pack builds unpinned from source
+----
+
+== Relationship to pack
+
+pack is the Idris 2 *package* manager and also builds compilers from source per collection. idris2x does not replace it: it supplies the
+pinned, verified compiler+runtime that pack (or plain `idris2 --build`) runs on. The prior-art audit (pending) records whether pack can be
+pointed at an existing compiler without rebuilding one.

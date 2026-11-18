@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Security model
+
+Summary of the link:https://github.com/metadatastician/idris2x/blob/main/docs/architecture/THREAT-MODEL.adoc[threat model].
+
+* *Two-layer verification.* An Ed25519 signature over the channel manifest (key pinned in the launcher) and a sha256 per capsule, recorded in your lock. Mirrors are untrusted.
+* *Rollback and freeze.* Monotonic `channel_version` recorded in the lock, plus an `expires` timestamp. Both gate resolution only.
+* *Environment as an attack surface.* Idris 2 treats `IDRIS2_PATH`, `IDRIS2_DATA`, `IDRIS2_LIBS`, `IDRIS2_PACKAGE_PATH` and `IDRIS2_INC_SRC` as code search paths, so the launcher resets them rather than inheriting them.
+* *Archive safety.* Absolute paths, `..`, escaping links, devices and setuid bits are rejected before anything is written to the store.
+* *Provenance.* Capsules carry SLSA provenance and Sigstore attestations; the factory verifies them before signing the channel. Releases are immutable.
+* *Privacy.* No telemetry. GitHub and the mirror host see the IP, user agent and capsule name of each download, nothing more.
+
+Report vulnerabilities privately through a GitHub security advisory.

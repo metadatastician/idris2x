@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0010. Hosting and survivability: immutable GitHub Releases plus an object-store mirror on our own domain; manifest URLs are a list
+
+Date: 2026-11-09
+
+== Status
+
+Accepted (from the Phase 0 infra audit; implementation is Phase 1/2).
+
+== Context
+
+GitHub Releases: 2 GiB per asset, 1000 assets per release, no published bandwidth cap but an acceptable-use clause allowing
+throttling; asset URLs survive rename/transfer (301) and archiving, not deletion; the download redirect is a signed URL valid for
+about five minutes; immutable releases are generally available (2025-10-28). Cloudflare R2: 10 GB storage and egress free, public
+buckets only via a custom domain, `Range` may be answered with a full `200` at the edge.
+
+== Decision
+
+* Capsules are published to *immutable* GitHub Releases (draft → attach all assets → publish) and mirrored to an R2 bucket behind a
+  domain we control. Every `urls[]` entry in the channel lists both; the launcher treats all mirrors as untrusted.
+* The launcher embeds a *list* of channel manifest URLs (Releases asset + mirror); identical bytes, identical signature, any one succeeds.
+* Resume (`Range`) applies only to immutable, digest-addressed capsule downloads, never to the channel manifest or any other mutable document (the Phase 0 drills caught a stale-partial splice). Resume logic always re-requests the stable `github.com/.../releases/download/...` URL, never a cached redirect target, and restarts
+  when a `Range` request is answered with `200`.
+* The factory verifies each capsule's build attestation (`gh attestation verify --deny-self-hosted-runners`) *before* the channel is signed.
+* Phase 2 adds archival deposits (Internet Archive item per release; IPFS pin with the sha256 recorded) and a sunset procedure (MAINTAINERS.adoc).
+
+== Consequences
+
+=== Positive
+* No single provider can deny existing pins; squatting a renamed repository cannot forge anything.
+* Immutability becomes platform-enforced rather than merely hash-detectable.
+
+=== Negative
+* A domain is a new expiry risk (multi-year auto-renew, registrar lock); CI must keep two copies in sync.
+* Intel macOS capsules depend on runners GitHub plans to retire (~2027); tracked in `src/definitions/targets.toml`.
+
+=== Neutral
+* GitHub Pages was rejected as a manifest host: same provider, and project URLs are not redirected on rename.

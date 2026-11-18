@@ -1,0 +1,42 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= idris2x wiki
+
+*One command, exactly the Idris 2 compiler you pinned, or a loud error that tells you how to fix it.*
+
+idris2x downloads an immutable, signed, self-testing Idris 2 + Chez Scheme *capsule*, verifies it, unpacks it
+atomically into a content-addressed cache, and runs the real compiler. No system Chez, no `sudo`, works offline.
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+== Find your path
+
+[cols="1,3",options="header"]
+|===
+| You are | Start here
+| *A user*: you write Idris 2, teach it, or need a compiler in CI | link:Getting-Started[Getting started] → link:Install[Install] → link:Troubleshooting[Troubleshooting]
+| *A platform maintainer*: you run CI fleets, mirrors, labs or servers | link:Platform-Overview[Platform overview] → link:Self-Hosted-Channel[Self-hosted channel] → link:Security-Model[Security model]
+| *A developer*: you want to contribute to idris2x | link:Contributing-Guide[Contributing guide] → link:Architecture[Architecture] → link:Prototype-and-Chaos-Suite[Prototype and chaos suite]
+| *A theorist*: you care about what is guaranteed and why | link:Theory-Overview[Theory overview] → link:Formal-Model[Formal model] → link:Proof-Plan[Proof plan]
+|===
+
+== Five promises
+
+. *No silent drift.* What runs is exactly the pinned digest, or nothing.
+. *Atomic or absent.* An interrupted install leaves nothing half-done.
+. *Loud by default.* Every failure has a stable ID, an exit code, a runbook and the exact fix.
+. *The past never breaks.* A lockfile plus the capsule bytes is enough, forever, even if this project stops.
+. *Verify before trust.* Signature, digest and canaries before the first run.
+
+== Status
+
+Phase 0 (design tested on real builds) is complete: see the
+https://github.com/metadatastician/idris2x/blob/main/docs/status/PHASE0-REPORT.adoc[Phase 0 report].
+Unofficial; not affiliated with the Idris 2 or Chez Scheme projects.

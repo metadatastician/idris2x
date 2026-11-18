@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0011. Estate compliance: mint from rsr-template-repo with the `rust-cli` archetype; obey LANGUAGE-, LICENCE- and PROOF-POLICY
+
+Date: 2026-11-16
+
+== Status
+
+Accepted for the repository shape; the implementation language is confirmed in ADR 0007 (owner decision).
+
+== Context
+
+idris2x lives in the metadatastician/hyperpolymath estate, whose canon (`metadatastician/standards`) is enforced by the RSR
+template's CI gates. The Phase 0 estate audit (read-only inspection of `hyperpolymath/rsr-template-repo` @2be7b88,
+`metadatastician/standards`, `hyperpolymath/scaffoldia`) established:
+
+* `3-practice/LANGUAGE-POLICY.adoc` §3 bans Go, Python ("no exceptions"), Java/Kotlin, Swift, V, ATS2, ReScript and Makefiles for new
+  work; the gates are executable (`scripts/check-spdx-headers.sh` fails on any `.go`/`.py`, `check-mise-language.sh`,
+  `build/just/provision-lib.sh`, `governance-reusable.yml`, hypatia). The "overridable via AGENTIC" note in generated CLAUDE.md has no schema or gate behind it.
+* The only CLI archetype is `rust-cli` (preset `[rust, cli, library]`); there is no Go or Zig archetype. `scaffoldia` is a design surface (5% complete) and cannot mint.
+* Licence policy: MPL-2.0 for code and configuration, CC-BY-SA-4.0 for prose; third-party licences preserved verbatim (no conflict with redistributing Apache-2.0 Chez and BSD-3 Idris 2 provided `LICENSE`/`NOTICE` ship and `dep5` carries Files stanzas).
+* Docs are AsciiDoc; `.md` only for GitHub community files at root or `.github/`. A minimal RSR repo still needs 33 required root entries, so minting is cheaper than hand-building.
+* Today the estate gets Idris 2 from `pack` (unpinned source build) or the idris2-pack container, never from mise. `PROOF-POLICY.adoc` §6 requires proof toolchains in CI to come from the repo's Guix manifest or container, otherwise a recorded *deviation* asserting version and digest.
+* The Interface & Architecture Law treats a lockfile/manifest verifier as a (de)serialisation trust boundary that wants an Idris 2 contract; gates only enforce it when the `abi` capability is declared.
+
+== Decision
+
+. Create `metadatastician/idris2x` from the template ("Use this template" or clone), then mint non-interactively:
++
+----
+mise trust && mise install
+RSR_NON_INTERACTIVE=1 PROJECT_NAME=idris2x REPO=idris2x OWNER=metadatastician \
+  AUTHOR="Jonathan D.A. Jewell" AUTHOR_EMAIL=<estate email> mise exec -- just repo-init rust-cli
+----
++
+Prerequisites on the minting host: `just`, `yq`, `rustc`, `uuidgen`, `nickel`, `file`, network to github.com. Remove the template's
+temporary `oracle-segfault-diag.yml` before minting if it is still on main.
+. Implementation language: Rust (canon CLI language; `rust-cli` archetype; Creusot/Verus route available for the symbolic core). Go would
+  need an owner ruling amending LANGUAGE-POLICY §3 plus gate changes in `standards` and the template; it is not pursued. Zig remains the
+  fallback (permitted, but ADR 0007 records its API churn).
+. No Python anywhere in the repository: generators are bash with a strict TOML-subset converter (`scripts/lib/toml2json.sh`, awk) and `jq`; the prototype stays bash.
+. Licences: MPL-2.0 (code, scripts, data), CC-BY-SA-4.0 (docs); `LICENSES/` gains `Apache-2.0.txt` and `BSD-3-Clause.txt` for vendored upstream notices; `dep5` lists capsule-side third-party content.
+. Proof-policy alignment: the `idris2x.lock` *is* a version-plus-digest assertion. Until PROOF-POLICY lists capsule installs as a sanctioned route, estate repos using idris2x in CI record a §6 deviation that names the launcher version, the capsule digest and the `idris2x verify` step; a canon change request is filed (beyond-repo).
+. Interface Law: declare `abi`, and make the Idris 2 ABI module a *real* contract — the lockfile and `capsule.json` schemas as total Idris 2 types with decoding proofs — rather than the template placeholder. This is also the natural home for the install state machine's invariants (atomic-or-absent) as a model checked by the mathesis census.
+. Configure stage (out of band, once): `gh repo edit` identity, visibility (SCAFFOLD-LIFECYCLE defaults to private; public is needed for free arm64/macOS runners and free CodeQL/Scorecard SARIF), rulesets (signed commits, linear history, immutable tags), gv-clade-index registration, commit-signing key.
+
+== Consequences
+
+=== Positive
+* Born wired into the estate's provenance, drift gates, oracle scoring and CI; no exceptions to argue about.
+* Rust's `cargo vendor` + the template's `compliance/rust/deny.toml` give the supply-chain discipline the plan wanted from "stdlib only".
+
+=== Negative
+* The plan's Go launcher is dropped; the "stdlib only" rule becomes "minimal, vendored, audited crates" (ADR 0007 lists them).
+* Inherited workflows (`proven-tests.yml` expects the Zig seam; `estate-rules.yml` checks root shape and repo-map freshness) need the same change to prune or wire them.
+
+=== Neutral
+* `just` replaces any Makefile *we* would write; the factory still drives upstream's Makefiles, which is invoking, not authoring.

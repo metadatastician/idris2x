@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0007. Launcher constraints: gzip capsules, sha256 digests, JSON lock + minimal TOML config, language choice
+
+Date: 2026-11-09
+
+== Status
+
+Proposed — recommendation A′ below (Rust). Superseded in part by the estate audit (ADR 0011): the canon bans Go for new work and the
+template's gates enforce it, so the plan's Go launcher is not available without an owner ruling. The owner decision still to take is Rust vs Zig.
+
+== Context
+
+The plan requires simultaneously: Go, `CGO_ENABLED=0`, *standard library only*, under 1,000 lines, zstd tarballs, BLAKE3 digests,
+TOML config and lockfile, minisign signatures, per-digest flock, direct execve, Windows Tier 2. Checked on Go 1.24.7:
+
+[cols="2,1,3",options="header"]
+|===
+| Need | In Go stdlib? | Note
+| zstd decompression | no | `compress/gzip`, `compress/bzip2` (decode only) are; xz is not
+| BLAKE3 / BLAKE2b | no | `crypto/sha256`, `crypto/sha3` are
+| TOML | no | `encoding/json` is
+| Ed25519 verify | yes | minisign's *default* pre-hashed mode needs BLAKE2b; signify / minisign legacy mode do not
+| flock | Linux/macOS yes; Windows no | Windows: `LockFileEx` through `syscall.NewLazyDLL`, or an `O_EXCL` lock directory
+| execve | Linux/macOS yes; Windows no real execve | Windows: spawn child, relay exit code and signals
+|===
+
+Measured on the real Linux x86_64 capsule (137 MB tree): gzip -9 35.4 MB / unpack 0.67 s; zstd -19 28.3 MB / 0.20 s; xz -9 19.5 MB / 1.4 s.
+Removing the bootstrap artifacts Idris 2 installs (`idris2-boot.so`, `*.ss`, ~30 MB raw) will shrink every variant further.
+
+== Options
+
+[cols="1,3,1,1",options="header"]
+|===
+| | Approach | Elegance | Dependability
+| A | Go, stdlib only: `.tar.gz`, sha256, signify-format Ed25519, JSON lock, ~100-line TOML-subset reader for the 3-key `idris2x.toml` | 4 | 5
+| B | Go plus two vendored pure-Go packages (zstd, TOML); keep sha256 | 3 | 4
+| A+ | As A, plus a *copy* of Go's own BSD-licensed decoder-only `internal/zstd` (2,279 lines, no module dependency) so capsules stay zstd | 3 | 4
+| C | Zig 0.17.x, stdlib only (`std.compress.zstd`, `Blake3`, `Ed25519`, `std.tar`, `std.http` + TLS, `std.Io.File.lock`) — probe built 300–630 KB static binaries for four targets from one host | 5 | 2
+| D | Rust with `zstd`, `blake3`, `toml`, `minisign-verify`, `rustls`; `cargo vendor` for reproducibility; estate has a `rust-cli` archetype | 3 | 4
+|===
+
+== Recommendation after the estate audit (A′: Rust, same discipline)
+
+Keep every decision below (gzip, sha256, JSON lock + minimal TOML, direct exec, reset environment) and implement it in Rust from the
+`rust-cli` archetype, replacing "stdlib only" with "minimal, vendored, audited crates" enforced by `cargo vendor`, `cargo deny`
+(the template ships `compliance/rust/deny.toml`) and a pinned toolchain. Candidate crate set, each with a pure-Rust option:
+`ureq` + `rustls` (HTTP/TLS; std has neither), `flate2` with the `miniz_oxide` backend (gzip), `sha2`, `ed25519-dalek` or
+`minisign-verify` (pure, no deps), `serde_json`, and a hand-written TOML-subset reader (no `toml` crate needed for three keys).
+LOC ceiling stays 1,000 for *our* code; Creusot/Verus contracts on the pure core (resolution, lock parsing, digest checks) are the
+proof route the canon already names for Rust. Zig (option C) is the permitted fallback if the maintainer prefers it, with the
+toolchain tarball vendored because of the measured std API churn.
+
+== The Go-shaped recommendation as originally evaluated (A)
+
+* Capsules are `.tar.gz` for the launcher; the factory may *also* publish `.tar.zst`/`.tar.xz` for humans and mirrors, each with its own
+  digest entry. The download penalty versus zstd is ~25% for ~0.5 s more unpacking, paid once per capsule per machine.
+* One digest algorithm: sha256 (channel, lock, `sha256sums.txt`). BLAKE3 adds nothing the threat model needs.
+* Humans write TOML, machines write JSON: `idris2x.toml` holds `[toolchain] idris2 = "0.8.0"` and optional overlay/channel keys (a
+  tiny strict subset: tables, strings, arrays of strings, booleans — anything else is `E-PIN-DRIFT`-class loud failure);
+  `idris2x.lock` and the channel are JSON with sorted keys, validated against `src/contracts/channel-v1.schema.json`.
+* Go keeps the 1.x compatibility promise, which is the property "survive abandonment" needs most from a language; a 1,000-line
+  stdlib-only program compiled by any future Go 1.x is the strongest source-rot guarantee available among the options.
+  *Estate verdict:* unavailable — Go is on the banned list (LANGUAGE-POLICY §3) and `.go` files fail the template's quality gate; Rust's
+  editions plus a vendored, pinned dependency set are the nearest substitute for that guarantee.
+* Windows (Tier 2) is implemented as spawn-and-relay with a lock directory; the Unix path keeps real execve and flock.
+* Measured skeleton (audit, Go 1.24.7, `-trimpath -ldflags='-s -w'`, `CGO_ENABLED=0`): 5.98 MB linux/amd64 (5.6–6.2 MB across the five targets; `crypto/tls` + `net/http` dominate) — so the plan's "3–5 MB" becomes "about 6 MB"; warm overhead 1.7 ms for a no-op and 2.8 ms for lock parse + flock + execve, against a 20 ms budget. The fetch/verify/extract/exec skeleton is 209 lines; the TOML subset reader 248 lines.
+
+== Why not the others
+
+* B: vendoring 10k+ lines next to a 1,000-line launcher inverts the review surface; zstd's benefit is a quarter of the download.
+* A+: a reasonable compromise if download size matters more than audit surface: the copied decoder is Go-team code, fuzzed, 2.3k lines, ~160 MB/s; it must be re-synced by hand. Decide once the pruned capsule has been measured with `zstd --long=27`.
+* C: Zig's standard library covers every need and would be the most elegant implementation (probe verified on 0.17.1), but pre-1.0 churn is measured, not hypothetical: `std.posix.execveZ`/`flock` existed in 0.14/0.15 and are gone in 0.17, and zstd/ZON/Io APIs were renamed between releases. The *source* would stop compiling within a year or two of abandonment even though the binary keeps working. Revisit after Zig 1.0; if chosen anyway, vendor the exact toolchain tarball next to the source.
+* D: the dependency tree (TLS, zstd, toml, …) is the supply-chain surface the plan is trying to avoid; the `zstd` crate links C (`ruzstd` is pure but 1.4–3.5x slower), macOS/Windows cross-builds need extra toolchains; acceptable only with full vendoring and `cargo deny`; the estate's Rust archetype makes it viable if the maintainer prefers Rust day to day.
+* Vendored-dependency trap measured for B: current `klauspost/compress`, `x/crypto` and `x/sys` already require Go 1.25/1.26; a frozen build needs pinned versions and `GOTOOLCHAIN=local`.
+
+== Consequences
+
+=== Positive
+* Zero external code in the trusted computing base of the launcher; verification uses only `crypto/ed25519` and `crypto/sha256`.
+
+=== Negative
+* ~7 MB more per capsule download than zstd would give; a TOML-subset reader to maintain (property-tested).
+
+=== Neutral
+* The channel schema already allows per-variant entries, so switching the launcher to zstd later is a data change plus a launcher release.

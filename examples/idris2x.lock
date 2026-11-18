@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "toolchain": {
+    "idris2": "0.8.0",
+    "chez": "10.4.1"
+  },
+  "channel": {
+    "version": 1,
+    "url": "https://github.com/metadatastician/idris2x/releases/download/channel/v1.json"
+  },
+  "capsules": {
+    "x86_64-unknown-linux-gnu": {
+      "sha256": "0dc9ae684a74ba9ed3fd0b40174e8f24daea268fddde9845a0135c0d4bee6094",
+      "size": 35374302,
+      "urls": [
+        "https://github.com/metadatastician/idris2x/releases/download/capsules-2026.11/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz",
+        "https://capsules.idris2x.example/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz"
+      ],
+      "min_glibc": "2.38"
+    }
+  }
+}

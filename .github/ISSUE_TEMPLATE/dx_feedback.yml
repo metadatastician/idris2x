@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+name: Developer experience feedback
+description: An error message, prompt, output or flow that confused you, slowed you down, or could be clearer.
+title: "[dx] <the moment that went wrong>"
+labels: ["area:dx", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We treat confusing output as a bug. Tell us what you saw, what you thought it meant, and what you did next.
+        Installation, uninstallation, CI setup, offline use and debugging are all in scope.
+  - type: dropdown
+    id: moment
+    attributes:
+      label: Which moment?
+      options: ["First install", "Uninstall / cleanup", "Pinning or upgrading a version", "Running the compiler", "CI setup", "Offline or air-gapped use", "An error message", "doctor / selftest output", "Documentation or wiki", "Other"]
+    validations:
+      required: true
+  - type: textarea
+    id: saw
+    attributes:
+      label: What you saw (verbatim)
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: understood
+    attributes:
+      label: What you understood it to mean, and what you did next
+    validations:
+      required: true
+  - type: textarea
+    id: wished
+    attributes:
+      label: What would have helped (optional)
+  - type: dropdown
+    id: env
+    attributes:
+      label: Terminal / environment
+      options: ["Interactive terminal", "CI log", "Screen reader", "NO_COLOR or monochrome", "Narrow terminal (< 80 columns)", "Non-English locale", "Other"]
+      multiple: true

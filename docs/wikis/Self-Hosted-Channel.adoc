@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Self-hosted channel
+
+[NOTE]
+====
+*Planned (Phase 1).* Describes the agreed design (ADRs in `docs/decisions/`); not yet shipped.
+====
+
+A channel is one signed, data-only JSON document: capsule URLs, digests, sizes, the Idris 2 ↔ Chez compat table and deprecations.
+No scripts, ever. A company can publish its own vetted channel with zero code changes:
+
+[source,bash]
+----
+IDRIS2X_CHANNEL_URL=https://capsules.example.org/v1.json idris2x pin 0.8.0
+----
+
+== Rules a channel must follow
+
+* Validates against the schema in link:https://github.com/metadatastician/idris2x/blob/main/src/contracts/channel-v1.schema.json[`src/contracts/channel-v1.schema.json`].
+* `channel_version` increases by exactly one per publish; clients refuse to go backwards past the version in their lock (`E-CHANNEL-ROLLBACK`).
+* Carries `expires`; an expired manifest blocks *new pins* (`E-CHANNEL-EXPIRED`) but never execution of existing ones.
+* Signed with Ed25519 in signify format (`signify -S`, or `minisign -l`); pre-hashed signatures are rejected.
+* All capsule URLs are HTTPS.
+
+Your channel can reference our capsules (by digest) or your own builds from the same factory recipes.

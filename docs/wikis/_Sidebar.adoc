@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+*link:Home[Home]*
+
+*Users*
+
+* link:Getting-Started[Getting started]
+* link:Install[Install]
+* link:Uninstall[Uninstall]
+* link:Daily-Use[Pinning and upgrading]
+* link:CI-Usage[Using in CI]
+* link:Offline-and-Air-Gapped[Offline and air-gapped]
+* link:Troubleshooting[Troubleshooting]
+* link:Error-Reference[Error reference]
+* link:FAQ[FAQ]
+
+*Platform maintainers*
+
+* link:Platform-Overview[Overview]
+* link:Supported-Platforms[Supported platforms]
+* link:Self-Hosted-Channel[Self-hosted channel]
+* link:Mirrors-and-Caching[Mirrors and caching]
+* link:CI-Fleet-Operations[CI fleet operations]
+* link:Security-Model[Security model]
+* link:Capsule-Lifecycle[Capsule lifecycle]
+
+*Developers*
+
+* link:Contributing-Guide[Contributing guide]
+* link:Architecture[Architecture]
+* link:Prototype-and-Chaos-Suite[Prototype and chaos suite]
+* link:Error-Taxonomy-Workflow[Error taxonomy workflow]
+* link:Capsule-Factory[Capsule factory]
+* link:Release-and-Signing[Release and signing]
+* link:Maintenance-Loop[Maintenance loop]
+
+*Theorists*
+
+* link:Theory-Overview[Overview]
+* link:Formal-Model[Formal model]
+* link:Trust-and-Freshness[Trust and freshness]
+* link:Proof-Plan[Proof plan]
+* link:Reproducibility-for-Research[Reproducibility for research]
+* link:Glossary[Glossary]

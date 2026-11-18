@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Platform overview
+
+For people who run idris2x for others: CI fleets, shared build hosts, teaching labs, air-gapped estates.
+
+[NOTE]
+====
+*Planned (Phase 1).* Describes the agreed design (ADRs in `docs/decisions/`); not yet shipped.
+====
+
+== What you operate
+
+[cols="1,3",options="header"]
+|===
+| Piece | Your concern
+| Launcher | One static binary per platform. Pin its sha256 in your images or provisioning.
+| Store | `$XDG_CACHE_HOME/idris2x/store`: immutable, content-addressed, safe to share read-only, safe to cache between jobs, safe to delete (it is rebuilt from the lock).
+| Channel | A signed JSON manifest. Use ours, or publish your own vetted one (link:Self-Hosted-Channel[Self-hosted channel]).
+| Mirrors | Any HTTPS server; untrusted by construction because every byte is checked against the lock (link:Mirrors-and-Caching[Mirrors and caching]).
+|===
+
+== Guarantees you can build on
+
+* Execution never contacts the channel: a lockfile plus capsule bytes is enough.
+* No root, no system packages, no services, no telemetry.
+* Every failure has a stable exit code and `--json` output for your alerting.
+* Concurrent installs of the same capsule on one host are serialised by a per-digest lock.

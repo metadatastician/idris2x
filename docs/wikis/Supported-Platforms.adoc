@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Supported platforms
+
+Generated from `src/definitions/targets.toml`. Tier 1: capsules built and canaried nightly. Tier 2: experimental.
+
+[cols="3,1,2,2,3",options="header"]
+|===
+| Target triple | Tier | Chez machine | Floor | Runner
+| `x86_64-unknown-linux-gnu` | 1 | `ta6le` | glibc 2.28 | `ubuntu-24.04`
+| `aarch64-unknown-linux-gnu` | 1 | `tarm64le` | glibc 2.28 | `ubuntu-24.04-arm`
+| `aarch64-apple-darwin` | 1 | `tarm64osx` | macOS 13.0 | `macos-15`
+| `x86_64-apple-darwin` | 1 | `ta6osx` | macOS 13.0 | `macos-15-intel`
+| `x86_64-pc-windows-msvc` | 2 | `ta6nt` | - | `windows-2025`
+|===
+
+* Linux capsules are built in `manylinux_2_28` containers so they run on any distribution with glibc ≥ 2.28 (RHEL/Alma 8, Debian 11, Ubuntu 20.04 and later).
+* Chez Scheme 10.x is required on every AArch64 target; all capsules use 10.4.1.
+* GitHub is retiring Intel macOS runners (around 2027); `x86_64-apple-darwin` may move to cross-built boot files or be demoted. Changes to this table are Class C and need an ADR.

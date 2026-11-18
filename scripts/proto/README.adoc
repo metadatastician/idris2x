@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Phase 0 prototype (throwaway, but tested)
+
+Three bash scripts that proved the design before any Go was written. They are *not* the product; the Go launcher
+replaces `idris2x.sh`, and the factory CI replaces `make-capsule.sh`. `chaos.sh` lives on as the specification of
+the failure-mode test suite the Go launcher must pass.
+
+[cols="1,3",options="header"]
+|===
+| Script | Purpose
+| `idris2x.sh` | resolve (lock only, no network) → fetch with mirror fallback and resume → sha256 → tar safety checks → unpack to staging → `sha256sums.txt` → probes → atomic rename → `.complete`; `pin` verifies the signed channel (Ed25519 via openssl), enforces monotonic `channel_version` and `expires`; `exec`/`run` compose the environment contract (ADR 0005) and exec directly
+| `make-capsule.sh` | merges a Chez prefix and an Idris 2 prefix into one tree, writes `capsule.json` + `sha256sums.txt` + licences, packs reproducibly (gzip, zstd, xz for comparison), publishes and signs `v1.json` with `signify`
+| `chaos.sh` + `examples/fixture_server.rs` | 15 drill groups: happy path, 404 primary, flipped byte, truncation + resume, 4 concurrent installs, disk-full analogue, tampered manifest, wrong key, rollback, expiry (+override), offline, air-gap bundle, lock contention, unsafe tar, paths with spaces, gc, canaries via `selftest`
+|===
+
+.Run (Linux, after `apt-get install jq zstd signify-openbsd libgmp-dev`, then `cargo build --example fixture_server`)
+----
+FIXTURE_SERVER=target/debug/examples/fixture_server scripts/proto/chaos.sh <chez-prefix> <idris2-prefix> <chez-src> <idris2-src>
+tests/canaries/run.sh <capsule-root> [--quick]
+----
+
+Lessons the prototype taught that the Go launcher must encode structurally:
+
+* typed errors must never be raised in a subshell or they lose their exit code; the Go launcher returns errors, it does not `exit` from helpers;
+* traps/finalisers must not reference locals (two bugs found);
+* "unsafe tar" must tolerate *relative* links that stay inside the tree (Chez's `bin/scheme -> ../lib/...`) while rejecting escapes;
+* resume (`Range`) is only ever correct for immutable, digest-addressed downloads; resuming the channel manifest spliced new bytes onto a stale partial and broke the signature — the Go/Rust launcher must fetch mutable documents whole;
+* the fixture server must honour `Range` (206) or the resume drill silently degrades to a full download; `examples/fixture_server.rs` (Rust std only; this repo's anchor forbids Node.js) does, and the drill asserts a 206 was served.

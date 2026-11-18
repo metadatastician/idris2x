@@ -1,197 +1,85 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
-// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Threat Model
-// SPDX-License-Identifier: CC-BY-SA-4.0
-// Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+:toc: macro
 
-== Threat Model: {{PROJECT_NAME}}
+== Threat Model: idris2x
 
 === Document Info
 
-|===
-| Field | Value
+Version 0.1 (Phase 0, 2026-11-09). Sources: the plan's Section 4, the Phase 0 red-team audit (primary sources cited inline), and the prototype drills in `scripts/proto/chaos.sh`.
 
-| Project | {{PROJECT_NAME}}
-| Version | 1.0
-| Last Reviewed | {{DATE}}
-| Author | {{AUTHOR}}
-| Methodology | STRIDE
-|===
-
+toc::[]
 
 === Scope
 
 ==== In Scope
-
-- Application source code and build pipeline
-- CI/CD workflows (GitHub Actions)
-- Container images and runtime environment
-- Secrets and credential management
-- Dependencies (direct and transitive)
-- Deployment artifacts (binaries, containers, SBOM)
+* The launcher binary, its cache/store, the lockfile, the signed channel manifest, capsule archives, mirrors, the factory CI, the maintainer's keys, the first-install (bootstrap) path, the air-gap path.
 
 ==== Out of Scope
-
-- Physical security of hosting infrastructure
-- GitHub/GitLab platform-level vulnerabilities
-- End-user device security
-- Social engineering attacks against maintainers (handled by org policy)
+* Bugs inside Idris 2 or Chez Scheme themselves (zero-fork policy: reported upstream, see `docs/status/UPSTREAM-NOTES.adoc`).
+* Compromise of the user's own machine or account.
 
 === System Overview
 
-Brief description of {{PROJECT_NAME}} and its architecture.
-
-NOTE: See link:../STATE-VISUALIZER.adoc[STATE-VISUALIZER.adoc] for the full architecture diagram and completion dashboard.
+`idris2x.toml` → `idris2x.lock` (digests + URLs) → launcher: resolve (local) → fetch (any mirror) → verify (sha256, tar rules) → unpack to staging → probes → atomic rename → `.complete` → direct `execve` of the capsule's Chez with an explicit environment. Resolution (`pin`/`update`) additionally fetches the channel manifest and verifies its Ed25519 signature, monotonic `channel_version` and `expires`. Execution never needs the manifest.
 
 === Assets
 
-|===
-| Asset | Classification | Owner | Notes
-
-| Source code | Internal | Maintainers | Public repos are still internal-integrity
-| Signing keys | Restricted | Release lead | Signing keys (e.g., Ed25519), GPG keys
-| CI/CD secrets | Restricted | Maintainers | GITHUB_TOKEN, deploy tokens, PATs
-| User/contributor data | Confidential | Org | Emails, contributor identity
-| Build artifacts | Internal | CI pipeline | Binaries, WASM bundles
-| Container images | Internal | CI pipeline | Chainguard-based, signed via image signing tool
-| SBOM / provenance | Public | CI pipeline | SLSA attestations
-| Dependencies | Public | Lockfile | Cargo.lock, .lock, gleam.toml
-| Infrastructure config | Confidential | Maintainers | Containerfiles, compose files, orchestration config
-|===
-
+. Integrity of what executes (the pinned digest, nothing else) — I1/I5.
+. The channel signing key(s); the embedded root public key.
+. Availability of capsules for existing locks after abandonment — I4.
+. The maintainer's and users' privacy (no telemetry).
+. Redistribution compliance (Apache-2.0 + NOTICE, BSD-3, LZ4 BSD-2, Nanopass MIT, zlib).
 
 === Trust Boundaries
 
+[cols="1,2,2",options="header"]
 |===
-| Boundary | From (Lower Trust) | To (Higher Trust)
-
-| Pull request submission | External contributor | Repository codebase
-| CI/CD workflow execution | Workflow definition | Runner with secrets access
-| Container build boundary | Build stage | Runtime stage
-| External API calls | Third-party service | Application internals
-| User input (CLI/Web) | End user | Application logic
-| Dependency resolution | Package registry | Build environment
-| Forge mirroring | GitHub | GitLab / Bitbucket
+| Boundary | Trusted side | Untrusted side
+| Channel signature | Embedded root public key, manifest bytes that verify | Every mirror, every URL, GitHub, Cloudflare, the network
+| Lockfile | The project's reviewed `idris2x.lock` | Anything not matching its sha256
+| Store | Directories with `.complete` whose `sha256sums.txt` verifies | Staging dirs, partial downloads, dirs without the marker
+| Process environment | Variables the launcher sets | Inherited `IDRIS2_*`, `LD_LIBRARY_PATH`, `DYLD_*`, `CHEZ`, `PATH`
+| Capsule archive | Members that pass the extractor rules | Absolute paths, `..`, escaping links, hardlinks, devices, setuid bits
 |===
-
 
 === Threat Actors
 
-|===
-| Actor | Motivation | Capability
-
-| Script kiddie | Vandalism, clout | Low
-| Disgruntled contributor | Sabotage, backdoor insertion | Medium
-| Supply chain attacker | Wide-impact compromise | High
-| Nation state | Espionage, disruption | Very High
-| Automated bot | Credential stuffing, spam PRs | Low-Medium
-|===
-
+Malicious or compromised mirror; compromised CI runner or GitHub token; network attacker (TLS stripping is out of scope for HTTPS-only URLs, but a captive portal can serve 200s); a squatter who registers the repository name after a rename or deletion; a local unprivileged process sharing the cache (CI runners); the maintainer's own mistakes.
 
 === STRIDE Analysis
 
 ==== Spoofing
-
-|===
-| Threat | Affected Asset | Likelihood | Impact | Risk | Mitigation
-
-| Unsigned commits impersonate maintainer | Source code | Medium | High | High | Require GPG-signed commits; vigilant code review
-| Forged bot actions (automated agents) | CI/CD pipeline | Low | High | Medium | Bot tokens scoped minimally; audit bot activity
-| Spoofed package registry identity | Dependencies | Low | High | Medium | Pin dependencies by hash; verify provenance
-|===
-
+* *Fake manifest / fake mirror.* Mitigated: Ed25519 signature with the key pinned in the launcher; key-id must match; pre-hashed formats rejected (`E-SIG-INVALID`). Drilled: tampered manifest, wrong key.
+* *Repository squatting after rename/transfer.* GitHub keeps a 301 from the old name until it is re-registered. Mitigation: lock URLs list two providers (GitHub Releases plus an object-store mirror on a domain we control); signatures make squatting a denial, not a forgery.
+* *First-launcher trust is TOFU over TLS.* Mitigation: publish the root key fingerprint in at least two independent places (README, release notes, DNS TXT) and ship the launcher through independently reviewed manifests (Homebrew, winget, Nix) whose own hashes pin it; `self-update` verifies new launchers with the embedded key. Residual: `curl | sh` users.
 
 ==== Tampering
-
-|===
-| Threat | Affected Asset | Likelihood | Impact | Risk | Mitigation
-
-| Malicious pull request | Source code | Medium | High | High | Branch protection; required reviews; CodeQL
-| Dependency poisoning (typosquat) | Dependencies | Medium | High | High | Lockfiles; secret-scanner; security scans
-| Tampered container base image | Container images | Low | High | Medium | Chainguard images; image signing verification
-| Workflow file modification | CI/CD pipeline | Low | High | Medium | CODEOWNERS on .github/; workflow-linter
-|===
-
+* *Flipped or truncated bytes, substituted capsule.* Mitigated: sha256 of the archive and `sha256sums.txt` of the tree before anything runs; partial downloads are deleted on mismatch (`E-HASH-MISMATCH`). Drilled.
+* *Rollback / freeze / mix-and-match of the channel.* Mitigated: monotonic `channel_version` recorded in the lock (`E-CHANNEL-ROLLBACK`), `expires` (`E-CHANNEL-EXPIRED`, explicit override only), one manifest covering all targets. Residual: a fresh install with no prior lock accepts any manifest inside its expiry window; a rotatable key list signed by an offline root (two-tier TUF-lite) is the planned Phase 2 addition.
+* *Code injection through the environment.* Idris 2 treats `IDRIS2_DATA`, `IDRIS2_LIBS`, `IDRIS2_PACKAGE_PATH`, `IDRIS2_INC_SRC` and `IDRIS2_PATH` as search paths and splices `support.ss` into every compiled program; `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` select `libidris2_support`. Mitigation (ADR 0005): the launcher *sets* every one of these, inheriting none unless `--inherit-env` is passed, and never places user-writable directories ahead of the capsule.
+* *Overlays as an injection vector.* Overlays are capsules: content-addressed, listed by hash in the signed manifest, verified like a base capsule. No post-install scripts, ever.
+* *Archive extraction.* Rules (PEP 706 "data" filter equivalent): reject absolute names, `..` components, links resolving outside the staging tree, hardlinks (materialise as copies), devices/fifos; strip setuid/setgid/sticky and group/other write; `lstat` parents so nothing writes through a link; the factory rejects case-fold duplicate names (macOS). Drilled: `..` member and escaping symlink. The Phase 1 Go extractor must use a containment check, not `filepath.Join(dst, Clean(name))` (the audit's skeleton showed that escapes).
+* *Store races.* Per-digest `flock`; staging → rename; `.complete` written last; directories without the marker are garbage. Drilled: four concurrent installs, lock contention, write-limit failure.
 
 ==== Repudiation
-
-|===
-| Threat | Affected Asset | Likelihood | Impact | Risk | Mitigation
-
-| Unlogged deployment | Build artifacts | Medium | Medium | Medium | SLSA provenance; deployment audit trail
-| Denied merge of vulnerable code | Source code | Low | Medium | Low | Git history is immutable; signed commits
-| Secret rotation without record | CI/CD secrets | Low | Low | Low | Secret rotation logged in `docs/status/ROADMAP.adoc` (Maintenance runs)
-|===
-
+* Every published capsule carries SLSA provenance and a Sigstore attestation; *the factory verifies the build attestation before the channel is signed* (attestation-gated signing), so the channel signature implies a verified build. Immutable GitHub releases prevent silent re-upload. The launcher does not verify attestations (offline, stdlib); humans and CI do with `gh attestation verify`.
 
 ==== Information Disclosure
-
-|===
-| Threat | Affected Asset | Likelihood | Impact | Risk | Mitigation
-
-| Secrets leaked in git history | CI/CD secrets | Medium | High | High | TruffleHog in CI; secret-scanner workflow
-| Verbose error messages in prod | Application logic | Medium | Medium | Medium | Sanitize outputs; structured logging
-| SBOM reveals internal structure | Infrastructure | Low | Low | Low | Accepted risk; SBOM is intentionally public
-|===
-
+* GitHub and Cloudflare access logs see IP, user agent and the capsule name (OS/arch/version). Mitigation: fetches only on explicit `pin`/`update`/`install`, generic User-Agent, no install IDs, no background checks, `IDRIS2X_OFFLINE`, self-hosted channels. Documented in the privacy policy.
 
 ==== Denial of Service
-
-|===
-| Threat | Affected Asset | Likelihood | Impact | Risk | Mitigation
-
-| CI resource exhaustion (fork bomb in PR) | CI/CD pipeline | Medium | Medium | Medium | Concurrency limits; timeout on workflows
-| Spam issues/PRs flooding triage | Maintainer time | Medium | Low | Low | GitHub rate limits; bot auto-close stale
-| Large binary commits bloating repo | Source code | Low | Medium | Low | .gitattributes LFS policy; pre-commit hooks
-|===
-
+* *Mirror outage / bandwidth throttling (GitHub AUP §9).* Mitigated: `urls[]` per capsule across two providers, resume via `Range` (always re-requesting the stable github.com URL, since the redirect target is a five-minute signed URL), hedged fetch in Phase 2.
+* *Abandonment.* Mitigated: execution never needs the manifest; immutable releases survive archiving; sunset manifest with long `expires`; archival copies (Internet Archive item; IPFS pin) in Phase 2.
+* *Disk full / interrupted install.* Typed failure, store unchanged. Drilled.
 
 ==== Elevation of Privilege
+* The launcher writes only under its cache, its temp dir and the project directory; never needs `sudo`; strips special permission bits on extraction; refuses to run anything before verification. Chez and Idris 2 run with the user's privileges only.
 
-|===
-| Threat | Affected Asset | Likelihood | Impact | Risk | Mitigation
+=== Residual Risks and Decisions Deferred
 
-| Workflow injection via PR title/body | CI/CD pipeline | Medium | High | High | Never interpolate PR fields in `run:`; use env vars
-| GITHUB_TOKEN over-scoped | CI/CD secrets | Medium | High | High | `permissions: read-all` default; per-job scoping
-| Container escape | Runtime environment | Low | High | Medium | Hardened container runtime; read-only rootfs; no-new-privileges
-| Compromised action dependency | CI/CD pipeline | Medium | High | High | SHA-pin all actions; never use `@latest` tags
-|===
-
-
-=== Mitigations in Place
-
-- **SLSA Provenance**: Build attestations via slsa-github-generator
-- **Secret Scanning**: TruffleHog + secret-scanner workflow on every push
-- **Static Analysis**: CodeQL on supported languages
-- **Supply Chain**: OpenSSF Scorecard (scorecard.yml + scorecard-enforcer.yml)
-- **Container Signing**: Ed25519 signatures on all published images (optional: use your signing tool)
-- **Container Runtime**: Hardened container runtime with formal verification (optional)
-- **Dependency Pinning**: All GitHub Actions SHA-pinned; lockfiles committed
-- **Workflow Validation**: workflow-linter.yml checks all workflow changes
-- **Security Scanning**: Neurosymbolic scanning (hypatia-scan.yml, optional)
-- **Bot Governance**: Bot orchestration with confidence thresholds (optional)
-- **Edge Security**: Gateway with policy enforcement (optional, where applicable)
-- **SBOM**: Generated and published with releases
-
-=== Residual Risks
-
-|===
-| Risk | Accepted Because | Review Trigger
-
-| Zero-day in GitHub Actions runner | Platform responsibility; no feasible mitigation | GitHub advisory
-| Maintainer account compromise | Mitigated by 2FA requirement; residual remains | Any suspicious activity
-| Transitive dependency vulnerability (0-day) | Lockfiles limit blast radius; scanning catches known CVEs | CVE database update
-| SBOM exposes internal component names | Transparency is a design goal | Policy change
-|===
-
-
-=== Review Schedule
-
-This threat model should be reviewed:
-
-- **Quarterly** as a standing item
-- **When architecture changes** (new services, new trust boundaries, new deployment targets)
-- **Before major releases** (v1.0, v2.0, etc.)
-- **After any security incident** affecting this project or its dependencies
-
-Reviewer should update the "Last Reviewed" date and version in Document Info above.
+* Single signing key until Phase 2 (rotation list signed by offline root).
+* Intel macOS runners are sunsetting (~2027); `x86_64-apple-darwin` may need cross-build (`make bootquick XM=ta6osx`) or demotion.
+* Compiled user programs embed the store path (`#!<store>/bin/scheme --program`) and break if the store path contains spaces or the capsule is garbage-collected; `doctor` warns, docs recommend `--cg refc` for long-lived artifacts.
+* Export-control notification for distributing TLS-containing binaries is a policy question for the estate (not legal advice).

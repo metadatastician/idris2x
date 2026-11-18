@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0006. Build Linux capsules inside manylinux_2_28 containers to honour the glibc 2.28 floor
+
+Date: 2026-11-09
+
+== Status
+
+Accepted (measured; container build itself is Phase 1 work).
+
+== Context
+
+The plan promises "glibc 2.28+". A Chez 10.4.1 built on the `ubuntu-24.04` runner image requires symbols up to `GLIBC_2.38`
+(measured with `objdump -T`), which would exclude RHEL/Alma 8, Debian 11 and Ubuntu 22.04 hosts. GitHub retired the
+`ubuntu-20.04` runner (glibc 2.31) in April 2025, so "pick an old runner" is not available.
+
+== Decision
+
+Linux x86_64 and aarch64 capsules are built inside `quay.io/pypa/manylinux_2_28_<arch>` (AlmaLinux 8, glibc 2.28, modern GCC),
+the same mechanism Python wheels use. The runner is still native (`ubuntu-24.04`, `ubuntu-24.04-arm`); only the build runs in
+the container. The factory records the measured maximum `GLIBC_x.y` symbol version into `capsule.json` as `min_glibc`, and the
+launcher reports `E-GLIBC-FLOOR` when the probe run of `scheme --version` fails with `version 'GLIBC_...' not found`.
+
+== Consequences
+
+=== Positive
+* A single Linux capsule per architecture covers every mainstream distribution released since 2018.
+* No cross-compilation machinery; `zig cc -target x86_64-linux-gnu.2.28` stays a documented Phase 3 experiment.
+
+=== Negative
+* Docker is required in the factory workflow; the Idris 2 bootstrap (measured 10 min natively) runs inside the container.
+* musl/Alpine hosts are unsupported until a musl capsule exists (tracked in `src/definitions/targets.toml` as a future target).
+
+=== Neutral
+* Chez's vendored zlib and LZ4 are static; the only remaining runtime dependencies are `libc` and `libm`.

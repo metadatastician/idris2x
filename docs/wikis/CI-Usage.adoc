@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Source of the GitHub wiki page. Edit here; scripts/sync-wiki.sh publishes on merge to main.
+
+= Using idris2x in CI
+
+[NOTE]
+====
+*Planned (Phase 1).* The Rust launcher and published capsules do not exist yet. Commands on this page describe the
+agreed interface (ADRs in `docs/decisions/`). The Linux prototype in `scripts/proto/idris2x.sh` implements the same
+surface today for experiments.
+====
+
+== GitHub Actions
+
+[source,yaml]
+----
+- name: Cache idris2x capsules
+  uses: actions/cache@<pinned-sha>
+  with:
+    path: ~/.cache/idris2x/store
+    key: idris2x-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('idris2x.lock') }}
+- run: idris2x exec --locked -- idris2 --build my.ipkg
+----
+
+* The cache key is the lockfile's hash: a new pin means a new cache entry, never a stale compiler.
+* `--locked` fails if the lock does not cover the runner's platform (`E-PIN-NOT-FOUND`) instead of resolving something new.
+* Exit codes are stable; `--json` prints machine-readable errors; output contains no colour or spinners when not on a TTY.
+
+== Parallel jobs on one machine
+
+Per-capsule file locks make concurrent installs safe: the first job installs, the others wait and reuse it
+(drilled with four concurrent installs in Phase 0).
+
+== Estate repositories (PROOF-POLICY)
+
+The lock's digest plus `idris2x verify` is the version-and-digest assertion PROOF-POLICY §6 asks for. Until the canon lists idris2x as
+a sanctioned route, record the deviation; template in
+https://github.com/metadatastician/idris2x/blob/main/docs/status/ESTATE-INTEGRATION.adoc[ESTATE-INTEGRATION].
