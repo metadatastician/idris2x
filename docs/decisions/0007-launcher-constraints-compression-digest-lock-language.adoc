@@ -12,6 +12,14 @@ template's gates enforce it, so the plan's Go launcher is not available without 
 NOTE: Superseded in part (2026-11-26, owner ruling): the line ceiling for our own launcher code is 2,000, not 1,000. Measured with standard
 rustfmt, milestone 2 of the Rust launcher has 1,265 lines; all of Phase 1 is projected at about 1,700 to 1,800.
 
+NOTE: Superseded in part (2026-11-26, owner ruling): the projection above was too low. Milestone 4 measured 2,085 lines with standard
+rustfmt. The launcher's source is now laid out with `use_small_heuristics = "Max"` (`src/rustfmt.toml`, which applies to `src/` only),
+and the same code is 1,748 lines. As built, the crates differ from the candidate set below: `ring` gives both SHA-256 and Ed25519
+(in place of `sha2` and `ed25519-dalek` or `minisign-verify`); `tar` reads archive headers, while the containment checks are our own;
+and `signal-hook` lets a write past a file size limit fail as a typed error. The TOML reader is narrower than the subset below: tables,
+`key = "string"` lines, comments and blank lines, and only the keys `toolchain.idris2`, `channel.url` and `channel.key`. `cargo vendor`
+and `cargo deny` are not yet in place.
+
 == Context
 
 The plan requires simultaneously: Go, `CGO_ENABLED=0`, *standard library only*, under 1,000 lines, zstd tarballs, BLAKE3 digests,

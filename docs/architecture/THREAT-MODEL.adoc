@@ -37,11 +37,12 @@ toc::[]
 [cols="1,2,2",options="header"]
 |===
 | Boundary | Trusted side | Untrusted side
-| Channel signature | Embedded root public key, manifest bytes that verify | Every mirror, every URL, GitHub, Cloudflare, the network
+| Channel signature | The key built into the launcher, or the key in the project's reviewed `idris2x.toml`; manifest bytes that verify | Every mirror, every URL, GitHub, Cloudflare, the network, the environment
 | Lockfile | The project's reviewed `idris2x.lock` | Anything not matching its sha256
 | Store | Directories with `.complete` whose `sha256sums.txt` verifies | Staging dirs, partial downloads, dirs without the marker
 | Process environment | Variables the launcher sets | Inherited `IDRIS2_*`, `LD_LIBRARY_PATH`, `DYLD_*`, `CHEZ`, `PATH`
 | Capsule archive | Members that pass the extractor rules | Absolute paths, `..`, escaping links, hardlinks, devices, setuid bits
+| Capsule programs | Paths inside the capsule, from its `exec` map | A word in the map that leaves the capsule
 |===
 
 === Threat Actors
@@ -51,7 +52,7 @@ Malicious or compromised mirror; compromised CI runner or GitHub token; network 
 === STRIDE Analysis
 
 ==== Spoofing
-* *Fake manifest / fake mirror.* Mitigated: Ed25519 signature with the key pinned in the launcher; key-id must match; pre-hashed formats rejected (`E-SIG-INVALID`). Drilled: tampered manifest, wrong key.
+* *Fake manifest / fake mirror.* Mitigated: Ed25519 signature with the key built into the launcher, or for a self-hosted channel the key in the project's `idris2x.toml`; no environment variable can name a key; key-id must match; pre-hashed formats rejected (`E-SIG-INVALID`). The lock records the key id. Drilled (prototype): tampered manifest, wrong key. Tested (Rust launcher, `tests/pin.rs`): the same, plus a key with the right id and the wrong bytes. Residual: whoever can change `idris2x.toml` can name another key, as whoever can change `idris2x.lock` can name another digest; both are reviewed project files.
 * *Repository squatting after rename/transfer.* GitHub keeps a 301 from the old name until it is re-registered. Mitigation: lock URLs list two providers (GitHub Releases plus an object-store mirror on a domain we control); signatures make squatting a denial, not a forgery.
 * *A message that reads differently on a terminal.* A lock, a capsule's `capsule.json` or a host path can hold escape sequences, carriage returns or bidirectional controls. Printed as they are, these rewrite or reorder what the user reads, including a fix command the user will paste. Mitigated (DX rule C9): text and terminal messages, and every note, show each such character in a value as `?`; `--json` writes it as `\uXXXX`. Tested: a golden sample rendered by both launchers, and `tests/install.rs`. Residual: `fetch.log`, and output that a program reads back (`env` lines, a printed store path), keep values exactly.
 * *First-launcher trust is TOFU over TLS.* Mitigation: publish the root key fingerprint in at least two independent places (README, release notes, DNS TXT) and ship the launcher through independently reviewed manifests (Homebrew, winget, Nix) whose own hashes pin it; `self-update` verifies new launchers with the embedded key. Residual: `curl | sh` users.
@@ -61,7 +62,8 @@ Malicious or compromised mirror; compromised CI runner or GitHub token; network 
 * *Rollback / freeze / mix-and-match of the channel.* Mitigated: monotonic `channel_version` recorded in the lock (`E-CHANNEL-ROLLBACK`), `expires` (`E-CHANNEL-EXPIRED`, explicit override only), one manifest covering all targets. Residual: a fresh install with no prior lock accepts any manifest inside its expiry window; a rotatable key list signed by an offline root (two-tier TUF-lite) is the planned Phase 2 addition.
 * *Code injection through the environment.* Idris 2 treats `IDRIS2_DATA`, `IDRIS2_LIBS`, `IDRIS2_PACKAGE_PATH`, `IDRIS2_INC_SRC` and `IDRIS2_PATH` as search paths and splices `support.ss` into every compiled program; `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` select `libidris2_support`. Mitigation (ADR 0005): the launcher *sets* every one of these, inheriting none unless `--inherit-env` is passed, and never places user-writable directories ahead of the capsule.
 * *Overlays as an injection vector.* Overlays are capsules: content-addressed, listed by hash in the signed manifest, verified like a base capsule. No post-install scripts, ever.
-* *Archive extraction.* Rules (PEP 706 "data" filter equivalent): reject absolute names, `..` components, links resolving outside the staging tree, hardlinks (materialise as copies), devices/fifos; strip setuid/setgid/sticky and group/other write; `lstat` parents so nothing writes through a link; the factory rejects case-fold duplicate names (macOS). Drilled: `..` member and escaping symlink. The Phase 1 Go extractor must use a containment check, not `filepath.Join(dst, Clean(name))` (the audit's skeleton showed that escapes).
+* *Archive extraction.* Rules (PEP 706 "data" filter equivalent): reject absolute names, `..` components, links resolving outside the staging tree, hardlinks (materialise as copies), devices/fifos; strip setuid/setgid/sticky and group/other write; `lstat` parents so nothing writes through a link; the factory rejects case-fold duplicate names (macOS). Drilled: `..` member and escaping symlink. The Rust launcher's extractor (`src/store.rs`) uses a containment check, never a join of the destination and a cleaned name (the audit's Go skeleton showed that escapes).
+* *A capsule that starts a program outside itself.* `exec` runs only an entry of the capsule's `exec` map; the first word, and every later word that does not start with `-`, must be a plain path inside the capsule (`E-CAPSULE-INVALID/bad-exec`). Tested: `tests/run.rs`. Residual: `capsule.json` is covered by `sha256sums.txt` and the lock's digest, so this guards against a faulty factory or a capsule built by hand, not a substituted one.
 * *Store races.* Per-digest `flock`; staging → rename; `.complete` written last; directories without the marker are garbage. Drilled: four concurrent installs, lock contention, write-limit failure.
 
 ==== Repudiation
