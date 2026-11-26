@@ -374,8 +374,8 @@ capsule needs. The cases are `E-GLIBC-FLOOR/too-old`,
 `E-CHANNEL-ROLLBACK/version-went-back` and `E-CHANNEL-EXPIRED/expired`. In `E-PIN-DRIFT` the fix command
 `+idris2x pin {toml}+` keeps its value: a fix slot accepts lock text once it has passed the version check.
 
-The advice note `lsp-mismatch` quoted the pinned version twice. An `[[advice]]` entry may now carry `facts`, written
-as in a `[[case]]`, and the pinned version moved to a fact line printed between the note and its silencing line:
+The advice note `lsp-mismatch` quoted the pinned version twice. An `\[[advice]]` entry may now carry `facts`, written
+as in a `\[[case]]`, and the pinned version moved to a fact line printed between the note and its silencing line:
 
 ----
 note: idris2-lsp on PATH does not report the Idris 2 version this project pins. Editors may show wrong errors until it is rebuilt for that version.
