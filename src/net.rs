@@ -89,31 +89,42 @@ fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
     f.sync_all().map_err(Io::Write)
 }
 
-/// Download to `out` from the first address that works; return that address. Each failure goes to `log`.
-pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<String, Lost> {
+const REFUSED: &str = "refused: plain http is allowed only to this machine";
+/// The HTTP client: rustls on ring and the system's trust store. `secs` to connect, and for the whole request if `whole`.
+fn agent(secs: u64, whole: bool) -> ureq::Agent {
     use std::sync::Arc;
     use ureq::tls::{RootCerts, TlsConfig};
     let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier);
     let tls =
         tls.unversioned_rustls_crypto_provider(Arc::new(rustls::crypto::ring::default_provider()));
-    let ten = Some(std::time::Duration::from_secs(10));
-    let agent = ureq::Agent::config_builder()
-        .tls_config(tls.build())
-        .timeout_connect(ten)
+    let t = Some(std::time::Duration::from_secs(secs));
+    let config = ureq::Agent::config_builder().tls_config(tls.build());
+    config
+        .timeout_connect(t)
+        .timeout_global(t.filter(|_| whole))
         .build()
-        .into();
-    let mut tried = vec![];
+        .into()
+}
+/// doctor's mirror check: one HEAD request, nothing downloaded. The milliseconds it took, or why it failed.
+pub fn head(u: &str) -> Result<u128, String> {
+    let t0 = std::time::Instant::now();
+    if !allowed(u) {
+        return Err(REFUSED.into());
+    }
+    let r = agent(5, true).head(u).call();
+    r.map(|_| t0.elapsed().as_millis())
+        .map_err(|e| e.to_string())
+}
+
+/// Download to `out` from the first address that works; return that address. Each failure goes to `log`.
+pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<String, Lost> {
+    let (agent, mut tried) = (agent(10, false), vec![]);
     for u in urls {
-        let refused = || {
-            Io::Read(io::Error::other(
-                "refused: plain http is allowed only to this machine",
-            ))
-        };
         let once = || {
             if allowed(u) {
                 get(&agent, out, u, size)
             } else {
-                Err(refused())
+                Err(Io::Read(io::Error::other(REFUSED)))
             }
         };
         // A resume or a transfer that broke off is tried once more from the start.

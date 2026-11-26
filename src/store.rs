@@ -69,7 +69,7 @@ pub fn utc(t: u64) -> String {
         sec % 60
     )
 }
-fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
+pub fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
     let why = if e.kind() == io::ErrorKind::FileTooLarge {
         "the file size limit was reached".into()
     } else {
@@ -142,6 +142,13 @@ fn checked(pin: &Pin, p: &Path, url: Option<String>) -> R<()> {
     })
 }
 
+/// IDRIS2X_OFFLINE: 1 means no request leaves the machine. Any value but 0 or 1 is refused.
+pub fn offline() -> R<bool> {
+    setting("IDRIS2X_OFFLINE", "0 or 1", false, |v| {
+        ["0", "1"].contains(&v).then(|| v == "1")
+    })
+}
+
 /// Install this machine's capsule unless it is there already, and return its store path.
 pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
     let wait = setting(
@@ -150,9 +157,7 @@ pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
         600,
         |v| v.parse().ok(),
     )?;
-    let offline = setting("IDRIS2X_OFFLINE", "0 or 1", false, |v| {
-        ["0", "1"].contains(&v).then(|| v == "1")
-    })?;
+    let offline = offline()?;
     let (c, d) = (cache()?, &pin.digest);
     let dir = c.join(format!("store/sha256-{d}"));
     if dir.join(".complete").is_file() {

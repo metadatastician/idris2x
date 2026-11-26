@@ -11,7 +11,8 @@ Every transcript on this page carries one of two labels.
 Ubuntu 24.04 x86_64, against a local fixture server and a test capsule (Idris 2 0.8.0 built from source, Debian's
 Chez Scheme 9.5.8). Home directory and host names are replaced by `/home/ada` and example names; nothing else is edited.
 
-*PLANNED* means a design for the Rust launcher, which does not exist. Nothing marked PLANNED has run.
+*PLANNED* means a design for the Rust launcher, which is being built and is not released. Nothing marked PLANNED has
+run in a release. Where a milestone has built part of a design, a note after the block says what it does differently.
 ====
 
 Error text below uses style B, the default. Set `IDRIS2X_STYLE=a` for the conversational style; both are tested.
@@ -166,6 +167,12 @@ Design points: the status word comes first and is a word, not a colour or a brac
 the error ID it would cause (`-> E-STORE-IO`), as the prototype already does; the last line states what `doctor`
 did not do. `doctor --json` prints one object with the same fields and is the attachment the issue form asks for.
 `doctor --offline` skips the mirror check.
+
+Milestone 3 (not released) differs from this design in four ways. The status column is eight characters wide, so
+`problem` fits. Each note is printed as the same advice block as everywhere else (`note:` and its silence line), not
+as one line. The `idris2-lsp` note names the pinned version only, because the launcher does not parse what
+`idris2-lsp --version` prints. A missing lock, and a capsule not installed yet, are `info` lines, not problems;
+`doctor` always exits 0.
 
 == 2. Pin and upgrade
 
@@ -399,6 +406,11 @@ because nothing can depend on them.
 
 Limit, stated plainly: idris2x cannot find the compiled programs that embed a store path. The hint is unconditional
 advice, not a detection.
+
+Milestone 3 (not released) differs from this design in three ways. Each row shows the version, the digest and the
+size only: idris2x keeps no record of when a capsule last ran or which projects pin it, so it cannot say either. The
+hint is a `note:` advice block, as everywhere else. A capsule whose lock an install holds is kept, and named.
+A second limit: `exec` takes no lock, so `gc --yes` cannot see that a capsule is running at that moment.
 
 == 8. Full uninstall
 

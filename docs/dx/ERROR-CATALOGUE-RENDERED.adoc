@@ -2784,6 +2784,96 @@ idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: a test program did not compi
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"codegen-failed","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"a test program did not compile and run: chez_codegen (compile)","context":{"probe":"chez_codegen (compile)","store":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"The capsule is installed. Nothing else was changed.","why":"The compiler starts, and building or running a program with it fails on this machine.","fix":{"command":"idris2x doctor","note":"Send the doctor output using the runbook below.","auto":"safe"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
 ----
 
+=== E-PROBE-CODEGEN, case `cannot-start`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PROBE-CODEGEN (exit 17)
+
+idris2x could not start the capsule's Chez Scheme on this machine.
+
+    program      /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said  Permission denied (os error 13)
+
+Nothing was run. The capsule is still installed.
+
+The operating system refused to start the program. Usually files were removed
+from the store, or the store is on a file system that does not allow programs to
+run.
+
+Check the installed capsule:
+
+    idris2x verify
+
+If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows
+programs to run, then install again.
+
+More: idris2x explain E-PROBE-CODEGEN
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PROBE-CODEGEN (exit 17) ------------------------------------------- idris2x<ESC>[0m
+
+idris2x could not start the capsule's Chez Scheme on this machine.
+
+    program      /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said  Permission denied (os error 13)
+
+Nothing was run. The capsule is still installed.
+
+The operating system refused to start the program. Usually files were removed
+from the store, or the store is on a file system that does not allow programs to
+run.
+
+Check the installed capsule:
+
+    <ESC>[1midris2x verify<ESC>[0m
+
+If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows
+programs to run, then install again.
+
+More: idris2x explain E-PROBE-CODEGEN
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PROBE-CODEGEN]: the capsule's Chez Scheme could not be started
+    program: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said: Permission denied (os error 13)
+  state: Nothing was run. The capsule is still installed.
+  why: The operating system refused to start the program. Usually files were removed from the store, or the store is on a file system that does not allow programs to run.
+  fix: idris2x verify
+  note: If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows programs to run, then install again.
+  see: idris2x explain E-PROBE-CODEGEN
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the capsule's Chez Scheme could not be started
+    program: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said: Permission denied (os error 13)
+  <ESC>[1mstate<ESC>[0m: Nothing was run. The capsule is still installed.
+  <ESC>[1mwhy<ESC>[0m: The operating system refused to start the program. Usually files were removed from the store, or the store is on a file system that does not allow programs to run.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x verify<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows programs to run, then install again.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PROBE-CODEGEN
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"cannot-start","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"the capsule's Chez Scheme could not be started","context":{"program":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme","detail":"Permission denied (os error 13)"},"state":"Nothing was run. The capsule is still installed.","why":"The operating system refused to start the program. Usually files were removed from the store, or the store is on a file system that does not allow programs to run.","fix":{"command":"idris2x verify","note":"If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows programs to run, then install again.","auto":"safe"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
+----
+
 == E-CHANNEL-SCHEMA
 
 === E-CHANNEL-SCHEMA, case `lock-newer`

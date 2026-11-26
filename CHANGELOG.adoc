@@ -40,9 +40,17 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   mirror may not redirect; an https mirror may redirect only to https. A hard link that cannot be written is a disk
   failure, not an unsafe archive. `getconf` runs with `PATH` only.
 * The launcher line cap is 2,000 lines of our own code, raised from 1,000 by the owner on 2026-11-26. Milestone 2
-  has 1,326 lines with its review fixes; all of Phase 1 is projected at about 1,700 to 1,800.
+  has 1,326 lines with its review fixes.
+* Rust launcher, milestone 3 (not released): `exec`, `run`, `env [--json]`, `doctor [--json] [--offline]`, `selftest`
+  and `gc [--keep-last <n>] [--dry-run] [--yes]`. Each installs the pinned capsule first if it is missing, and reads
+  only `idris2x.lock` and the capsule. `exec` and `run` apply the environment reset (ADR 0005); `--inherit-env` keeps
+  the code variables. `gc` lists before it removes, asks at a terminal, and takes each capsule's lock first.
+* `E-PROBE-CODEGEN/cannot-start` (exit 17): a capsule Chez Scheme that the system refuses to start is a typed error.
+  New advice `gc-compiled-programs` warns that programs compiled with `--cg chez` name their capsule.
+* Milestone 3 brings the launcher to 1,825 of 2,000 lines. The projection made at milestone 2 (1,700 to 1,800 for
+  all of Phase 1) was too low: milestone 4, pin and channel trust, is estimated at 200 to 250 lines more.
 
 ==== Not yet
 
-* The rest of the Rust launcher (install, exec, pin and channel trust), the capsule factory CI and published
+* The rest of the Rust launcher (pin and channel trust), the capsule factory CI and published
   capsules (Phase 1).

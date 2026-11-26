@@ -82,6 +82,13 @@ pub fn check_version(t: &Txt<Lock>) -> Option<Txt<Checked>> {
     ((2..=4).contains(&runs.len()) && runs.iter().all(digits)).then(|| txt(&*t.0))
 }
 
+/// Checked text is only digits, dots and hex letters, so a report line such as doctor's may show it as a fact.
+impl Txt<Checked> {
+    pub fn shown(&self) -> &str {
+        &self.0
+    }
+}
+
 /// The policy table of ADR 0012: which provenance may fill which slot. The module is private,
 /// so no other part of the launcher can add a row.
 mod policy {
@@ -161,7 +168,7 @@ fn width() -> usize {
 }
 
 /// The shell quoting of render.jq: safe words stay bare, anything else is single-quoted.
-fn shq(s: &str) -> String {
+pub fn shq(s: &str) -> String {
     let safe = |c: char| c.is_ascii_alphanumeric() || "_./:@%+=,-".contains(c);
     match !s.is_empty() && s.chars().all(safe) {
         true => s.into(),
@@ -372,12 +379,24 @@ pub fn out(s: &str) -> R<()> {
         detail: host(e.to_string()).into(),
     })
 }
-/// A note that is not an error, unless IDRIS2X_ADVICE=0 or its own variable is 0.
-pub fn advise(a: Advice) -> R<()> {
+/// `s` with each control character shown as `?`, for a report line that holds a path or a capsule's own text.
+pub fn clean(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect()
+}
+/// One report line for `f`, as doctor prints it: the summary, which holds no lock value (ADR 0012), then the id.
+pub fn brief(f: &Fail) -> String {
+    let (k, ctx) = f.parts();
+    let id = ERRORS[CASES[k].error].id;
+    clean(&format!("{} -> {id}", fill(CASES[k].summary, &ctx, false)))
+}
+/// The text of a note that is not an error, or nothing if IDRIS2X_ADVICE=0 or its own variable is 0.
+pub fn advice(a: Advice) -> Option<String> {
     let (k, ctx) = a.parts();
     let d = &ADVICE[k];
     if var("IDRIS2X_ADVICE") == "0" || var(d.silence) == "0" {
-        return Ok(());
+        return None;
     }
     let text = fill(d.text, &ctx, false);
     let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
@@ -386,7 +405,7 @@ pub fn advise(a: Advice) -> R<()> {
         .iter()
         .map(|(l, k)| format!("    {l}: {}\n", get(k)))
         .collect();
-    out(&format!(
+    Some(format!(
         "note: {text}\n{facts}note: silence this note with {}=0\n",
         d.silence
     ))

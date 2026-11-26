@@ -83,6 +83,22 @@ them.
 | not applicable (engineering)
 | None. The digest-mismatch, modified-store and invalid-capsule tests run in `cargo test`; these are tests, not a proof receipt.
 
+| ENV-1
+| The capsule runs with a reset environment (ADR 0005). What exists (milestone 3): in `src/capsule.rs`, `code` names the variables Idris 2 and Chez read as places to load code from, and `reset` clears the environment, copies back every inherited variable that `code` does not name (all of them with `--inherit-env`), then sets the capsule's own. `exec`, `run`, the probes and `selftest` all start the capsule through `reset`. `tests/run.rs` checks that an inherited `IDRIS2_PACKAGE_PATH` reaches neither `exec` nor `run` without `--inherit-env`, and reaches `exec` with it. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to `code` and to the variable list `reset` builds (no name for which `code` holds is inherited unless `inherit`). Both treat `std::process::Command` as a boundary below.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The environment tests run in `cargo test`; these are tests, not a proof receipt.
+
+| GC-1
+| `gc` removes only what idris2x wrote, and never leaves a damaged capsule marked complete (I2). What exists (milestone 3): in `src/gc.rs`, `digest` accepts only the names idris2x writes (a prefix, 64 lowercase hex digits, a suffix); `remove` takes the capsule's lock without waiting, returns without removing when an install holds it, and deletes `.complete` before the rest. `tests/run.rs` checks that a name idris2x never writes is kept, that a held lock keeps its capsule, and that `--dry-run` and a missing `--yes` remove no capsule. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to `digest` (it returns a value only for those names) and to the order in `remove` (no removal is reached without the lock, and `.complete` goes first). The file system calls are a boundary below.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The gc tests run in `cargo test`; these are tests, not a proof receipt.
+
 
 |===
 
@@ -115,6 +131,10 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 | Staging tree is private
 | Nothing else writes under the staging directory while an install holds the per-digest lock. Another process running as the same user could break this; the launcher does not defend against that.
 | STORE-1, STORE-2
+
+| Advisory file locks
+| `File::try_lock` (flock on Linux) excludes every other idris2x process that locks the same file. Locks are advisory: a program that ignores them, or a file system that does not support them, breaks this. `exec` takes no lock, so `gc` cannot see a capsule that is running.
+| GC-1
 
 |===
 

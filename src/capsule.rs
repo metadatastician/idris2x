@@ -68,18 +68,22 @@ pub fn vars(root: &Path, inherit: bool) -> Vec<(&'static str, String)> {
         ),
     ]
 }
-/// The capsule's Chez with the environment contract applied. It is a reset: Idris 2 and Chez read every
-/// IDRIS2_*, DYLD_*, LD_LIBRARY_PATH, CHEZ and SCHEMEHEAPDIRS as a place to load code from, so none is inherited
-/// unless `inherit`.
-pub fn command(root: &Path, inherit: bool) -> Command {
-    let code = |k: &str| {
-        ["IDRIS2_", "DYLD_"].iter().any(|p| k.starts_with(p))
-            || ["LD_LIBRARY_PATH", "CHEZ", "SCHEMEHEAPDIRS"].contains(&k)
-    };
-    let mut c = Command::new(root.join("bin/scheme"));
+/// A variable that Idris 2 or Chez reads as a place to load code from: IDRIS2_*, DYLD_*, LD_LIBRARY_PATH, CHEZ and
+/// SCHEMEHEAPDIRS.
+pub fn code(k: &str) -> bool {
+    ["IDRIS2_", "DYLD_"].iter().any(|p| k.starts_with(p))
+        || ["LD_LIBRARY_PATH", "CHEZ", "SCHEMEHEAPDIRS"].contains(&k)
+}
+/// Apply the environment contract to `c`. It is a reset: no code variable is inherited unless `inherit`.
+pub fn reset(c: &mut Command, root: &Path, inherit: bool) {
     c.env_clear()
         .envs(std::env::vars_os().filter(|(k, _)| inherit || !code(&k.to_string_lossy())));
     c.envs(vars(root, inherit));
+}
+/// The capsule's Chez with the environment contract applied.
+pub fn command(root: &Path, inherit: bool) -> Command {
+    let mut c = Command::new(root.join("bin/scheme"));
+    reset(&mut c, root, inherit);
     c
 }
 
