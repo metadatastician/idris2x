@@ -5,6 +5,9 @@
 //!
 //! The library half of the crate, so the behaviour is testable without spawning
 //! the binary. Keep `main.rs` a thin shell around this.
+#![forbid(unsafe_code)]
+
+pub mod msg;
 
 /// One line describing what this program is, used by `--version` and the tests.
 pub fn about() -> String {

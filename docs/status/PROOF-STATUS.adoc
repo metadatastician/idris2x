@@ -60,12 +60,12 @@ them.
 | None yet. Checked by hand on 2026-11-17 with Idris 2 0.8.0 (Chez 10.4.1): `scripts/check-proofs.sh idris2` passes both modules, and its overall line is `RESULT: FAIL (1 failure(s), 0 unexpected pass(es))`. The one failure is `.machine_readable/coaptation/core/Coaptation.idr` (a `with` block in `resolveComplete` is not covering), a template file identical on `main`, not part of this claim. No headless, pinned receipt exists.
 
 | DX-PROV-2
-| The Rust launcher's message module upholds the same four properties. Planned verifiers: Creusot with Pearlite contracts, and Verus. Neither has been run: the launcher does not exist.
+| The Rust launcher's message module upholds the same four properties. What exists (milestone 1): `src/msg.rs` labels text `Embedded`, `Host`, `Lock` or `Checked`; a private module holds ADR 0012's policy table, so no other module can add a row; and a slot accepts text only through a `From` impl that the table allows. Six `compile_fail` doctests in `src/msg.rs` show the compiler refusing lock text in a fix slot, lock or checked text in prose, a forged label, rendered output read back as text, and non-`'static` embedded text. `scripts/check-msg-negatives.sh` checks that each fails with its stated error code, not merely with some error. Not yet in place: the `Channel` label and its negative cases (milestone 4, when the launcher first reads a channel), so T1 to T5 are not yet claimed for Rust. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, both scoped to `check_digest` and `check_version` (an accepted text matches the format), `fill` (one pass: an inserted value is never scanned again) and `shq` (the result is one shell word). Neither toolchain is installed or pinned in this repository yet.
 | `open`
 | `ungraded`
 | not applicable (engineering)
 | not applicable (engineering)
-| None.
+| None. The six negatives run in `cargo test` and in the `check` job of `.github/workflows/wiki-sync.yml`; these are tests, not a proof receipt.
 
 |===
 
@@ -80,12 +80,12 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 | Boundary | What is assumed, and why | Claims
 
 | Ingress labelling
-| The code that reads the channel, the lock and the host calls the matching entry point (`fromChannel`, `fromLock`, `fromHost`). The model cannot see that code: a `String` read from the channel and handed to `fromHost` would be mislabelled. The model proves non-flow *after* labelling, and rejects relabelling of rendered output (negative case 8). The Rust launcher must make this boundary small and reviewable.
+| The code that reads the channel, the lock and the host calls the matching entry point (`fromChannel`, `fromLock`, `fromHost`). The model cannot see that code: a `String` read from the channel and handed to `fromHost` would be mislabelled. The model proves non-flow *after* labelling, and rejects relabelling of rendered output (negative case 8). The Rust launcher keeps it to three functions in `src/msg.rs`, `embedded`, `host` and `lock`, so it can be reviewed by reading their call sites. `embedded` takes only `&'static str`, which stops a string read at run time by accident but not on purpose: `Box::leak` would get one past it, and is the same kind of mislabelling.
 | DX-PROV-1, DX-PROV-2
 
 | Format checks
-| `checkDigest` and `checkVersion` are trusted by inspection, not proved, to admit no shell syntax: a digest is 64 characters from `0-9a-f`, a version is two to four runs of decimal digits separated by dots. The prototype applies the same checks in `scripts/proto/idris2x.sh` `resolve`.
-| DX-PROV-1
+| `checkDigest` and `checkVersion` are trusted by inspection, not proved, to admit no shell syntax: a digest is 64 characters from `0-9a-f`, a version is two to four runs of decimal digits separated by dots. The prototype applies the same checks in `scripts/proto/idris2x.sh` `resolve`, and the Rust launcher in `src/msg.rs` `check_digest` and `check_version`.
+| DX-PROV-1, DX-PROV-2
 |===
 
 == Verification commands

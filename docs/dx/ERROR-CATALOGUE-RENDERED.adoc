@@ -6,8 +6,8 @@
 
 This page is the wording contract for both message styles; link:ERROR-CATALOGUE.adoc[the error catalogue] explains them.
 Every block is the exact output of the *prototype* launcher (`scripts/proto/idris2x.sh`) for fixed sample values, at 80 columns.
-`scripts/proto/dx-golden.sh --check` fails when any character here would change. The Rust launcher does not exist yet;
-when it does, it must reproduce the chosen style byte for byte.
+`scripts/proto/dx-golden.sh --check` fails when any character here would change. The Rust launcher's message module
+(`src/msg.rs`) must give the same bytes; CI checks it with `IDRIS2X_BIN=target/debug/idris2x scripts/proto/dx-golden.sh --check`.
 
 In the terminal form, `<ESC>` stands for the escape byte (0x1b) that starts a colour sequence: `<ESC>[1;31m` is bold red,
 `<ESC>[36m` cyan, `<ESC>[1m` bold and `<ESC>[0m` reset. `--json` output is one line; it is the same for both styles.

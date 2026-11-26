@@ -5,8 +5,9 @@
 # A/B styles and all three forms (terminal, plain, --json), into docs/dx/ERROR-CATALOGUE-RENDERED.adoc.
 # `--check` exits 1 if that file would change: a wording change must be made on purpose, in the TOML, and reviewed as a diff.
 # Needs only bash, jq and awk (no capsule, no network), so it runs in every CI job. chaos.sh checks the live call sites.
+# IDRIS2X_BIN renders through another launcher, such as target/debug/idris2x: the page must come out byte for byte the same.
 set -euo pipefail
-P=$(cd "$(dirname "$0")" && pwd); R=$(cd "$P/../.." && pwd); X="$P/idris2x.sh"; out="$R/docs/dx/ERROR-CATALOGUE-RENDERED.adoc"
+P=$(cd "$(dirname "$0")" && pwd); R=$(cd "$P/../.." && pwd); X="${IDRIS2X_BIN:-$P/idris2x.sh}"; out="$R/docs/dx/ERROR-CATALOGUE-RENDERED.adoc"
 check=0; [ "${1:-}" = --check ] && check=1
 unset NO_COLOR IDRIS2X_JSON IDRIS2X_COLOR IDRIS2X_ERROR_FILE IDRIS2X_RUNBOOK; export COLUMNS=80
 A=0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21; B=3f1c88a2d4e6071b95c3fa2e6d8097b4c1a5e3f7029b6d4c8a1e5f3b7d902c64
@@ -68,8 +69,8 @@ new=$( cat <<H
 
 This page is the wording contract for both message styles; link:ERROR-CATALOGUE.adoc[the error catalogue] explains them.
 Every block is the exact output of the *prototype* launcher (\`scripts/proto/idris2x.sh\`) for fixed sample values, at 80 columns.
-\`scripts/proto/dx-golden.sh --check\` fails when any character here would change. The Rust launcher does not exist yet;
-when it does, it must reproduce the chosen style byte for byte.
+\`scripts/proto/dx-golden.sh --check\` fails when any character here would change. The Rust launcher's message module
+(\`src/msg.rs\`) must give the same bytes; CI checks it with \`IDRIS2X_BIN=target/debug/idris2x scripts/proto/dx-golden.sh --check\`.
 
 In the terminal form, \`<ESC>\` stands for the escape byte (0x1b) that starts a colour sequence: \`<ESC>[1;31m\` is bold red,
 \`<ESC>[36m\` cyan, \`<ESC>[1m\` bold and \`<ESC>[0m\` reset. \`--json\` output is one line; it is the same for both styles.

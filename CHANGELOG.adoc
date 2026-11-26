@@ -21,7 +21,11 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   for Copilot, CodeRabbit and Claude.
 * Wiki source for users, platform maintainers, developers and theorists (`docs/wikis/`), published by `wiki-sync.yml`.
 * Best-practice comparison (`docs/status/BEST-PRACTICES.adoc`).
+* Rust launcher, milestone 1 (not released): the message module `src/msg.rs`, generated from `errors.toml` by
+  `scripts/gen-errors-rs.sh`, renders every message byte for byte as the prototype does. It answers `explain`, `help`
+  and `version` only. Context text is typed by provenance (ADR 0012).
 
 ==== Not yet
 
-* The Rust launcher, the capsule factory CI and published capsules (Phase 1).
+* The rest of the Rust launcher (install, exec, pin and channel trust), the capsule factory CI and published
+  capsules (Phase 1).
