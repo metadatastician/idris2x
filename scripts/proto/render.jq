@@ -4,7 +4,8 @@
 # Input: errors.toml as JSON. Args: $id $case $style (a|b) $form (tty|plain|json) $width $runbook, $ctx (object).
 # Style a is conversational (after Elm); style b is one labelled field per line (after rustc and cargo).
 # The exact output is a contract: docs/dx/ERROR-CATALOGUE-RENDERED.adoc holds it and scripts/proto/dx-golden.sh checks it.
-def fill($c): reduce ($c | to_entries[]) as $e (.; gsub("\\{" + $e.key + "\\}"; $e.value));
+# One pass over the template: an inserted value is never scanned again, so it cannot pull in another key's value.
+def fill($c): gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | if $c | has($k) then $c[$k] else "{" + $k + "}" end);
 # A value placed in a fix command is shell text the user will paste: leave plain words bare, single-quote everything else.
 def shq: if test("^[A-Za-z0-9_./:@%+=,-]+$") then . else "'" + gsub("'"; "'\\''") + "'" end;
 def wrap($w): reduce (split(" ")[] | select(. != "")) as $word ([""];
@@ -18,7 +19,7 @@ def paint($on; $code): if $on then "\u001b[" + $code + "m" + . + "\u001b[0m" els
 | ((.case // [])[] | select(.error == $id and .case == $case)) as $k
 | ($k | with_entries(select(.value | type == "string") | if .key == "fix_cmd" then .value |= fill($ctx | map_values(shq)) else .value |= fill($ctx) end)) as $t
 | ($t.facts | split(" ") | map(select(. != "") | split("=") | {label: .[0], value: ($ctx[.[1]] // error("missing context value: " + .[1]))})) as $facts
-| if any($t | to_entries[]; .value | test("\\{[a-z_]+\\}")) then error("unfilled {placeholder} in " + $id + "/" + $case) else . end
+| if any($k | to_entries[] | select(.value | type == "string") | .value | scan("\\{([a-z_]+)\\}") | .[0]; . as $p | $ctx | has($p) | not) then error("unfilled {placeholder} in " + $id + "/" + $case) else . end
 | ($runbook + "/" + $id + ".adoc") as $docs
 | if $form == "json" then
     {schema: 1, tool: "idris2x", level: "error", id: $id, case: $case, exit: $e.exit, title: $e.title, summary: $t.summary,

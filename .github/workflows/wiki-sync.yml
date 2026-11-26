@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 name: Wiki sync
 
-# Checks on every pull request that generated wiki pages, runbooks and the error-report form are not
-# stale, and publishes docs/wikis/*.adoc to the GitHub wiki after merge to main.
+# Checks on every pull request that generated wiki pages, runbooks, the error-report form and the launcher's
+# message table are not stale, and that the Rust launcher renders every message as the prototype does.
+# It publishes docs/wikis/*.adoc to the GitHub wiki after merge to main.
 #
 # Two jobs on purpose: `check` runs repository scripts from pull requests with a READ-ONLY token;
 # only `publish` (push to main, after `check`) gets contents: write. The token is never embedded in
@@ -54,6 +55,11 @@ jobs:
           scripts/gen-issue-forms.sh --check
           scripts/sync-wiki.sh --check
           scripts/proto/dx-golden.sh --check     # the wording contract: errors.toml vs docs/dx/ERROR-CATALOGUE-RENDERED.adoc
+          scripts/gen-errors-rs.sh --check          # src/errors_gen.rs, the launcher's message table, vs errors.toml
+          cargo build --locked --quiet
+          IDRIS2X_BIN=target/debug/idris2x scripts/proto/dx-golden.sh --check   # the Rust launcher renders the same bytes
+          bash scripts/check-launcher-loc.sh        # the launcher stays under 1,000 lines of our own code
+          bash scripts/check-msg-negatives.sh       # each compile_fail doctest in src/msg.rs fails for its stated reason
           bash scripts/check-advice-review.sh       # advice entries past their review date fail
 
   publish:

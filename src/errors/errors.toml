@@ -103,6 +103,12 @@ exit = 24
 meaning = "store not writable, disk full, or atomic rename failed"
 fix = "free space / fix permissions; idris2x gc"
 [[error]]
+id = "E-OUTPUT"
+title = "the output could not be written"
+exit = 25
+meaning = "standard output is full, or the program reading it stopped"
+fix = "send the output somewhere that can take all of it"
+[[error]]
 id = "E-INTERNAL"
 title = "idris2x has a bug"
 exit = 70
@@ -657,6 +663,19 @@ why = "The final step is a single rename, so that a capsule is either complete o
 fix_lead = ""
 fix_cmd = ""
 fix_note = "Check that the store directory is on one writable filesystem, then run the same command again."
+auto = "none"
+
+[[case]]
+error = "E-OUTPUT"
+case = "write-failed"
+summary = "cannot write the output: {detail}"
+story = "I could not write my output, so it is incomplete."
+facts = "reason=detail"
+state = "The output is incomplete. Anything the command did before it tried to write is kept."
+why = "The disk or file that the output goes to is full, or the program reading it stopped before the end, as head does."
+fix_lead = ""
+fix_cmd = ""
+fix_note = "Send the output to a file on a disk with free space, or to a program that reads all of it, then run the same command again."
 auto = "none"
 
 [[case]]

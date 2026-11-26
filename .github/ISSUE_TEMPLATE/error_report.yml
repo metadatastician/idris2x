@@ -34,6 +34,7 @@ body:
         - "E-CHANNEL-ROLLBACK (exit 22): channel_version went backwards relative to the lock (rollback/freeze attack or stale mirror)"
         - "E-CHANNEL-EXPIRED (exit 23): channel manifest past its expires timestamp (freeze protection)"
         - "E-STORE-IO (exit 24): store not writable, disk full, or atomic rename failed"
+        - "E-OUTPUT (exit 25): standard output is full, or the program reading it stopped"
         - "E-INTERNAL (exit 70): launcher bug"
         - "No error ID was printed (that itself is a bug: every failure must be typed)"
     validations:
