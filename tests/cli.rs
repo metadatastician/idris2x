@@ -80,11 +80,31 @@ fn a_placeholder_typed_by_the_user_is_shown_and_never_filled() {
 fn explain_knows_every_id_and_refuses_an_unknown_one() {
     let all = idris2x(&["explain"], &[]);
     assert_eq!(all.status.code(), Some(0));
-    assert_eq!(text(&all.stdout).lines().count(), 17);
+    assert_eq!(text(&all.stdout).lines().count(), 18);
     let one = idris2x(&["explain", "E-HASH-MISMATCH"], &[]);
     assert!(text(&one.stdout).starts_with("E-HASH-MISMATCH (exit 11): "));
     assert!(text(&one.stdout).ends_with("docs/runbooks/E-HASH-MISMATCH.adoc\n"));
     let bad = idris2x(&["explain", "E-HASH"], &[]);
     assert_eq!(bad.status.code(), Some(2));
     assert!(text(&bad.stderr).starts_with("idris2x: error[E-USAGE]: no such error id: E-HASH\n"));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn a_failed_write_to_stdout_is_e_output_not_a_bug_report() {
+    // /dev/full refuses every write with ENOSPC. The launcher must say so, and must not blame itself.
+    let full = std::fs::File::create("/dev/full").expect("/dev/full exists on Linux");
+    let o = Command::new(env!("CARGO_BIN_EXE_idris2x"))
+        .env_clear()
+        .arg("explain")
+        .stdout(full)
+        .output()
+        .expect("the launcher binary runs");
+    assert_eq!(o.status.code(), Some(25));
+    let err = text(&o.stderr);
+    assert!(
+        err.starts_with("idris2x: error[E-OUTPUT]: cannot write the output: "),
+        "{err}"
+    );
+    assert!(!err.contains("E-INTERNAL"));
 }

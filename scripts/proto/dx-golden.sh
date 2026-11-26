@@ -55,6 +55,7 @@ E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-1
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x
 E-STORE-IO|write-failed|detail=downloading the capsule ((23) Failure writing output to destination)|path=/home/ada/.cache/idris2x
 E-STORE-IO|rename-failed|path=/home/ada/.cache/idris2x/store/sha256-$A
+E-OUTPUT|write-failed|detail=No space left on device (os error 28)
 E-INTERNAL|bug|detail=no advice called gc-warning|version=0.1.0
 E-INTERNAL|missing-tool|tool=flock
 S

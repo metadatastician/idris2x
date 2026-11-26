@@ -3646,6 +3646,84 @@ idris2x: <ESC>[1;31merror[E-STORE-IO]<ESC>[0m: cannot move the unpacked capsule 
 {"schema":1,"tool":"idris2x","level":"error","id":"E-STORE-IO","case":"rename-failed","exit":24,"title":"the store could not be written","summary":"cannot move the unpacked capsule into place","context":{"path":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were removed.","why":"The final step is a single rename, so that a capsule is either complete or absent. The rename fails when the store and its staging area are on different filesystems, or the store is read-only.","fix":{"command":"","note":"Check that the store directory is on one writable filesystem, then run the same command again.","auto":"none"},"explain":"idris2x explain E-STORE-IO","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc"}
 ----
 
+== E-OUTPUT
+
+=== E-OUTPUT, case `write-failed`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-OUTPUT (exit 25)
+
+I could not write my output, so it is incomplete.
+
+    reason  No space left on device (os error 28)
+
+The output is incomplete. Anything the command did before it tried to write is
+kept.
+
+The disk or file that the output goes to is full, or the program reading it
+stopped before the end, as head does.
+
+Send the output to a file on a disk with free space, or to a program that reads
+all of it, then run the same command again.
+
+More: idris2x explain E-OUTPUT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OUTPUT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-OUTPUT (exit 25) -------------------------------------------------- idris2x<ESC>[0m
+
+I could not write my output, so it is incomplete.
+
+    reason  No space left on device (os error 28)
+
+The output is incomplete. Anything the command did before it tried to write is
+kept.
+
+The disk or file that the output goes to is full, or the program reading it
+stopped before the end, as head does.
+
+Send the output to a file on a disk with free space, or to a program that reads
+all of it, then run the same command again.
+
+More: idris2x explain E-OUTPUT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OUTPUT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-OUTPUT]: cannot write the output: No space left on device (os error 28)
+    reason: No space left on device (os error 28)
+  state: The output is incomplete. Anything the command did before it tried to write is kept.
+  why: The disk or file that the output goes to is full, or the program reading it stopped before the end, as head does.
+  fix: Send the output to a file on a disk with free space, or to a program that reads all of it, then run the same command again.
+  see: idris2x explain E-OUTPUT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OUTPUT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-OUTPUT]<ESC>[0m: cannot write the output: No space left on device (os error 28)
+    reason: No space left on device (os error 28)
+  <ESC>[1mstate<ESC>[0m: The output is incomplete. Anything the command did before it tried to write is kept.
+  <ESC>[1mwhy<ESC>[0m: The disk or file that the output goes to is full, or the program reading it stopped before the end, as head does.
+  <ESC>[1mfix<ESC>[0m: Send the output to a file on a disk with free space, or to a program that reads all of it, then run the same command again.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-OUTPUT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OUTPUT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-OUTPUT","case":"write-failed","exit":25,"title":"the output could not be written","summary":"cannot write the output: No space left on device (os error 28)","context":{"detail":"No space left on device (os error 28)"},"state":"The output is incomplete. Anything the command did before it tried to write is kept.","why":"The disk or file that the output goes to is full, or the program reading it stopped before the end, as head does.","fix":{"command":"","note":"Send the output to a file on a disk with free space, or to a program that reads all of it, then run the same command again.","auto":"none"},"explain":"idris2x explain E-OUTPUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OUTPUT.adoc"}
+----
+
 == E-INTERNAL
 
 === E-INTERNAL, case `bug`

@@ -24,6 +24,7 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * Rust launcher, milestone 1 (not released): the message module `src/msg.rs`, generated from `errors.toml` by
   `scripts/gen-errors-rs.sh`, renders every message byte for byte as the prototype does. It answers `explain`, `help`
   and `version` only. Context text is typed by provenance (ADR 0012).
+* `E-OUTPUT` (exit 25): a failed write to standard output is a typed error, not a panic reported as `E-INTERNAL`.
 
 ==== Not yet
 

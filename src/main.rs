@@ -13,14 +13,13 @@ fn run(args: &[String]) -> R<()> {
     match args.first().map(String::as_str) {
         Some("explain") => msg::explain(args.get(1).map(String::as_str)),
         Some("__render") => msg::render_hook(&args[1..]),
-        Some("version" | "--version") => {
-            println!("{}", idris2x::about());
-            Ok(())
-        }
+        Some("version" | "--version") => msg::out(&format!("{}\n", idris2x::about())),
         Some("help" | "--help" | "-h") => {
-            println!("usage: idris2x <command>");
-            USAGE.iter().for_each(|(c, d)| println!("  {c:<38} {d}"));
-            Ok(())
+            let rows: String = USAGE
+                .iter()
+                .map(|(c, d)| format!("  {c:<38} {d}\n"))
+                .collect();
+            msg::out(&format!("usage: idris2x <command>\n{rows}"))
         }
         w => Err(Fail::UsageUnknownCommand {
             word: host(w.unwrap_or("(nothing)")).into(),

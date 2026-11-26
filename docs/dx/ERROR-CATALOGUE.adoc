@@ -355,6 +355,16 @@ suite still passed. A line-by-line comparison of the journeys page with a fresh 
 added (a successful install prints nothing but the store path; a capsule with an escaping link is refused), and
 they fail on a copy with the fault put back.
 
+== Added after Phase 0
+
+`E-OUTPUT` (25), case `write-failed`, was added on 2026-11-26 while building the Rust launcher. Writing to standard
+output can fail: the disk or file it goes to is full, or the program reading it stopped early. Before this ID, the Rust
+launcher panicked and reported `E-INTERNAL`, which tells the user the fault is in idris2x. The prototype printed a
+`jq` error and exited 2, the code of `E-USAGE`. A test in `tests/cli.rs` writes to `/dev/full` on Linux.
+
+A closed standard output (`>&-`) is not detected. The Rust runtime reopens it as `/dev/null` before the launcher
+starts, so the output is thrown away, as it would be with `>/dev/null`.
+
 == What is tested, exactly
 
 [cols="2,3",options="header"]

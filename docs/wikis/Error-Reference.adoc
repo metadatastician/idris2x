@@ -25,5 +25,6 @@ Generated from `src/errors/errors.toml`. Exit codes are stable and append-only.
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc[`E-CHANNEL-ROLLBACK`] | 22 | channel_version went backwards relative to the lock (rollback/freeze attack or stale mirror) | `investigate; do not override`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXPIRED.adoc[`E-CHANNEL-EXPIRED`] | 23 | channel manifest past its expires timestamp (freeze protection) | `fetch a fresh manifest; IDRIS2X_ALLOW_EXPIRED=1 only when you know why`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc[`E-STORE-IO`] | 24 | store not writable, disk full, or atomic rename failed | `free space / fix permissions; idris2x gc`
+| link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-OUTPUT.adoc[`E-OUTPUT`] | 25 | standard output is full, or the program reading it stopped | `send the output somewhere that can take all of it`
 | link:https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-INTERNAL.adoc[`E-INTERNAL`] | 70 | launcher bug | `file an issue with idris2x doctor --json`
 |===

@@ -356,14 +356,26 @@ pub fn note(s: &str) {
         eprintln!("idris2x: {s}");
     }
 }
+/// Write `s` to stdout. A failed write is E-OUTPUT: never a panic, and never silence.
+pub fn out(s: &str) -> R<()> {
+    let mut o = std::io::stdout().lock();
+    let r = o.write_all(s.as_bytes()).and_then(|()| o.flush());
+    r.map_err(|e| Fail::OutputWriteFailed {
+        detail: host(e.to_string()).into(),
+    })
+}
 /// A note that is not an error, unless IDRIS2X_ADVICE=0 or its own variable is 0.
-pub fn advise(a: Advice) {
+pub fn advise(a: Advice) -> R<()> {
     let (k, ctx) = a.parts();
     let d = &ADVICE[k];
-    if var("IDRIS2X_ADVICE") != "0" && var(d.silence) != "0" {
-        let text = fill(d.text, &ctx, false);
-        println!("note: {text}\nnote: silence this note with {}=0", d.silence);
+    if var("IDRIS2X_ADVICE") == "0" || var(d.silence) == "0" {
+        return Ok(());
     }
+    let text = fill(d.text, &ctx, false);
+    out(&format!(
+        "note: {text}\nnote: silence this note with {}=0\n",
+        d.silence
+    ))
 }
 fn bug(detail: String) -> Fail {
     let version = embedded(env!("CARGO_PKG_VERSION")).into();
@@ -399,14 +411,12 @@ pub fn render_hook(args: &[String]) -> R<()> {
         .position(|c| ERRORS[c.error].id == id && c.case == case);
     let k = found.ok_or_else(|| bug(format!("no message data for {id}/{case}")))?;
     let r = render_env(k, &ctx, form).map_err(bug)?;
-    r.print(&mut std::io::stdout())
-        .map_err(|e| bug(e.to_string()))
+    out(&format!("{}\n", r.0))
 }
 /// `explain` lists every error; `explain ID` gives its long form, offline, from the same table.
 pub fn explain(id: Option<&str>) -> R<()> {
     let Some(id) = id else {
-        print!("{EXPLAIN_ALL}");
-        return Ok(());
+        return out(EXPLAIN_ALL);
     };
     let e = ERRORS
         .iter()
@@ -414,6 +424,5 @@ pub fn explain(id: Option<&str>) -> R<()> {
         .ok_or_else(|| Fail::UsageNoSuchId {
             word: host(id).into(),
         })?;
-    println!("{}Runbook: {}/{id}.adoc", e.explain, runbook());
-    Ok(())
+    out(&format!("{}Runbook: {}/{id}.adoc\n", e.explain, runbook()))
 }
