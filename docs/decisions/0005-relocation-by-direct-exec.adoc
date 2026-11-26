@@ -8,6 +8,9 @@ Date: 2026-11-09
 
 Accepted (Phase 0 spike, measured: 11 of 12 canaries pass on a tree copied into a path with spaces).
 
+Amended 2026-11-26 (owner ruling, on review of PR #7): `LD_PRELOAD` and `LD_AUDIT` join the reset. Both make the
+dynamic loader load a library into the capsule's Chez, so an inherited value runs code the capsule did not ship.
+
 == Context
 
 Idris 2's installed `bin/idris2` is a POSIX sh script that execs `bin/idris2_app/idris2.so`, whose first line is
@@ -35,6 +38,8 @@ The launcher performs `execve(<store>/bin/scheme, ["scheme", "--program", "<stor
 The contract is a *reset*, not a prepend: the launcher also clears inherited `IDRIS2_PATH`, `IDRIS2_PACKAGE_PATH`,
 `IDRIS2_DATA`, `IDRIS2_LIBS`, `IDRIS2_CG`, `IDRIS2_INC_CGS` and any `CHEZ`/`SCHEMEHEAPDIRS` from the environment unless
 `--inherit-env` is given, because Idris 2 treats every one of them as a code search path (THREAT-MODEL.adoc, Tampering).
+For the same reason it clears `LD_PRELOAD` and `LD_AUDIT`, which the dynamic loader loads into every process, and sets
+nothing in their place. `--inherit-env` passes them through like the others.
 `idris2x run -- <chez args>` execs `<store>/bin/scheme` the same way. The capsule factory builds Idris 2 with `CHEZ` set to an
 absolute path and the *same* `PREFIX` for `make bootstrap` and `make install` (the libraries are installed by the freshly
 built compiler into its baked prefix).

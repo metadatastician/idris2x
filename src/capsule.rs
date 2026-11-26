@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (metadatastician) <j.d.a.jewell@open.ac.uk>
 //! A capsule tree: its capsule.json, the environment it runs in (ADR 0005), and the probes that show it runs.
 
-use crate::msg::{check_version, embedded, host, lock, Fail, R};
+use crate::msg::{check_version, embedded, host, lock, Checked, Fail, Txt, R};
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -27,6 +27,11 @@ pub fn valid(root: &Path) -> bool {
     };
     let named = j["name"].as_str().is_some_and(|n| !n.is_empty());
     named && version(&j["chez"]) && (j["idris2"].is_null() || version(&j["idris2"]))
+}
+/// The capsule holds no other Idris 2 than the one the lock pins. A capsule of Chez Scheme only holds none, and is
+/// refused later, by `exec` (E-PIN-NOT-FOUND/no-idris2).
+pub fn holds(root: &Path, pinned: &Txt<Checked>) -> bool {
+    json(root)["idris2"].as_str().is_none_or(|v| pinned == v)
 }
 
 fn join(a: String, b: &str) -> String {
@@ -68,11 +73,19 @@ pub fn vars(root: &Path, inherit: bool) -> Vec<(&'static str, String)> {
         ),
     ]
 }
-/// A variable that Idris 2 or Chez reads as a place to load code from: IDRIS2_*, DYLD_*, LD_LIBRARY_PATH, CHEZ and
-/// SCHEMEHEAPDIRS.
+/// A variable that changes what code a process loads: Idris 2 and Chez read every IDRIS2_*, DYLD_*,
+/// LD_LIBRARY_PATH, CHEZ and SCHEMEHEAPDIRS as a place to load code from, and the dynamic loader loads LD_PRELOAD and
+/// LD_AUDIT into every process (ADR 0005).
 pub fn code(k: &str) -> bool {
     ["IDRIS2_", "DYLD_"].iter().any(|p| k.starts_with(p))
-        || ["LD_LIBRARY_PATH", "CHEZ", "SCHEMEHEAPDIRS"].contains(&k)
+        || [
+            "LD_LIBRARY_PATH",
+            "LD_PRELOAD",
+            "LD_AUDIT",
+            "CHEZ",
+            "SCHEMEHEAPDIRS",
+        ]
+        .contains(&k)
 }
 /// Apply the environment contract to `c`. It is a reset: no code variable is inherited unless `inherit`.
 pub fn reset(c: &mut Command, root: &Path, inherit: bool) {

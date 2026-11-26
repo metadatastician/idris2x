@@ -72,10 +72,14 @@ pub fn glibc() -> Option<String> {
         .to_owned();
     o.status.success().then_some(v)
 }
-/// A version as numbers, for ordering: "2.39+git" orders as 2.39.
-fn runs(v: &str) -> Vec<u64> {
-    let lead = |r: &str| r.split(|c: char| !c.is_ascii_digit()).next()?.parse().ok();
-    v.split('.').map(|r| lead(r).unwrap_or(0)).collect()
+/// A version as numbers, for ordering: "2.39+git" orders as 2.39, and a run with no leading digit as 0. None if a
+/// number is too large to compare, so it is refused, never read as 0.
+fn runs(v: &str) -> Option<Vec<u64>> {
+    let lead = |r: &str| match r.split(|c: char| !c.is_ascii_digit()).next() {
+        Some("") | None => Some(0),
+        Some(d) => d.parse().ok(),
+    };
+    v.split('.').map(lead).collect()
 }
 
 /// Read the lock (IDRIS2X_LOCK, else ./idris2x.lock) and find this machine's capsule in it.
@@ -148,24 +152,27 @@ pub fn resolve() -> R<Pin> {
     // ADR 0006: refuse a capsule this glibc cannot run, before anything is downloaded.
     if !c["min_glibc"].is_null() {
         let needs = c["min_glibc"].as_str().unwrap_or_default();
-        check_version(&lock(needs)).ok_or_else(|| malformed("glibc floor"))?;
+        let floor = check_version(&lock(needs))
+            .and_then(|_| runs(needs))
+            .ok_or_else(|| malformed("glibc floor"))?;
         let d = || lock(format!("sha256:{digest}")).into();
         // Only Linux capsules are built against glibc; there the floor is checked or the pin refused, never skipped.
-        let h = match glibc() {
+        // A host version too large to compare is one getconf could not report.
+        match glibc().and_then(|h| Some((runs(&h)?, h))) {
             None if cfg!(target_os = "linux") => {
                 return Err(Fail::GlibcFloorUnknown {
                     needs: lock(needs).into(),
                     digest: d(),
                 })
             }
-            h => h,
-        };
-        if let Some(h) = h.filter(|h| runs(h) < runs(needs)) {
-            return Err(Fail::GlibcFloorTooOld {
-                host: host(h).into(),
-                needs: lock(needs).into(),
-                digest: d(),
-            });
+            Some((r, h)) if r < floor => {
+                return Err(Fail::GlibcFloorTooOld {
+                    host: host(h).into(),
+                    needs: lock(needs).into(),
+                    digest: d(),
+                })
+            }
+            _ => {}
         }
     }
     Ok(Pin {
