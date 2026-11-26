@@ -2342,6 +2342,100 @@ idris2x: <ESC>[1;31merror[E-LOCK-TIMEOUT]<ESC>[0m: waited 600s for another insta
 {"schema":1,"tool":"idris2x","level":"error","id":"E-LOCK-TIMEOUT","case":"held","exit":15,"title":"another idris2x is installing the same capsule","summary":"waited 600s for another install of the same capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","seconds":"600","lockfile":"/home/ada/.cache/idris2x/locks/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21.lock","holder":"process 48213 (still running)"},"state":"This run installed nothing. The other install is not affected.","why":"Installs of one capsule take turns, so two processes never write the same store entry. A slow download in the other process is the usual cause.","fix":{"command":"IDRIS2X_LOCK_TIMEOUT=1800 idris2x install --locked","note":"Do not delete the lock file while its holder is running: two installs would then write at once. The lock is released by itself when the holder exits.","auto":"safe"},"explain":"idris2x explain E-LOCK-TIMEOUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc"}
 ----
 
+=== E-LOCK-TIMEOUT, case `pin-held`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-LOCK-TIMEOUT (exit 15)
+
+Another idris2x is pinning the same lock file. I waited 600 seconds and then
+gave up.
+
+    lock       /home/ada/proofs/idris2x.lock
+    lock-file  /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
+    held-by    process 48213 (still running)
+
+The lock file was not changed. The other pin is not affected.
+
+Pins of one lock file take turns, so the check against the channel version it
+last saw and the new lock are one step.
+
+Wait for the other pin to finish, or allow more time:
+
+    IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0
+
+Do not delete the lock file while its holder is running: two pins would then
+write at once. The lock is released by itself when the holder exits.
+
+More: idris2x explain E-LOCK-TIMEOUT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-LOCK-TIMEOUT (exit 15) -------------------------------------------- idris2x<ESC>[0m
+
+Another idris2x is pinning the same lock file. I waited 600 seconds and then
+gave up.
+
+    lock       /home/ada/proofs/idris2x.lock
+    lock-file  /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
+    held-by    process 48213 (still running)
+
+The lock file was not changed. The other pin is not affected.
+
+Pins of one lock file take turns, so the check against the channel version it
+last saw and the new lock are one step.
+
+Wait for the other pin to finish, or allow more time:
+
+    <ESC>[1mIDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0<ESC>[0m
+
+Do not delete the lock file while its holder is running: two pins would then
+write at once. The lock is released by itself when the holder exits.
+
+More: idris2x explain E-LOCK-TIMEOUT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-LOCK-TIMEOUT]: waited 600s for another pin of the same lock file
+    lock: /home/ada/proofs/idris2x.lock
+    lock-file: /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
+    held-by: process 48213 (still running)
+  state: The lock file was not changed. The other pin is not affected.
+  why: Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.
+  fix: IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0
+  note: Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits.
+  see: idris2x explain E-LOCK-TIMEOUT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-LOCK-TIMEOUT]<ESC>[0m: waited 600s for another pin of the same lock file
+    lock: /home/ada/proofs/idris2x.lock
+    lock-file: /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
+    held-by: process 48213 (still running)
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. The other pin is not affected.
+  <ESC>[1mwhy<ESC>[0m: Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mIDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-LOCK-TIMEOUT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-LOCK-TIMEOUT","case":"pin-held","exit":15,"title":"another idris2x is installing the same capsule","summary":"waited 600s for another pin of the same lock file","context":{"lock":"/home/ada/proofs/idris2x.lock","seconds":"600","lockfile":"/home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock","holder":"process 48213 (still running)","version":"0.8.0"},"state":"The lock file was not changed. The other pin is not affected.","why":"Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.","fix":{"command":"IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0","note":"Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits.","auto":"none"},"explain":"idris2x explain E-LOCK-TIMEOUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc"}
+----
+
 == E-GLIBC-FLOOR
 
 === E-GLIBC-FLOOR, case `too-old`
@@ -4308,6 +4402,98 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered an ol
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"version-went-back","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the channel offered an older manifest version than this project has already seen","context":{"url":"https://channel.example.org/v1.json","seen":"7","offered":"5","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifest versions only go up. An older one usually means a mirror that has not caught up. It can also be an attempt to hide a newer release.","fix":{"command":"idris2x pin 0.8.0","note":"If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
+----
+
+=== E-CHANNEL-ROLLBACK, case `seen-version-unknown`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CHANNEL-ROLLBACK (exit 22)
+
+The lock cannot be read, so pin cannot tell which channel version this project
+has already seen.
+
+    lock     idris2x.lock
+    problem  EOF while parsing an object at line 1 column 20
+
+The lock file was not changed.
+
+pin refuses a manifest older than the one the lock records. Without that record
+a replayed old manifest would be accepted, so pin stops rather than start
+counting again.
+
+Restore the lock from version control:
+
+    git checkout -- idris2x.lock
+
+If the lock is not in version control, move it away and pin again. That trusts
+the channel afresh, so do it only when you know why the lock was damaged.
+
+More: idris2x explain E-CHANNEL-ROLLBACK
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CHANNEL-ROLLBACK (exit 22) ---------------------------------------- idris2x<ESC>[0m
+
+The lock cannot be read, so pin cannot tell which channel version this project
+has already seen.
+
+    lock     idris2x.lock
+    problem  EOF while parsing an object at line 1 column 20
+
+The lock file was not changed.
+
+pin refuses a manifest older than the one the lock records. Without that record
+a replayed old manifest would be accepted, so pin stops rather than start
+counting again.
+
+Restore the lock from version control:
+
+    <ESC>[1mgit checkout -- idris2x.lock<ESC>[0m
+
+If the lock is not in version control, move it away and pin again. That trusts
+the channel afresh, so do it only when you know why the lock was damaged.
+
+More: idris2x explain E-CHANNEL-ROLLBACK
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CHANNEL-ROLLBACK]: the lock cannot say which channel version this project has already seen
+    lock: idris2x.lock
+    problem: EOF while parsing an object at line 1 column 20
+  state: The lock file was not changed.
+  why: pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again.
+  fix: git checkout -- idris2x.lock
+  note: If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged.
+  see: idris2x explain E-CHANNEL-ROLLBACK
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the lock cannot say which channel version this project has already seen
+    lock: idris2x.lock
+    problem: EOF while parsing an object at line 1 column 20
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed.
+  <ESC>[1mwhy<ESC>[0m: pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mgit checkout -- idris2x.lock<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CHANNEL-ROLLBACK
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"seen-version-unknown","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the lock cannot say which channel version this project has already seen","context":{"lock":"idris2x.lock","problem":"EOF while parsing an object at line 1 column 20"},"state":"The lock file was not changed.","why":"pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again.","fix":{"command":"git checkout -- idris2x.lock","note":"If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
 ----
 
 == E-CHANNEL-EXPIRED

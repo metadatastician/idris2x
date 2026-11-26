@@ -40,6 +40,7 @@ E-PLATFORM-UNSUPPORTED|unknown-os|os=FreeBSD|supported=Linux, macOS
 E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net|log=/home/ada/.cache/idris2x/staging/fetch.log
 E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/staging/fetch.log|version=0.8.0
 E-LOCK-TIMEOUT|held|digest=sha256:$A|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/sha256-$A.lock|holder=process 48213 (still running)
+E-LOCK-TIMEOUT|pin-held|lock=/home/ada/proofs/idris2x.lock|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock|holder=process 48213 (still running)|version=0.8.0
 E-GLIBC-FLOOR|too-old|host=2.17|needs=2.28|digest=sha256:$A
 E-GLIBC-FLOOR|unknown|needs=2.28|digest=sha256:$A
 E-PROBE-CODEGEN|chez-failed|probe=pure_eval|output=error while loading shared libraries: libtinfo.so.6: cannot open shared object file
@@ -63,6 +64,7 @@ E-CAPSULE-INVALID|bad-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|bad-exec|program=idris2|entry="../../../bin/sh"|store=/home/ada/.cache/idris2x/store/sha256-$A
 E-CAPSULE-INVALID|pin-mismatch|digest=sha256:$A|version=0.8.0|found=0.7.0
 E-CHANNEL-ROLLBACK|version-went-back|url=https://channel.example.org/v1.json|seen=7|offered=5|version=0.8.0
+E-CHANNEL-ROLLBACK|seen-version-unknown|lock=idris2x.lock|problem=EOF while parsing an object at line 1 column 20
 E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-10-01T00:00:00Z|now=2026-11-16T09:30:00Z|version=0.8.0
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x
 E-STORE-IO|write-failed|detail=downloading the capsule ((23) Failure writing output to destination)|path=/home/ada/.cache/idris2x

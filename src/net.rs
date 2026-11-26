@@ -50,13 +50,16 @@ fn allowed(u: &str) -> bool {
     }
 }
 
-/// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds. An https
-/// address may redirect only to https; a local http one may not redirect at all, so every hop obeys `allowed`.
+/// A GET whose every hop obeys `allowed`: an https address may redirect only to https, and a local http one may not
+/// redirect at all.
+fn hop(agent: &ureq::Agent, u: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+    let https = u.starts_with("https://");
+    agent.get(u).config().https_only(https).max_redirects(if https { 10 } else { 0 }).build()
+}
+/// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds.
 fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
     let have = fs::metadata(out).map_or(0, |m| m.len());
-    let https = u.starts_with("https://");
-    let hops = if https { 10 } else { 0 };
-    let mut req = agent.get(u).config().https_only(https).max_redirects(hops).build();
+    let mut req = hop(agent, u);
     if have > 0 {
         req = req.header("Range", format!("bytes={have}-"));
     }
@@ -149,12 +152,16 @@ pub fn logged(log: &Path, line: &str) {
     let f = OpenOptions::new().create(true).append(true).open(log);
     _ = f.and_then(|mut f| writeln!(f, "{line}"));
 }
-/// One GET of a document that can change, such as the channel manifest: never resumed, at most 4 MiB, 30 seconds.
+/// One GET of a document that can change, such as the channel manifest: never resumed, at most 4 MiB, 30 seconds,
+/// and redirected only as `hop` allows.
 pub fn doc(u: &str) -> Result<Vec<u8>, String> {
     let e = |e: ureq::Error| format!("{u}: {e}");
     if !allowed(u) {
         return Err(format!("{u}: {REFUSED}"));
     }
-    let r = agent(30, true, Duration::from_secs(30)).get(u).call().map_err(e)?;
+    let r = hop(&agent(30, true, Duration::from_secs(30)), u).call().map_err(e)?;
+    if r.status() != 200 {
+        return Err(format!("{u}: refused: answer {} is not the document", r.status()));
+    }
     r.into_body().with_config().limit(1 << 22).read_to_vec().map_err(e)
 }

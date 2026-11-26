@@ -123,6 +123,11 @@ pub fn toml(lock: &str) -> R<Option<Toml>> {
             (end(r) && !v.contains('\\')).then(|| (format!("{table}.{}", k.trim()), v))
         });
         let problem = match pair {
+            _ if head
+                .is_some_and(|h| !KEYS.iter().any(|k| k.split('.').next() == Some(h.0.trim()))) =>
+            {
+                "it opens a [table] that idris2x does not read"
+            }
             _ if end(l) || head.is_some() => "",
             Some((k, _)) if !KEYS.contains(&&*k) => "it sets a key that idris2x does not read",
             Some((k, v)) => got.insert(k, v).map_or("", |_| "it sets the same key twice"),

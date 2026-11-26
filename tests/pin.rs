@@ -145,7 +145,7 @@ impl Chan {
 
 const DIGEST: &str = "0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21";
 fn manifest() -> Value {
-    let mut m = json!({"schema": 1, "channel_version": 3, "expires": "2099-01-01T00:00:00Z", "deprecated": [],
+    let mut m = json!({"schema": 1, "channel_version": 3, "expires": "2096-02-29T23:59:59Z", "deprecated": [],
         "compat": {"idris2@0.8.0": {"chez": "10.0.0", "platforms": [target()]}}});
     m["bundles"]["idris2@0.8.0"][target()] = json!({"sha256": DIGEST, "size": 10, "chez": "10.0.0",
         "urls": ["https://example.org/c.tgz"], "min_glibc": "2.17", "provenance": "https://example.org/p"});
@@ -196,8 +196,8 @@ fn pin_writes_a_lock_that_the_executor_reads_and_pins_again_offline() {
     );
     assert_eq!(
         c.kept(),
-        2,
-        "the manifest and its signature are kept once they verify"
+        1,
+        "the manifest and its signature are kept, as one file, once they verify"
     );
 
     // Offline, the kept copy is used, verified again, and nothing is fetched.
@@ -207,7 +207,7 @@ fn pin_writes_a_lock_that_the_executor_reads_and_pins_again_offline() {
     let kept = fs::read_dir(c.t.p("cache/manifests")).unwrap().flatten();
     let body = kept
         .map(|e| e.path())
-        .find(|p| p.extension().is_some_and(|e| e == "json"))
+        .find(|p| p.extension().is_some_and(|e| e == "sig"))
         .unwrap();
     fs::OpenOptions::new()
         .append(true)
@@ -322,6 +322,28 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
     )
     .unwrap();
     ok(&c.pin("0.8.0", &[]));
+    // A lock that cannot be read, or does not say what it saw, never starts the count again.
+    let lf = c.t.p("idris2x.lock");
+    let damaged = [
+        old.replace(r#""version":5"#, r#""version":"5""#),
+        old[..20].to_owned(),
+    ];
+    for text in damaged {
+        fs::write(&lf, &text).unwrap();
+        let (e, case) = ("E-CHANNEL-ROLLBACK", "seen-version-unknown");
+        failed(&c.t, &c.pin("0.8.0", &[]), e, case, 22);
+        assert_eq!(fs::read_to_string(&lf).unwrap(), text);
+    }
+    fs::remove_file(&lf).unwrap();
+    fs::create_dir(&lf).unwrap();
+    failed(
+        &c.t,
+        &c.pin("0.8.0", &[]),
+        "E-CHANNEL-ROLLBACK",
+        "seen-version-unknown",
+        22,
+    );
+    fs::remove_dir(&lf).unwrap();
 
     let mut m = manifest();
     m["expires"] = json!("2001-01-01T00:00:00Z");
@@ -390,8 +412,12 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
 #[test]
 fn a_malformed_manifest_is_refused_by_field() {
     let c = Chan::new("pin-malformed");
-    let cases: [(&str, Value, &str); 10] = [
+    let cases: [(&str, Value, &str); 13] = [
         ("/expires", json!("2099-01-01"), "expires"),
+        // Not a real time: refused, never read as the far future.
+        ("/expires", json!("2099-99-99T99:99:99Z"), "expires"),
+        ("/expires", json!("2099-02-29T00:00:00Z"), "expires"),
+        ("/expires", json!("+099-01-01T00:00:00Z"), "expires"),
         ("/channel_version", json!(-1), "channel_version"),
         ("/min_launcher", json!(5), "min_launcher"),
         // A version too large to compare is refused, never read as 0.
@@ -528,6 +554,8 @@ fn idris2x_toml_is_read_strictly_and_a_lock_it_no_longer_matches_is_refused() {
         ("[toolchain]\nidris2 = 0.8.0\n", "line 2"),
         ("[toolchain]\nidris2 = \"0.8.0\\\"\"\n", "line 2"),
         ("[tool\nidris2 = \"0.8.0\"\n", "line 1"),
+        ("[]\n[toolchain]\nidris2 = \"0.8.0\"\n", "line 1"),
+        ("[toolchain]\nidris2 = \"0.8.0\"\n[foo]\n", "line 3"),
         ("[toolchain]\nidris2 = \"latest\"\n", "the end of the file"),
         (
             "[channel]\nurl = \"http://127.0.0.1:1/v1.json\"\n[toolchain]\nidris2 = \"0.8.0\"\n",
@@ -579,4 +607,49 @@ fn an_unreachable_or_plain_http_channel_is_e_network() {
     }
     let log = fs::read_to_string(c.t.p("cache/staging/fetch.log")).unwrap();
     assert!(log.contains("http://example.org/v1.json"), "{log}");
+    // A local channel may not redirect: the answer is refused, never followed.
+    let (moved, hits) = serve(vec![], 302, None);
+    let text = format!(
+        "[toolchain]\nidris2 = \"0.8.0\"\n[channel]\nurl = \"{moved}\"\nkey = \"{}\"\n",
+        c.key.public()
+    );
+    fs::write(c.t.p("idris2x.toml"), text).unwrap();
+    let j = failed(
+        &c.t,
+        &c.pin("0.8.0", &[]),
+        "E-NETWORK",
+        "manifest-unreachable",
+        14,
+    );
+    assert!(
+        j.contains("refused: answer 302 Found is not the document"),
+        "{j}"
+    );
+    assert_eq!(hits.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn pins_of_one_lock_take_turns_and_a_held_turn_times_out() {
+    let c = Chan::new("pin-turn");
+    c.publish(&manifest());
+    // The turn is named by the lock file's real path, so another spelling of the path waits for the same one.
+    let real = fs::canonicalize(c.t.p("")).unwrap().join("idris2x.lock");
+    let turn = sha(real.as_os_str().as_encoded_bytes());
+    fs::create_dir_all(c.t.p("cache/locks")).unwrap();
+    let f = fs::File::create(c.t.p(&format!("cache/locks/pin-{}.lock", &turn[..16]))).unwrap();
+    f.lock().unwrap();
+    let j = failed(
+        &c.t,
+        &c.pin("0.8.0", &[("IDRIS2X_LOCK_TIMEOUT", "1")]),
+        "E-LOCK-TIMEOUT",
+        "pin-held",
+        15,
+    );
+    assert!(
+        j.contains(r#""holder":"unknown (the holder left no record)""#),
+        "{j}"
+    );
+    assert!(!c.t.p("idris2x.lock").exists());
+    drop(f);
+    ok(&c.pin("0.8.0", &[]));
 }

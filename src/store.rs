@@ -28,6 +28,51 @@ fn s(p: &Path) -> String {
 fn sha(d: &str) -> crate::msg::Fact {
     lock(format!("sha256:{d}")).into()
 }
+
+/// Hold `lockfile` for this process, waiting up to `wait` seconds, and record this process beside it as the holder.
+/// The lock is released when the returned File is dropped or the process ends. On a timeout the failure is
+/// `held(lockfile, holder)`, which names a holder only if it can be seen running, and never advises deleting the lock.
+pub fn hold(
+    lockfile: &Path,
+    wait: u64,
+    held: impl Fn(crate::msg::Fact, crate::msg::Fact) -> Fail,
+) -> R<(File, PathBuf)> {
+    let holder = lockfile.with_extension("holder");
+    let f = File::create(lockfile).map_err(|e| write_failed("taking the lock", &e, lockfile))?;
+    let t0 = std::time::Instant::now();
+    loop {
+        match f.try_lock() {
+            Ok(()) => break,
+            Err(fs::TryLockError::WouldBlock) if t0.elapsed().as_secs() < wait => {
+                std::thread::sleep(std::time::Duration::from_millis(100))
+            }
+            Err(fs::TryLockError::Error(e)) => {
+                return Err(write_failed("taking the lock", &e, lockfile))
+            }
+            Err(fs::TryLockError::WouldBlock) => {
+                let pid = fs::read_to_string(&holder).unwrap_or_default().trim().to_owned();
+                let running = || {
+                    std::process::Command::new("kill")
+                        .args(["-0", &pid])
+                        .stderr(std::process::Stdio::null())
+                        .status()
+                };
+                let seen = !pid.is_empty()
+                    && pid.bytes().all(|b| b.is_ascii_digit())
+                    && running().is_ok_and(|st| st.success());
+                let who = if seen {
+                    format!("process {pid} (still running)")
+                } else {
+                    "unknown (the holder left no record)".into()
+                };
+                return Err(held(host(s(lockfile)).into(), host(who).into()));
+            }
+        }
+    }
+    fs::write(&holder, format!("{}\n", std::process::id()))
+        .map_err(|e| write_failed("recording the lock holder", &e, &holder))?;
+    Ok((f, holder))
+}
 /// Bytes as lowercase hexadecimal.
 pub fn hex(b: &[u8]) -> String {
     b.iter().map(|b| format!("{b:02x}")).collect()
@@ -125,49 +170,13 @@ pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
         fs::create_dir_all(c.join(sub))
             .map_err(|_| Fail::StoreIoCannotCreate { path: host(s(&c)).into() })?;
     }
-    let (lockfile, holder) =
-        (c.join(format!("locks/sha256-{d}.lock")), c.join(format!("locks/sha256-{d}.holder")));
-    let held =
-        File::create(&lockfile).map_err(|e| write_failed("taking the lock", &e, &lockfile))?;
-    let t0 = std::time::Instant::now();
-    loop {
-        match held.try_lock() {
-            Ok(()) => break,
-            Err(fs::TryLockError::WouldBlock) if t0.elapsed().as_secs() < wait => {
-                std::thread::sleep(std::time::Duration::from_millis(100))
-            }
-            Err(fs::TryLockError::Error(e)) => {
-                return Err(write_failed("taking the lock", &e, &lockfile))
-            }
-            Err(fs::TryLockError::WouldBlock) => {
-                // Name a holder only if it can be seen running. Never advise deleting a held lock.
-                let pid = fs::read_to_string(&holder).unwrap_or_default().trim().to_owned();
-                let running = || {
-                    std::process::Command::new("kill")
-                        .args(["-0", &pid])
-                        .stderr(std::process::Stdio::null())
-                        .status()
-                };
-                let seen = !pid.is_empty()
-                    && pid.bytes().all(|b| b.is_ascii_digit())
-                    && running().is_ok_and(|st| st.success());
-                let who = if seen {
-                    format!("process {pid} (still running)")
-                } else {
-                    "unknown (the holder left no record)".into()
-                };
-                let (lockfile, holder) = (host(s(&lockfile)).into(), host(who).into());
-                return Err(Fail::LockTimeoutHeld {
-                    digest: sha(d),
-                    seconds: host(wait.to_string()).into(),
-                    lockfile,
-                    holder,
-                });
-            }
-        }
-    }
-    fs::write(&holder, format!("{}\n", std::process::id()))
-        .map_err(|e| write_failed("recording the lock holder", &e, &holder))?;
+    let (_held, holder) =
+        hold(&c.join(format!("locks/sha256-{d}.lock")), wait, |at, who| Fail::LockTimeoutHeld {
+            digest: sha(d),
+            seconds: host(wait.to_string()).into(),
+            lockfile: at,
+            holder: who,
+        })?;
     // Another process may have finished while this one waited.
     let done = dir.join(".complete").is_file();
     let r = if done { Ok(dir) } else { fill(pin, from, offline, &c, dir) };

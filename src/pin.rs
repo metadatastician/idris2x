@@ -5,10 +5,10 @@
 //! and expiry (ADR 0008), and write idris2x.lock. This is the only module that reads the channel and the only caller
 //! of `msg::channel`, so channel text never reaches the executor (ADR 0012).
 
-use crate::lock::{flag, path, runs, toml, toml_path};
+use crate::lock::{flag, path, runs, setting, toml, toml_path};
 use crate::msg::{channel, embedded, host, is_digest, is_version, lock, note, Fail, R};
 use crate::net::{doc, logged};
-use crate::store::{cache, hex, utc, write_failed};
+use crate::store::{cache, hex, hold, utc, write_failed};
 use serde_json::{json, Map, Value};
 use std::{fs, io::Write, path::Path};
 
@@ -36,6 +36,21 @@ fn signify(text: &str, n: usize) -> Option<(String, Vec<u8>)> {
     Some((hex(&b[2..10]), b[10..].to_vec()))
 }
 
+/// Is `t` a real time from 1970 on, as RFC 3339 UTC to the second? Its fields are read as numbers (the days-from-civil
+/// algorithm) and the time is written back by `utc`: only a time that comes back the same, byte for byte, passes.
+fn real(t: &str) -> bool {
+    let n = |a: usize| t.get(a..a + 2).and_then(|d| d.parse::<i64>().ok());
+    let f = || {
+        let (m, y) = (n(5)?, t.get(..4)?.parse::<i64>().ok()?);
+        let y = y - i64::from(m <= 2);
+        let (era, yoe) = (y.div_euclid(400), y.rem_euclid(400));
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + (153 * ((m + 9) % 12) + 2) / 5 + n(8)? - 1;
+        let s = (era * 146097 + doe - 719468) * 86400 + n(11)? * 3600 + n(14)? * 60 + n(17)?;
+        u64::try_from(s).ok()
+    };
+    f().is_some_and(|s| utc(s) == t)
+}
+
 /// Replace `p` whole, by one rename, or leave it as it was (I2).
 fn put(p: &Path, b: &[u8]) -> std::io::Result<()> {
     let tmp = p.with_extension(format!("{}.tmp", std::process::id()));
@@ -46,6 +61,8 @@ fn put(p: &Path, b: &[u8]) -> std::io::Result<()> {
 /// `idris2x pin <version>`: resolve `ver` through the channel and write idris2x.lock for every target it lists.
 pub fn pin(ver: &str) -> R<()> {
     let lf = path()?;
+    let wait =
+        setting("IDRIS2X_LOCK_TIMEOUT", "a whole number of seconds", 600, |v| v.parse().ok())?;
     let tf = toml_path(&lf);
     let release = RELEASE.map(|(u, k)| (u.to_owned(), k.to_owned()));
     let Some((url, key)) = toml(&lf)?.and_then(|t| t.channel).or(release) else {
@@ -59,18 +76,14 @@ pub fn pin(ver: &str) -> R<()> {
     let (kid, pk) = signify(&key, 32).ok_or_else(|| malformed(what, tf))?;
     let (c, offline, sig_url) = (cache()?, flag("IDRIS2X_OFFLINE")?, format!("{url}.sig"));
     let id = hex(ring::digest::digest(&ring::digest::SHA256, url.as_bytes()).as_ref());
-    let (m, log) = (c.join(format!("manifests/{}.json", &id[..16])), c.join("staging/fetch.log"));
-    let (s, at) = (m.with_extension("json.sig"), |p: &Path| p.display().to_string());
+    let (m, log) = (c.join(format!("manifests/{}.sig", &id[..16])), c.join("staging/fetch.log"));
+    let at = |p: &Path| p.display().to_string();
     _ = fs::create_dir_all(c.join("staging")).and(fs::create_dir_all(c.join("manifests")));
-    // Offline, the manifest is the copy that verified last time. Online it is fetched whole, never resumed, and nothing
-    // reaches the cache before its signature verifies.
-    let get = |u: &str, p: &Path| match offline {
-        true => fs::read(p).map_err(|_| Fail::OfflineNoManifest {
-            cache: host(at(p)).into(),
-            mode: embedded("IDRIS2X_OFFLINE=1").into(),
-            version: host(ver).into(),
-        }),
-        false => doc(u).map_err(|e| {
+    // Offline, the manifest is the copy that verified last time, kept as one signify file with the body embedded (the
+    // signature's two lines, then the body), so the pair is replaced whole or not at all (I2). Online each is fetched
+    // whole, never resumed, and nothing reaches the cache before its signature verifies.
+    let get = |u: &str| {
+        doc(u).map_err(|e| {
             logged(&log, &e);
             Fail::NetworkManifestUnreachable {
                 url: lock(&url).into(),
@@ -78,13 +91,24 @@ pub fn pin(ver: &str) -> R<()> {
                 log: host(at(&log)).into(),
                 version: host(ver).into(),
             }
-        }),
+        })
     };
-    let (body, sig) = (get(&url, &m)?, get(&sig_url, &s)?);
+    let (body, sig) = if offline {
+        let b = fs::read(&m).map_err(|_| Fail::OfflineNoManifest {
+            cache: host(at(&m)).into(),
+            mode: embedded("IDRIS2X_OFFLINE=1").into(),
+            version: host(ver).into(),
+        })?;
+        let cut =
+            b.iter().enumerate().filter(|c| *c.1 == b'\n').nth(1).map_or(b.len(), |c| c.0 + 1);
+        (b[cut..].to_vec(), b[..cut].to_vec())
+    } else {
+        (get(&url)?, get(&sig_url)?)
+    };
     let what = "the signature is not a signify Ed25519 signature; pre-hashed (ED) ones are refused";
-    let text = std::str::from_utf8(&sig).ok();
-    let found = text.and_then(|t| signify(t.lines().nth(1)?, 64));
-    let (sid, sg) = found.ok_or_else(|| malformed(what, if offline { at(&s) } else { sig_url }))?;
+    let two: Vec<&str> = std::str::from_utf8(&sig).map_or(vec![], |t| t.lines().take(2).collect());
+    let found = two.get(1).and_then(|l| signify(l, 64));
+    let (sid, sg) = found.ok_or_else(|| malformed(what, if offline { at(&m) } else { sig_url }))?;
     let key_id = |id: &str| format!("key id {id}");
     if sid != kid {
         return Err(Fail::SigInvalidWrongKey {
@@ -100,10 +124,30 @@ pub fn pin(ver: &str) -> R<()> {
         version: host(ver).into(),
     })?;
     if !offline {
-        let kept = put(&m, &body).and_then(|()| put(&s, &sig));
-        kept.map_err(|e| write_failed("keeping the channel manifest", &e, &m))?;
+        let kept = [format!("{}\n{}\n", two[0], two[1]).as_bytes(), &body].concat();
+        put(&m, &kept).map_err(|e| write_failed("keeping the channel manifest", &e, &m))?;
     }
-    resolve(&body, ver, &lf, &url, &kid)
+    // Pins of one lock file take turns, so the rollback check and the new lock are one step. The turn is named by the
+    // lock file's real directory and name, so two spellings of one path share it.
+    let p = Path::new(&lf);
+    let dir =
+        fs::canonicalize(p.parent().filter(|d| *d != Path::new("")).unwrap_or(Path::new(".")));
+    let full = dir
+        .map_err(|e| write_failed("taking the lock", &e, p))?
+        .join(p.file_name().unwrap_or_default());
+    let turn =
+        hex(ring::digest::digest(&ring::digest::SHA256, full.as_os_str().as_encoded_bytes())
+            .as_ref());
+    _ = fs::create_dir_all(c.join("locks"));
+    let (_held, holder) =
+        hold(&c.join(format!("locks/pin-{}.lock", &turn[..16])), wait, |at, who| {
+            let (seconds, lock, version) =
+                (host(wait.to_string()).into(), host(&lf).into(), host(ver).into());
+            Fail::LockTimeoutPinHeld { lock, lockfile: at, holder: who, seconds, version }
+        })?;
+    let r = resolve(&body, ver, &lf, &url, &kid);
+    _ = fs::remove_file(holder);
+    r
 }
 
 /// The checks on a manifest whose signature verified: format, version, expiry, then the lock for `ver`.
@@ -136,10 +180,23 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
         });
     }
     let cv = v["channel_version"].as_u64().ok_or_else(|| bad("channel_version"))?;
-    // Only versions of the same channel compare: a project that moves to another channel starts from its versions.
-    let old = fs::read(lf).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok());
-    let old = old.filter(|o| o["channel"]["url"] == url);
-    let seen = old.and_then(|o| o["channel"]["version"].as_u64()).unwrap_or(0);
+    // Only versions of the same channel compare: a project that moves to another channel starts from its versions. Only
+    // a missing lock is a first pin; a lock that cannot be read, or does not say what it saw, never starts the count again.
+    let unknown =
+        |problem| Fail::ChannelRollbackSeenVersionUnknown { lock: host(lf).into(), problem };
+    let old = match fs::read(lf) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Value::Null),
+        r => r
+            .map_err(|e| e.to_string())
+            .and_then(|b| serde_json::from_slice(&b).map_err(|e| e.to_string())),
+    }
+    .map_err(|e| unknown(lock(e).into()))?;
+    let seen = match &old["channel"] {
+        c if c["url"] != url => 0,
+        c => c["version"]
+            .as_u64()
+            .ok_or_else(|| unknown(embedded("its channel version is not a whole number").into()))?,
+    };
     if cv < seen {
         return Err(Fail::ChannelRollbackVersionWentBack {
             url: lock(url).into(),
@@ -148,10 +205,9 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
             version: host(ver).into(),
         });
     }
-    // RFC 3339 in UTC to the second, so that the text orders as the time does.
+    // RFC 3339 in UTC to the second, so that the text orders as the time does, and a real time: 2099-99-99 is refused.
     let exp = v["expires"].as_str().unwrap_or_default();
-    let form = |(c, &f): (u8, &u8)| c == f || f == b'0' && c.is_ascii_digit();
-    if exp.len() != 20 || !exp.bytes().zip(b"0000-00-00T00:00:00Z").all(form) {
+    if !real(exp) {
         return Err(bad("expires"));
     }
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);

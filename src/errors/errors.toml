@@ -343,6 +343,19 @@ fix_note = "Do not delete the lock file while its holder is running: two install
 auto = "safe"
 
 [[case]]
+error = "E-LOCK-TIMEOUT"
+case = "pin-held"
+summary = "waited {seconds}s for another pin of the same lock file"
+story = "Another idris2x is pinning the same lock file. I waited {seconds} seconds and then gave up."
+facts = "lock=lock lock-file=lockfile held-by=holder"
+state = "The lock file was not changed. The other pin is not affected."
+why = "Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step."
+fix_lead = "Wait for the other pin to finish, or allow more time:"
+fix_cmd = "IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin {version}"
+fix_note = "Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits."
+auto = "none"
+
+[[case]]
 error = "E-USAGE"
 case = "unknown-command"
 summary = "no such command: {word}"
@@ -757,6 +770,19 @@ why = "Manifest versions only go up. An older one usually means a mirror that ha
 fix_lead = "Wait an hour, then try again:"
 fix_cmd = "idris2x pin {version}"
 fix_note = "If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest."
+auto = "none"
+
+[[case]]
+error = "E-CHANNEL-ROLLBACK"
+case = "seen-version-unknown"
+summary = "the lock cannot say which channel version this project has already seen"
+story = "The lock cannot be read, so pin cannot tell which channel version this project has already seen."
+facts = "lock=lock problem=problem"
+state = "The lock file was not changed."
+why = "pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again."
+fix_lead = "Restore the lock from version control:"
+fix_cmd = "git checkout -- {lock}"
+fix_note = "If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged."
 auto = "none"
 
 [[case]]

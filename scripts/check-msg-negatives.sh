@@ -29,9 +29,9 @@ sed -i 's/^    impl InFix for Checked {}$/&\n    impl InFix for Channel {}\n    
 grep -q 'impl InProse for Channel {}' "$M/crate/src/msg.rs" || { echo "FAIL mutant: the policy table in src/msg.rs moved; update this script" >&2; exit 1; }
 printf '[package]\nname = "msg-mutant"\nversion = "0.0.0"\nedition = "2021"\n[dependencies]\nidris2x = { path = "crate" }\n' > "$M/Cargo.toml"
 echo 'fn main() {}' > "$M/src/main.rs"
-negs=$(grep -l 'idris2x::msg::channel(' "$W"/src/bin/*.rs || true)
-[ "$(echo $negs | wc -w)" = 2 ] || { echo "FAIL mutant: want 2 channel negatives in src/msg.rs, found: ${negs:-none}" >&2; exit 1; }
-for f in $negs; do
+mapfile -t negs < <(grep -l 'idris2x::msg::channel(' "$W"/src/bin/*.rs || true)
+[ "${#negs[@]}" = 2 ] || { echo "FAIL mutant: want 2 channel negatives in src/msg.rs, found: ${negs[*]:-none}" >&2; exit 1; }
+for f in "${negs[@]}"; do
   b=m_$(basename "$f" .rs); cp "$f" "$M/src/bin/$b.rs"
   if (cd "$M" && CARGO_TARGET_DIR="$W/target" cargo build --offline --quiet --bin "$b" 2>/dev/null); then echo "ok   $b: compiles once Channel is allowed"
   else echo "FAIL $b: still fails with Channel allowed, so it does not test the policy table" >&2; bad=1; fi
