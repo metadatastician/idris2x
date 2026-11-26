@@ -13,14 +13,20 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 
-pub fn cache() -> PathBuf {
-    let v = |k| std::env::var(k).ok().filter(|v| !v.is_empty());
-    let xdg = v("XDG_CACHE_HOME").map(|x| Path::new(&x).join("idris2x"));
-    let home = || Path::new(&v("HOME").unwrap_or_default()).join(".cache/idris2x");
-    v("IDRIS2X_CACHE")
-        .map(PathBuf::from)
-        .or(xdg)
-        .unwrap_or_else(home)
+/// The store's directory: IDRIS2X_CACHE, else $XDG_CACHE_HOME/idris2x, else $HOME/.cache/idris2x. With none of them
+/// set there is no store, and the working directory is never taken in its place.
+pub fn cache() -> R<PathBuf> {
+    let v = |k| {
+        std::env::var_os(k)
+            .filter(|v| !v.is_empty())
+            .map(PathBuf::from)
+    };
+    let own = setting("IDRIS2X_CACHE", "a directory", None, |p| {
+        Some(Some(p.into()))
+    })?;
+    own.or_else(|| v("XDG_CACHE_HOME").map(|x| x.join("idris2x")))
+        .or_else(|| v("HOME").map(|h| h.join(".cache/idris2x")))
+        .ok_or(Fail::StoreIoNoCacheDir {})
 }
 fn s(p: &Path) -> String {
     p.display().to_string()
@@ -77,7 +83,7 @@ fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
 
 /// Download this machine's capsule to `out` and check its digest. `what` and `at` name the place on a disk failure.
 fn download(pin: &Pin, out: &Path, what: &str, at: &Path) -> R<()> {
-    let log = cache().join("staging/fetch.log");
+    let log = cache()?.join("staging/fetch.log");
     if pin.urls.is_empty() {
         let (digest, lock, version) = (
             sha(&pin.digest),
@@ -147,7 +153,7 @@ pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
     let offline = setting("IDRIS2X_OFFLINE", "0 or 1", false, |v| {
         ["0", "1"].contains(&v).then(|| v == "1")
     })?;
-    let (c, d) = (cache(), &pin.digest);
+    let (c, d) = (cache()?, &pin.digest);
     let dir = c.join(format!("store/sha256-{d}"));
     if dir.join(".complete").is_file() {
         return Ok(dir);
@@ -252,6 +258,9 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
             Err(Fail::CapsuleInvalidNoMetadata { digest: sha(d) })
         }
         Ok(()) if !sums(&stage) => Err(Fail::CapsuleInvalidTreeMismatch { digest: sha(d) }),
+        Ok(()) if !capsule::valid(&stage) => {
+            Err(Fail::CapsuleInvalidBadMetadata { digest: sha(d) })
+        }
         Ok(()) => capsule::probe(&stage),
         Err(Bad::Unsafe) => Err(Fail::CapsuleInvalidUnsafePath { digest: sha(d) }),
         // The archive matched its digest and still cannot be read: it is not a capsule.
@@ -284,7 +293,7 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
 
 /// `idris2x verify`: the installed capsule still matches its checksum list, and its probes pass.
 pub fn verify(pin: &Pin) -> R<()> {
-    let dir = cache().join(format!("store/sha256-{}", pin.digest));
+    let dir = cache()?.join(format!("store/sha256-{}", pin.digest));
     if !dir.join(".complete").is_file() {
         return Err(Fail::PinNotFoundNotInstalled {
             digest: sha(&pin.digest),
@@ -306,7 +315,7 @@ pub fn verify(pin: &Pin) -> R<()> {
 }
 /// `idris2x fetch -o FILE`: download the capsule for an air-gapped host, which installs it with --from.
 pub fn bundle(pin: &Pin, out: &Path) -> R<()> {
-    let c = cache();
+    let c = cache()?;
     fs::create_dir_all(c.join("staging")).map_err(|_| Fail::StoreIoCannotCreate {
         path: host(s(&c)).into(),
     })?;
@@ -427,10 +436,12 @@ fn unpack(tgz: &Path, stage: &Path) -> Result<(), Bad> {
                 true
             }
             (k, Some(l)) if k.is_hard_link() && plain(&l) && within(&stage.join(&l)) => {
+                // A link to anything but a file is unsafe; a link that cannot be written is a disk failure.
                 let file = fs::symlink_metadata(stage.join(&l)).is_ok_and(|m| m.is_file());
-                file && fs::hard_link(stage.join(&l), &to)
-                    .map_err(Bad::Disk)
-                    .is_ok()
+                if file {
+                    fs::hard_link(stage.join(&l), &to).map_err(Bad::Disk)?;
+                }
+                file
             }
             (tar::EntryType::XGlobalHeader, _) => true, // pax metadata for the whole archive; nothing to write
             _ => false,

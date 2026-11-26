@@ -32,8 +32,15 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   the launcher's own containment checks, check the tree and run the two embedded probes, then rename into the store.
 * `E-PIN-NOT-FOUND/unreadable-lock` (exit 10) and `E-USAGE/bad-setting` (exit 2): an unreadable lock and an unreadable
   setting are typed errors. The minimum Rust version is now 1.89, for file locks in the standard library.
+* Review fixes for milestone 2: `E-GLIBC-FLOOR/unknown` (exit 16) refuses a glibc floor that `getconf` cannot check,
+  instead of skipping it. `E-CAPSULE-INVALID/bad-metadata` (exit 21) refuses a `capsule.json` that does not describe
+  the capsule. `E-STORE-IO/no-cache-dir` (exit 24) replaces a store in the current directory when `IDRIS2X_CACHE`,
+  `XDG_CACHE_HOME` and `HOME` are all unset. A lock without schema 1 is refused. Settings that are not Unicode text
+  are refused. Plain http is allowed only when the host itself is this machine (a user part is refused), and such a
+  mirror may not redirect; an https mirror may redirect only to https. A hard link that cannot be written is a disk
+  failure, not an unsafe archive. `getconf` runs with `PATH` only.
 * The launcher line cap is 2,000 lines of our own code, raised from 1,000 by the owner on 2026-11-26. Milestone 2
-  has 1,265 lines; all of Phase 1 is projected at about 1,700 to 1,800.
+  has 1,326 lines with its review fixes; all of Phase 1 is projected at about 1,700 to 1,800.
 
 ==== Not yet
 

@@ -2258,6 +2258,92 @@ idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17, ol
 {"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"too-old","exit":16,"title":"this system's C library is older than the capsule needs","summary":"this system has glibc 2.17, older than the pinned capsule needs","context":{"host":"2.17","needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.","fix":{"command":"","note":"Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
 ----
 
+=== E-GLIBC-FLOOR, case `unknown`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-GLIBC-FLOOR (exit 16)
+
+The pinned capsule needs a minimum glibc, and I could not find out which glibc
+this system has.
+
+    capsule-needs  2.28
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was downloaded or changed.
+
+idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the
+environment. Either getconf is not on PATH, or this system's C library is not
+glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not
+built for fails to start, with a less clear message than this one.
+
+Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run
+this project in a glibc-based distribution or container image. This check cannot
+be skipped.
+
+More: idris2x explain E-GLIBC-FLOOR
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-GLIBC-FLOOR (exit 16) --------------------------------------------- idris2x<ESC>[0m
+
+The pinned capsule needs a minimum glibc, and I could not find out which glibc
+this system has.
+
+    capsule-needs  2.28
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was downloaded or changed.
+
+idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the
+environment. Either getconf is not on PATH, or this system's C library is not
+glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not
+built for fails to start, with a less clear message than this one.
+
+Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run
+this project in a glibc-based distribution or container image. This check cannot
+be skipped.
+
+More: idris2x explain E-GLIBC-FLOOR
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-GLIBC-FLOOR]: cannot tell which glibc this system has
+    capsule-needs: 2.28
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  state: Nothing was downloaded or changed.
+  why: idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the environment. Either getconf is not on PATH, or this system's C library is not glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not built for fails to start, with a less clear message than this one.
+  fix: Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run this project in a glibc-based distribution or container image. This check cannot be skipped.
+  see: idris2x explain E-GLIBC-FLOOR
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: cannot tell which glibc this system has
+    capsule-needs: 2.28
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the environment. Either getconf is not on PATH, or this system's C library is not glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not built for fails to start, with a less clear message than this one.
+  <ESC>[1mfix<ESC>[0m: Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run this project in a glibc-based distribution or container image. This check cannot be skipped.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-GLIBC-FLOOR
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"unknown","exit":16,"title":"this system's C library is older than the capsule needs","summary":"cannot tell which glibc this system has","context":{"needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the environment. Either getconf is not on PATH, or this system's C library is not glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not built for fails to start, with a less clear message than this one.","fix":{"command":"","note":"Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run this project in a glibc-based distribution or container image. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
+----
+
 == E-PROBE-CODEGEN
 
 === E-PROBE-CODEGEN, case `chez-failed`
@@ -3372,6 +3458,80 @@ idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's files do not
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"tree-mismatch","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's files do not match its own checksum list","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were deleted.","why":"The archive as a whole matched the lock, so the fault was built into the capsule, or the disk damaged the files while unpacking.","fix":{"command":"idris2x install --locked","note":"If it fails the same way, report the digest above to idris2x using the runbook below.","auto":"safe"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
 ----
 
+=== E-CAPSULE-INVALID, case `bad-metadata`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CAPSULE-INVALID (exit 21)
+
+The capsule has a capsule.json, and it does not say what the capsule holds.
+
+    capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was installed. The unpacked files were deleted.
+
+capsule.json must be a JSON object that names the capsule, gives its Chez Scheme
+version and, if the capsule has Idris 2, its version too. This archive matched
+its digest, so the fault was built into the capsule.
+
+Report the digest above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CAPSULE-INVALID (exit 21) ----------------------------------------- idris2x<ESC>[0m
+
+The capsule has a capsule.json, and it does not say what the capsule holds.
+
+    capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was installed. The unpacked files were deleted.
+
+capsule.json must be a JSON object that names the capsule, gives its Chez Scheme
+version and, if the capsule has Idris 2, its version too. This archive matched
+its digest, so the fault was built into the capsule.
+
+Report the digest above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CAPSULE-INVALID]: the capsule's capsule.json does not describe it
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  state: Nothing was installed. The unpacked files were deleted.
+  why: capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.
+  fix: Report the digest above to idris2x using the runbook below.
+  see: idris2x explain E-CAPSULE-INVALID
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's capsule.json does not describe it
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  <ESC>[1mstate<ESC>[0m: Nothing was installed. The unpacked files were deleted.
+  <ESC>[1mwhy<ESC>[0m: capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.
+  <ESC>[1mfix<ESC>[0m: Report the digest above to idris2x using the runbook below.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"bad-metadata","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's capsule.json does not describe it","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were deleted.","why":"capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.","fix":{"command":"","note":"Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+----
+
 == E-CHANNEL-ROLLBACK
 
 === E-CHANNEL-ROLLBACK, case `version-went-back`
@@ -3810,6 +3970,88 @@ idris2x: <ESC>[1;31merror[E-STORE-IO]<ESC>[0m: cannot move the unpacked capsule 
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-STORE-IO","case":"rename-failed","exit":24,"title":"the store could not be written","summary":"cannot move the unpacked capsule into place","context":{"path":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were removed.","why":"The final step is a single rename, so that a capsule is either complete or absent. The rename fails when the store and its staging area are on different filesystems, or the store is read-only.","fix":{"command":"","note":"Check that the store directory is on one writable filesystem, then run the same command again.","auto":"none"},"explain":"idris2x explain E-STORE-IO","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc"}
+----
+
+=== E-STORE-IO, case `no-cache-dir`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-STORE-IO (exit 24)
+
+IDRIS2X_CACHE, XDG_CACHE_HOME and HOME are all unset, so I cannot tell where the
+store should be.
+
+Nothing was downloaded or changed.
+
+idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in
+HOME/.cache/idris2x. It does not fall back to the current directory, which would
+put a separate store in each project.
+
+Choose a directory for the store, then run the same command again:
+
+    export IDRIS2X_CACHE=<directory>
+
+The store path must not contain spaces if you compile programs with the Chez
+backend.
+
+More: idris2x explain E-STORE-IO
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-STORE-IO (exit 24) ------------------------------------------------ idris2x<ESC>[0m
+
+IDRIS2X_CACHE, XDG_CACHE_HOME and HOME are all unset, so I cannot tell where the
+store should be.
+
+Nothing was downloaded or changed.
+
+idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in
+HOME/.cache/idris2x. It does not fall back to the current directory, which would
+put a separate store in each project.
+
+Choose a directory for the store, then run the same command again:
+
+    <ESC>[1mexport IDRIS2X_CACHE=<directory><ESC>[0m
+
+The store path must not contain spaces if you compile programs with the Chez
+backend.
+
+More: idris2x explain E-STORE-IO
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-STORE-IO]: cannot tell where the store should be
+  state: Nothing was downloaded or changed.
+  why: idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in HOME/.cache/idris2x. It does not fall back to the current directory, which would put a separate store in each project.
+  fix: export IDRIS2X_CACHE=<directory>
+  note: The store path must not contain spaces if you compile programs with the Chez backend.
+  see: idris2x explain E-STORE-IO
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-STORE-IO]<ESC>[0m: cannot tell where the store should be
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in HOME/.cache/idris2x. It does not fall back to the current directory, which would put a separate store in each project.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mexport IDRIS2X_CACHE=<directory><ESC>[0m
+  <ESC>[1mnote<ESC>[0m: The store path must not contain spaces if you compile programs with the Chez backend.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-STORE-IO
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-STORE-IO","case":"no-cache-dir","exit":24,"title":"the store could not be written","summary":"cannot tell where the store should be","context":{},"state":"Nothing was downloaded or changed.","why":"idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in HOME/.cache/idris2x. It does not fall back to the current directory, which would put a separate store in each project.","fix":{"command":"export IDRIS2X_CACHE=<directory>","note":"The store path must not contain spaces if you compile programs with the Chez backend.","auto":"placeholder"},"explain":"idris2x explain E-STORE-IO","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc"}
 ----
 
 == E-OUTPUT

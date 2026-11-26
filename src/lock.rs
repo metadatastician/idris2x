@@ -15,18 +15,21 @@ pub struct Pin {
     pub urls: Vec<String>,
 }
 
-/// An environment setting. Unset or empty gives `default`. A value `parse` refuses is E-USAGE, never a default.
+/// An environment setting. Unset or empty gives `default`. A value `parse` refuses, or one that is not Unicode, is
+/// E-USAGE, never a default.
 pub fn setting<T>(
     name: &'static str,
     what: &'static str,
     default: T,
     parse: fn(&str) -> Option<T>,
 ) -> R<T> {
-    match std::env::var(name).unwrap_or_default() {
-        v if v.is_empty() => Ok(default),
-        v => parse(&v).ok_or_else(|| Fail::UsageBadSetting {
+    let v = std::env::var_os(name).unwrap_or_default();
+    match (v.is_empty(), v.to_str().and_then(parse)) {
+        (true, _) => Ok(default),
+        (false, Some(t)) => Ok(t),
+        (false, None) => Err(Fail::UsageBadSetting {
             variable: embedded(name).into(),
-            value: host(v).into(),
+            value: host(v.to_string_lossy()).into(),
             what: embedded(what).into(),
         }),
     }
@@ -52,9 +55,14 @@ pub fn target() -> R<String> {
     }
 }
 
-/// The glibc version of this system, or None where there is no glibc (macOS, musl).
+/// The glibc version of this system, or None if getconf cannot tell (no getconf, or no glibc). getconf gets PATH and
+/// nothing else, so an inherited LD_LIBRARY_PATH or LD_PRELOAD cannot make it report another C library than the one
+/// the capsule will run with (ADR 0005).
 fn glibc() -> Option<String> {
+    let path = std::env::var_os("PATH").map(|p| ("PATH", p));
     let o = std::process::Command::new("getconf")
+        .env_clear()
+        .envs(path)
         .arg("GNU_LIBC_VERSION")
         .output()
         .ok()?;
@@ -72,8 +80,9 @@ fn runs(v: &str) -> Vec<u64> {
 
 /// Read the lock (IDRIS2X_LOCK, else ./idris2x.lock) and find this machine's capsule in it.
 pub fn resolve() -> R<Pin> {
-    let path = std::env::var("IDRIS2X_LOCK").ok().filter(|p| !p.is_empty());
-    let path = path.unwrap_or_else(|| "idris2x.lock".into());
+    let path = setting("IDRIS2X_LOCK", "a file path", "idris2x.lock".into(), |p| {
+        Some(p.into())
+    })?;
     let bad = |e: String| Fail::PinNotFoundUnreadableLock {
         problem: lock(e).into(),
         lock: host(&path).into(),
@@ -88,13 +97,22 @@ pub fn resolve() -> R<Pin> {
         r => r.map_err(|e| bad(e.to_string()))?,
     };
     let v: Value = serde_json::from_str(&text).map_err(|e| bad(e.to_string()))?;
-    if v["schema"] != 1 {
-        return Err(Fail::ChannelSchemaLockNewer {
-            file: host(&path).into(),
-            found: lock(v["schema"].to_string()).into(),
-            supports: embedded("1").into(),
-            version: embedded(env!("CARGO_PKG_VERSION")).into(),
-        });
+    match v["schema"].as_u64() {
+        Some(1) => {}
+        Some(n) if n > 1 => {
+            return Err(Fail::ChannelSchemaLockNewer {
+                file: host(&path).into(),
+                found: lock(n.to_string()).into(),
+                supports: embedded("1").into(),
+                version: embedded(env!("CARGO_PKG_VERSION")).into(),
+            })
+        }
+        _ => {
+            return Err(Fail::PinNotFoundUnreadableLock {
+                problem: embedded("its schema field is missing or is not a format number").into(),
+                lock: host(&path).into(),
+            })
+        }
     }
     let t = target()?;
     let malformed = |field: &'static str| Fail::PinNotFoundMalformedLock {
@@ -131,11 +149,22 @@ pub fn resolve() -> R<Pin> {
     if !c["min_glibc"].is_null() {
         let needs = c["min_glibc"].as_str().unwrap_or_default();
         check_version(&lock(needs)).ok_or_else(|| malformed("glibc floor"))?;
-        if let Some(h) = glibc().filter(|h| runs(h) < runs(needs)) {
+        let d = || lock(format!("sha256:{digest}")).into();
+        // Only Linux capsules are built against glibc; there the floor is checked or the pin refused, never skipped.
+        let h = match glibc() {
+            None if cfg!(target_os = "linux") => {
+                return Err(Fail::GlibcFloorUnknown {
+                    needs: lock(needs).into(),
+                    digest: d(),
+                })
+            }
+            h => h,
+        };
+        if let Some(h) = h.filter(|h| runs(h) < runs(needs)) {
             return Err(Fail::GlibcFloorTooOld {
                 host: host(h).into(),
                 needs: lock(needs).into(),
-                digest: lock(format!("sha256:{digest}")).into(),
+                digest: d(),
             });
         }
     }

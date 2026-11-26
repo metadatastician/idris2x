@@ -33,22 +33,42 @@ pub fn pump(r: &mut impl Read, w: &mut impl Write) -> Result<(), Io> {
     }
 }
 
+/// https to any host, or plain http to this machine only. The host is the one the request goes to, and an address
+/// with a user part (`user@host`) is refused, so `http://localhost:80@example.org/` is not local.
 fn allowed(u: &str) -> bool {
-    let local = ["http://127.0.0.1", "http://localhost", "http://[::1]"].iter();
-    let local = local
-        .filter_map(|h| u.strip_prefix(h))
-        .any(|r| r.is_empty() || r.starts_with([':', '/']));
-    u.starts_with("https://") || local
+    let Ok(u) = u.parse::<ureq::http::Uri>() else {
+        return false;
+    };
+    let Some(a) = u.authority().filter(|a| !a.as_str().contains('@')) else {
+        return false;
+    };
+    match u.scheme_str() {
+        Some("https") => true,
+        Some("http") => matches!(a.host(), "127.0.0.1" | "localhost" | "[::1]"),
+        _ => false,
+    }
 }
 
-/// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds.
+/// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds. An https
+/// address may redirect only to https; a local http one may not redirect at all, so every hop obeys `allowed`.
 fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
     let have = fs::metadata(out).map_or(0, |m| m.len());
-    let mut req = agent.get(u);
+    let https = u.starts_with("https://");
+    let hops = if https { 10 } else { 0 };
+    let mut req = agent
+        .get(u)
+        .config()
+        .https_only(https)
+        .max_redirects(hops)
+        .build();
     if have > 0 {
         req = req.header("Range", format!("bytes={have}-"));
     }
     let r = req.call().map_err(|e| Io::Read(io::Error::other(e)))?;
+    if !matches!(r.status().as_u16(), 200 | 206) {
+        let e = format!("refused: answer {} is not the file", r.status());
+        return Err(Io::Read(io::Error::other(e)));
+    }
     let more = r.status() == 206;
     let open = OpenOptions::new()
         .create(true)

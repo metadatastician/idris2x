@@ -39,6 +39,7 @@ E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/i
 E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/staging/fetch.log|version=0.8.0
 E-LOCK-TIMEOUT|held|digest=sha256:$A|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/sha256-$A.lock|holder=process 48213 (still running)
 E-GLIBC-FLOOR|too-old|host=2.17|needs=2.28|digest=sha256:$A
+E-GLIBC-FLOOR|unknown|needs=2.28|digest=sha256:$A
 E-PROBE-CODEGEN|chez-failed|probe=pure_eval|output=error while loading shared libraries: libtinfo.so.6: cannot open shared object file
 E-PROBE-CODEGEN|idris2-failed|probe=version_match|output=Exception: (while loading libidris2_support.so) cannot open shared object file
 E-PROBE-CODEGEN|version-mismatch|want=0.8.0|got=Idris 2, version 0.7.0
@@ -52,11 +53,13 @@ E-OFFLINE|no-manifest|cache=/home/ada/.cache/idris2x/manifests/v1.json|mode=IDRI
 E-CAPSULE-INVALID|unsafe-path|digest=sha256:$A
 E-CAPSULE-INVALID|no-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|tree-mismatch|digest=sha256:$A
+E-CAPSULE-INVALID|bad-metadata|digest=sha256:$A
 E-CHANNEL-ROLLBACK|version-went-back|url=https://channel.example.org/v1.json|seen=7|offered=5|version=0.8.0
 E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-10-01T00:00:00Z|now=2026-11-16T09:30:00Z|version=0.8.0
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x
 E-STORE-IO|write-failed|detail=downloading the capsule ((23) Failure writing output to destination)|path=/home/ada/.cache/idris2x
 E-STORE-IO|rename-failed|path=/home/ada/.cache/idris2x/store/sha256-$A
+E-STORE-IO|no-cache-dir
 E-OUTPUT|write-failed|detail=No space left on device (os error 28)
 E-INTERNAL|bug|detail=no advice called gc-warning|version=0.1.0
 E-INTERNAL|missing-tool|tool=flock

@@ -293,11 +293,19 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     let t = Tmp::new("mirrors");
     let (url, _) = serve(vec![], 404, None);
     let d = sha(b"x");
+    // A user part does not make a host local, and a local mirror may not redirect anywhere.
+    let (moved, _) = serve(vec![], 302, None);
+    let sneaky = "http://localhost:80@example.org/c.tar.gz".to_string();
     write_lock(
         &t,
         &d,
         1,
-        &["http://example.org/c.tar.gz".into(), url.clone()],
+        &[
+            "http://example.org/c.tar.gz".into(),
+            sneaky.clone(),
+            moved.clone(),
+            url.clone(),
+        ],
     );
     let json = failed(
         &t,
@@ -310,6 +318,14 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
         json.contains(
             "http://example.org/c.tar.gz: refused: plain http is allowed only to this machine"
         ),
+        "{json}"
+    );
+    let refused = format!("{sneaky}: refused: plain http is allowed only to this machine");
+    assert!(json.contains(&refused), "{json}");
+    assert!(
+        json.contains(&format!(
+            "{moved}: refused: answer 302 Found is not the file"
+        )),
         "{json}"
     );
     assert!(json.contains(&format!("{url}: ")), "{json}");
@@ -492,6 +508,27 @@ fn hostile_archives_are_refused_before_anything_leaves_staging() {
         "tree-mismatch",
         21,
     );
+    // capsule.json must name the capsule and its Chez Scheme version, and give an Idris 2 version only as text.
+    for (i, j) in [
+        &b"[1]"[..],
+        br#"{"name":"x"}"#,
+        br#"{"name":"x","chez":"10.0.0","idris2":8}"#,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let sums = format!("{}  capsule.json\n", sha(j));
+        let undescribed = Tgz::new()
+            .file("capsule.json", j)
+            .file("sha256sums.txt", sums.as_bytes());
+        refused(
+            &format!("bad-metadata-{i}"),
+            undescribed.done(),
+            "E-CAPSULE-INVALID",
+            "bad-metadata",
+            21,
+        );
+    }
     refused(
         "probe",
         capsule(&SCHEME.replace("printf 42", "printf 41"), &[]),
@@ -624,6 +661,14 @@ fn a_bad_lock_is_named_and_nothing_is_downloaded() {
     );
     case("not json", "E-PIN-NOT-FOUND", "unreadable-lock", 10);
     case(r#"{"schema":2}"#, "E-CHANNEL-SCHEMA", "lock-newer", 18);
+    for no_format in [
+        r#"{}"#,
+        r#"{"schema":"1"}"#,
+        r#"{"schema":0}"#,
+        r#"{"schema":1.5}"#,
+    ] {
+        case(no_format, "E-PIN-NOT-FOUND", "unreadable-lock", 10);
+    }
     let json = case(
         r#"{"schema":1,"toolchain":{"idris2":"0.8.0"},"capsules":{"z80-none":{}}}"#,
         "E-PIN-NOT-FOUND",
@@ -666,12 +711,57 @@ fn a_bad_lock_is_named_and_nothing_is_downloaded() {
         r#"{{"sha256":"{}","size":1,"min_glibc":"99.0"}}"#,
         sha(b"x")
     );
-    if Command::new("getconf")
-        .arg("GNU_LIBC_VERSION")
-        .output()
-        .is_ok_and(|o| o.status.success())
-    {
-        case(&bad(&floor), "E-GLIBC-FLOOR", "too-old", 16);
+    // The launcher asks getconf on its own PATH, so the guard asks on the same one. Without getconf the floor is
+    // refused as unknown, never skipped.
+    if cfg!(target_os = "linux") {
+        fs::write(t.p("idris2x.lock"), bad(&floor)).unwrap();
+        let has = Command::new("getconf")
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .arg("GNU_LIBC_VERSION")
+            .output()
+            .is_ok_and(|o| o.status.success());
+        if has {
+            failed(
+                &t,
+                &run(&t, &["install"], &[]),
+                "E-GLIBC-FLOOR",
+                "too-old",
+                16,
+            );
+        }
+        let none = t.p("no-such-dir");
+        let o = run(&t, &["install"], &[("PATH", none.to_str().unwrap())]);
+        failed(&t, &o, "E-GLIBC-FLOOR", "unknown", 16);
+    }
+}
+
+#[test]
+fn settings_that_are_unset_or_not_text_are_refused_not_guessed() {
+    use std::os::unix::ffi::OsStrExt;
+    let t = Tmp::new("unset-settings");
+    write_lock(&t, &sha(b"x"), 1, &["http://127.0.0.1:9/x".into()]);
+    // With no IDRIS2X_CACHE, XDG_CACHE_HOME or HOME there is no store, and the working directory is not one.
+    let o = run(&t, &["install"], &[("IDRIS2X_CACHE", "")]);
+    failed(&t, &o, "E-STORE-IO", "no-cache-dir", 24);
+    assert!(!t.p(".cache").exists());
+    let not_text = std::ffi::OsStr::from_bytes(b"idris2x\xff.lock");
+    for name in ["IDRIS2X_LOCK", "IDRIS2X_CACHE", "IDRIS2X_LOCK_TIMEOUT"] {
+        let mut c = Command::new(env!("CARGO_BIN_EXE_idris2x"));
+        c.env_clear()
+            .current_dir(&t.0)
+            .arg("install")
+            .env("PATH", "/usr/bin:/bin");
+        c.env("IDRIS2X_CACHE", t.p("cache"))
+            .env("IDRIS2X_ERROR_FILE", t.p("error.json"));
+        let json = failed(
+            &t,
+            &c.env(name, not_text).output().unwrap(),
+            "E-USAGE",
+            "bad-setting",
+            2,
+        );
+        assert!(json.contains(name), "{json}");
     }
 }
 

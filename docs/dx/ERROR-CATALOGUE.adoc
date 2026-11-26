@@ -414,3 +414,12 @@ prototype passed such a file to `jq` and printed `jq`'s error. `E-USAGE/bad-sett
 `IDRIS2X_OFFLINE` or `IDRIS2X_LOCK_TIMEOUT` value the launcher cannot read. The prototype treated any value but `1` as
 off, and passed the timeout to `flock` unchecked. The launcher now refuses the value instead of falling back to a
 default (I3). Tests in `tests/install.rs` reach both cases.
+
+Three more cases were added on 2026-11-26 after review of milestone 2.
+`E-GLIBC-FLOOR/unknown` (exit 16) covers a Linux system where `getconf` cannot report the glibc version. The launcher
+skipped the floor check then; now it refuses the pin. `E-CAPSULE-INVALID/bad-metadata` (exit 21) covers a
+`capsule.json` that matches its checksum but does not name the capsule, does not give a Chez Scheme version that passes
+the version check, or gives an Idris 2 version that does not pass it. `E-STORE-IO/no-cache-dir` (exit 24) covers
+`IDRIS2X_CACHE`, `XDG_CACHE_HOME` and `HOME` all unset. The launcher put the store in the current directory then.
+`E-USAGE/bad-setting` now also covers `IDRIS2X_LOCK` and `IDRIS2X_CACHE`, and any setting that is not Unicode text.
+Tests in `tests/install.rs` reach all of these.

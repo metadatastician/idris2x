@@ -3,16 +3,30 @@
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (metadatastician) <j.d.a.jewell@open.ac.uk>
 //! A capsule tree: its capsule.json, the environment it runs in (ADR 0005), and the probes that show it runs.
 
-use crate::msg::{embedded, host, lock, Fail, R};
+use crate::msg::{check_version, embedded, host, lock, Fail, R};
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+/// capsule.json, or null if it cannot be read.
+pub fn json(root: &Path) -> serde_json::Value {
+    let b = std::fs::read(root.join("capsule.json")).unwrap_or_default();
+    serde_json::from_slice(&b).unwrap_or_default()
+}
 /// A string field of capsule.json, or "" if it is absent.
 pub fn meta(root: &Path, key: &str) -> String {
-    let b = std::fs::read(root.join("capsule.json")).unwrap_or_default();
-    let v: serde_json::Value = serde_json::from_slice(&b).unwrap_or_default();
-    v[key].as_str().unwrap_or_default().into()
+    json(root)[key].as_str().unwrap_or_default().into()
+}
+/// capsule.json describes the capsule: it names it, gives its Chez Scheme version and, when it has Idris 2, that
+/// version too. The versions become a heap path and a probe's expected answer, so they must pass the version check.
+pub fn valid(root: &Path) -> bool {
+    let j = json(root);
+    let version = |v: &serde_json::Value| {
+        v.as_str()
+            .is_some_and(|v| check_version(&lock(v)).is_some())
+    };
+    let named = j["name"].as_str().is_some_and(|n| !n.is_empty());
+    named && version(&j["chez"]) && (j["idris2"].is_null() || version(&j["idris2"]))
 }
 
 fn join(a: String, b: &str) -> String {

@@ -76,7 +76,7 @@ them.
 | None. The unsafe-archive tests run in `cargo test`; these are tests, not a proof receipt.
 
 | STORE-2
-| Nothing enters the store unverified (I5). What exists (milestone 2): `install` renames the staging tree into the store only after the archive's sha256 equals the lock's digest, every file matches the sums in `capsule.json`, and both embedded probes pass; it writes `.complete` last. `verify` repeats the tree check on an installed capsule. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to the order of these steps in `fill` (the rename is reached only on the path where all three checks returned success). The checks themselves rest on the boundaries below.
+| Nothing enters the store unverified (I5). What exists (milestone 2): `install` renames the staging tree into the store only after the archive's sha256 equals the lock's digest, every file listed in `sha256sums.txt` matches its sum there, `capsule.json` is present and names the capsule and its versions (`capsule::valid`), and both embedded probes pass; it writes `.complete` last. Files not listed in `sha256sums.txt` are not checked: the factory lists every file but that one, `capsule.json` included. `verify` repeats the sums check on an installed capsule. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to the order of these steps in `fill` (the rename is reached only on the path where all four checks returned success). The checks themselves rest on the boundaries below.
 | `open`
 | `ungraded`
 | not applicable (engineering)
