@@ -263,7 +263,9 @@ advice() { # advice ID key=value... — a note that is not an error; text, silen
   j=$("$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -c --arg id "$id" '.advice[] | select(.id == $id)'); [ -n "$j" ] || fail E-INTERNAL bug detail="no advice called $id" version="$PROTO_VERSION"
   local var; var=$(jq -r .silence <<< "$j"); [ "${!var:-1}" = 0 ] && return 0
   jq -r --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")" \
-    '(reduce ($ctx | to_entries[]) as $e (.text; gsub("\\{" + $e.key + "\\}"; $e.value))) as $t | "note: " + $t, "note: silence this note with " + .silence + "=0"' <<< "$j"; }
+    '"note: " + (.text | gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | $ctx[$k] // "{" + $k + "}")),
+     ((.facts // "") | split(" ")[] | select(. != "") | split("=") | "    " + .[0] + ": " + ($ctx[.[1]] // error("advice fact has no value: " + .[1]))),
+     "note: silence this note with " + .silence + "=0"' <<< "$j"; }
 cmd_selftest() { local root; root=$(cmd_install --locked); compose_env "$root"
   [ -n "$(cap '.idris2 // empty' "$root")" ] || fail E-PIN-NOT-FOUND no-idris2 name="$(cap .name "$root")"
   local w; w=$(mktemp -d)

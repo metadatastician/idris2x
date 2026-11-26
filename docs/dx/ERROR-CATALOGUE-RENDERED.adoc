@@ -2027,11 +2027,11 @@ This system's C library is too old for the pinned capsule.
 
 Nothing was downloaded or changed.
 
-The capsule's programs were built against glibc 2.28. On an older glibc they
+The capsule's programs were built against a newer glibc. On an older glibc they
 would fail to start, with a less clear message than this one.
 
-Run this project in a newer distribution or container image, one with glibc 2.28
-or newer. This check cannot be skipped.
+Run this project in a newer distribution or container image, one with at least
+the glibc shown above. This check cannot be skipped.
 
 More: idris2x explain E-GLIBC-FLOOR
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
@@ -2050,11 +2050,11 @@ This system's C library is too old for the pinned capsule.
 
 Nothing was downloaded or changed.
 
-The capsule's programs were built against glibc 2.28. On an older glibc they
+The capsule's programs were built against a newer glibc. On an older glibc they
 would fail to start, with a less clear message than this one.
 
-Run this project in a newer distribution or container image, one with glibc 2.28
-or newer. This check cannot be skipped.
+Run this project in a newer distribution or container image, one with at least
+the glibc shown above. This check cannot be skipped.
 
 More: idris2x explain E-GLIBC-FLOOR
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
@@ -2063,13 +2063,13 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-GLIBC-FLOOR]: this system has glibc 2.17 and the capsule needs 2.28 or newer
+idris2x: error[E-GLIBC-FLOOR]: this system has glibc 2.17, older than the pinned capsule needs
     this-system: 2.17
     capsule-needs: 2.28
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
   state: Nothing was downloaded or changed.
-  why: The capsule's programs were built against glibc 2.28. On an older glibc they would fail to start, with a less clear message than this one.
-  fix: Run this project in a newer distribution or container image, one with glibc 2.28 or newer. This check cannot be skipped.
+  why: The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.
+  fix: Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.
   see: idris2x explain E-GLIBC-FLOOR
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
 ----
@@ -2077,13 +2077,13 @@ idris2x: error[E-GLIBC-FLOOR]: this system has glibc 2.17 and the capsule needs 
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17 and the capsule needs 2.28 or newer
+idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17, older than the pinned capsule needs
     this-system: 2.17
     capsule-needs: 2.28
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
   <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
-  <ESC>[1mwhy<ESC>[0m: The capsule's programs were built against glibc 2.28. On an older glibc they would fail to start, with a less clear message than this one.
-  <ESC>[1mfix<ESC>[0m: Run this project in a newer distribution or container image, one with glibc 2.28 or newer. This check cannot be skipped.
+  <ESC>[1mwhy<ESC>[0m: The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.
+  <ESC>[1mfix<ESC>[0m: Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.
   <ESC>[1msee<ESC>[0m: idris2x explain E-GLIBC-FLOOR
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
 ----
@@ -2091,7 +2091,7 @@ idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17 and
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"too-old","exit":16,"title":"this system's C library is older than the capsule needs","summary":"this system has glibc 2.17 and the capsule needs 2.28 or newer","context":{"host":"2.17","needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"The capsule's programs were built against glibc 2.28. On an older glibc they would fail to start, with a less clear message than this one.","fix":{"command":"","note":"Run this project in a newer distribution or container image, one with glibc 2.28 or newer. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"too-old","exit":16,"title":"this system's C library is older than the capsule needs","summary":"this system has glibc 2.17, older than the pinned capsule needs","context":{"host":"2.17","needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.","fix":{"command":"","note":"Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
 ----
 
 == E-PROBE-CODEGEN
@@ -2283,8 +2283,8 @@ idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: Idris 2 from the capsule doe
 ----
 idris2x: E-PROBE-CODEGEN (exit 17)
 
-The capsule says it holds Idris 2 0.8.0, and the compiler inside reports
-something else.
+The capsule says it holds one version of Idris 2, and the compiler inside
+reports another.
 
     capsule-says      0.8.0
     compiler-reports  Idris 2, version 0.7.0
@@ -2306,8 +2306,8 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEG
 ----
 <ESC>[36m-- E-PROBE-CODEGEN (exit 17) ------------------------------------------- idris2x<ESC>[0m
 
-The capsule says it holds Idris 2 0.8.0, and the compiler inside reports
-something else.
+The capsule says it holds one version of Idris 2, and the compiler inside
+reports another.
 
     capsule-says      0.8.0
     compiler-reports  Idris 2, version 0.7.0
@@ -2327,7 +2327,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEG
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-PROBE-CODEGEN]: the capsule's Idris 2 reports Idris 2, version 0.7.0, not 0.8.0
+idris2x: error[E-PROBE-CODEGEN]: the compiler in the capsule reports a different version than the capsule says it holds
     capsule-says: 0.8.0
     compiler-reports: Idris 2, version 0.7.0
   state: The capsule was not installed. The store is unchanged.
@@ -2340,7 +2340,7 @@ idris2x: error[E-PROBE-CODEGEN]: the capsule's Idris 2 reports Idris 2, version 
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the capsule's Idris 2 reports Idris 2, version 0.7.0, not 0.8.0
+idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the compiler in the capsule reports a different version than the capsule says it holds
     capsule-says: 0.8.0
     compiler-reports: Idris 2, version 0.7.0
   <ESC>[1mstate<ESC>[0m: The capsule was not installed. The store is unchanged.
@@ -2353,7 +2353,7 @@ idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the capsule's Idris 2 report
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"version-mismatch","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"the capsule's Idris 2 reports Idris 2, version 0.7.0, not 0.8.0","context":{"want":"0.8.0","got":"Idris 2, version 0.7.0"},"state":"The capsule was not installed. The store is unchanged.","why":"The capsule was labelled wrongly when it was built. This is a fault in the capsule, not in your machine.","fix":{"command":"","note":"Report the capsule using the runbook below. Until it is replaced, pin a different version.","auto":"none"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"version-mismatch","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"the compiler in the capsule reports a different version than the capsule says it holds","context":{"want":"0.8.0","got":"Idris 2, version 0.7.0"},"state":"The capsule was not installed. The store is unchanged.","why":"The capsule was labelled wrongly when it was built. This is a fault in the capsule, not in your machine.","fix":{"command":"","note":"Report the capsule using the runbook below. Until it is replaced, pin a different version.","auto":"none"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
 ----
 
 === E-PROBE-CODEGEN, case `path-has-spaces`
@@ -2589,7 +2589,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCH
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-SCHEMA]: idris2x.lock uses lock format 2; this idris2x reads up to 1
+idris2x: error[E-CHANNEL-SCHEMA]: idris2x.lock uses a newer lock format; this idris2x reads up to 1
     file: idris2x.lock
     its-format: 2
     this-idris2x-reads: 1
@@ -2604,7 +2604,7 @@ idris2x: error[E-CHANNEL-SCHEMA]: idris2x.lock uses lock format 2; this idris2x 
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: idris2x.lock uses lock format 2; this idris2x reads up to 1
+idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: idris2x.lock uses a newer lock format; this idris2x reads up to 1
     file: idris2x.lock
     its-format: 2
     this-idris2x-reads: 1
@@ -2619,7 +2619,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: idris2x.lock uses lock form
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"lock-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"idris2x.lock uses lock format 2; this idris2x reads up to 1","context":{"file":"idris2x.lock","found":"2","supports":"1","version":"0.1.0"},"state":"Nothing was downloaded or changed. The lock file is intact.","why":"Someone pinned this project with a newer idris2x. An older one refuses to guess at fields it does not know.","fix":{"command":"","note":"Update idris2x to the version your colleagues use, then run the same command again.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"lock-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"idris2x.lock uses a newer lock format; this idris2x reads up to 1","context":{"file":"idris2x.lock","found":"2","supports":"1","version":"0.1.0"},"state":"Nothing was downloaded or changed. The lock file is intact.","why":"Someone pinned this project with a newer idris2x. An older one refuses to guess at fields it does not know.","fix":{"command":"","note":"Update idris2x to the version your colleagues use, then run the same command again.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
 ----
 
 === E-CHANNEL-SCHEMA, case `channel-newer`
@@ -2671,7 +2671,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCH
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-SCHEMA]: the channel uses manifest format 2; this idris2x reads up to 1
+idris2x: error[E-CHANNEL-SCHEMA]: the channel uses a newer manifest format; this idris2x reads up to 1
     manifest: https://channel.example.org/v1.json
     its-format: 2
     this-idris2x-reads: 1
@@ -2686,7 +2686,7 @@ idris2x: error[E-CHANNEL-SCHEMA]: the channel uses manifest format 2; this idris
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses manifest format 2; this idris2x reads up to 1
+idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses a newer manifest format; this idris2x reads up to 1
     manifest: https://channel.example.org/v1.json
     its-format: 2
     this-idris2x-reads: 1
@@ -2701,7 +2701,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses manifest f
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"channel-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel uses manifest format 2; this idris2x reads up to 1","context":{"url":"https://channel.example.org/v1.json","found":"2","supports":"1","version":"0.1.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel moved to a new format after this idris2x was released.","fix":{"command":"","note":"Update idris2x, then pin again. Until then, existing pins keep working.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"channel-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel uses a newer manifest format; this idris2x reads up to 1","context":{"url":"https://channel.example.org/v1.json","found":"2","supports":"1","version":"0.1.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel moved to a new format after this idris2x was released.","fix":{"command":"","note":"Update idris2x, then pin again. Until then, existing pins keep working.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
 ----
 
 == E-PIN-DRIFT
@@ -2727,7 +2727,8 @@ Make the lock match idris2x.toml:
 
     idris2x pin 0.8.1
 
-If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+If the lock is the one that is right, change the version in idris2x.toml to the
+one idris2x.lock pins instead.
 
 More: idris2x explain E-PIN-DRIFT
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
@@ -2752,7 +2753,8 @@ Make the lock match idris2x.toml:
 
     <ESC>[1midris2x pin 0.8.1<ESC>[0m
 
-If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+If the lock is the one that is right, change the version in idris2x.toml to the
+one idris2x.lock pins instead.
 
 More: idris2x explain E-PIN-DRIFT
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
@@ -2761,13 +2763,13 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.a
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for idris2 0.8.1 and idris2x.lock pins 0.8.0
+idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for a different idris2 version than idris2x.lock pins
     idris2x.toml: 0.8.1
     idris2x.lock: 0.8.0
   state: Nothing was downloaded or changed.
   why: One of the two files was edited without the other. With --locked the lock is never rewritten to match.
   fix: idris2x pin 0.8.1
-  note: If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+  note: If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.
   see: idris2x explain E-PIN-DRIFT
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
 ----
@@ -2775,13 +2777,13 @@ idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for idris2 0.8.1 and idris2x.lock
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for idris2 0.8.1 and idris2x.lock pins 0.8.0
+idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for a different idris2 version than idris2x.lock pins
     idris2x.toml: 0.8.1
     idris2x.lock: 0.8.0
   <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
   <ESC>[1mwhy<ESC>[0m: One of the two files was edited without the other. With --locked the lock is never rewritten to match.
   <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.1<ESC>[0m
-  <ESC>[1mnote<ESC>[0m: If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+  <ESC>[1mnote<ESC>[0m: If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.
   <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-DRIFT
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
 ----
@@ -2789,7 +2791,7 @@ idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for idris2 0.8
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"toml-vs-lock","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for idris2 0.8.1 and idris2x.lock pins 0.8.0","context":{"toml":"0.8.1","locked":"0.8.0"},"state":"Nothing was downloaded or changed.","why":"One of the two files was edited without the other. With --locked the lock is never rewritten to match.","fix":{"command":"idris2x pin 0.8.1","note":"If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"toml-vs-lock","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for a different idris2 version than idris2x.lock pins","context":{"toml":"0.8.1","locked":"0.8.0"},"state":"Nothing was downloaded or changed.","why":"One of the two files was edited without the other. With --locked the lock is never rewritten to match.","fix":{"command":"idris2x pin 0.8.1","note":"If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
 ----
 
 == E-OFFLINE
@@ -3267,7 +3269,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROL
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-ROLLBACK]: the channel offered manifest version 5; this project has already seen 7
+idris2x: error[E-CHANNEL-ROLLBACK]: the channel offered an older manifest version than this project has already seen
     manifest: https://channel.example.org/v1.json
     lock-has-seen: 7
     now-offered: 5
@@ -3282,7 +3284,7 @@ idris2x: error[E-CHANNEL-ROLLBACK]: the channel offered manifest version 5; this
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered manifest version 5; this project has already seen 7
+idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered an older manifest version than this project has already seen
     manifest: https://channel.example.org/v1.json
     lock-has-seen: 7
     now-offered: 5
@@ -3297,7 +3299,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered manif
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"version-went-back","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the channel offered manifest version 5; this project has already seen 7","context":{"url":"https://channel.example.org/v1.json","seen":"7","offered":"5","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifest versions only go up. An older one usually means a mirror that has not caught up. It can also be an attempt to hide a newer release.","fix":{"command":"idris2x pin 0.8.0","note":"If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"version-went-back","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the channel offered an older manifest version than this project has already seen","context":{"url":"https://channel.example.org/v1.json","seen":"7","offered":"5","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifest versions only go up. An older one usually means a mirror that has not caught up. It can also be an attempt to hide a newer release.","fix":{"command":"idris2x pin 0.8.0","note":"If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
 ----
 
 == E-CHANNEL-EXPIRED
@@ -3363,7 +3365,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXP
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-EXPIRED]: the channel manifest expired at 2026-10-01T00:00:00Z
+idris2x: error[E-CHANNEL-EXPIRED]: the channel manifest has expired
     manifest: https://channel.example.org/v1.json
     expired-at: 2026-10-01T00:00:00Z
     this-clock-says: 2026-11-16T09:30:00Z
@@ -3378,7 +3380,7 @@ idris2x: error[E-CHANNEL-EXPIRED]: the channel manifest expired at 2026-10-01T00
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-EXPIRED]<ESC>[0m: the channel manifest expired at 2026-10-01T00:00:00Z
+idris2x: <ESC>[1;31merror[E-CHANNEL-EXPIRED]<ESC>[0m: the channel manifest has expired
     manifest: https://channel.example.org/v1.json
     expired-at: 2026-10-01T00:00:00Z
     this-clock-says: 2026-11-16T09:30:00Z
@@ -3393,7 +3395,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-EXPIRED]<ESC>[0m: the channel manifest expir
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-EXPIRED","case":"expired","exit":23,"title":"the channel manifest is past its expiry time","summary":"the channel manifest expired at 2026-10-01T00:00:00Z","context":{"url":"https://channel.example.org/v1.json","expires":"2026-10-01T00:00:00Z","now":"2026-11-16T09:30:00Z","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifests are re-signed regularly, so a stale one means a mirror is serving an old copy, the channel is no longer maintained, or this machine's clock is wrong.","fix":{"command":"idris2x pin 0.8.0","note":"To pin from the expired manifest anyway, set IDRIS2X_ALLOW_EXPIRED=1. That gives up protection against being shown an outdated list of releases, so use it only when you know why the manifest is old.","auto":"none"},"explain":"idris2x explain E-CHANNEL-EXPIRED","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXPIRED.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-EXPIRED","case":"expired","exit":23,"title":"the channel manifest is past its expiry time","summary":"the channel manifest has expired","context":{"url":"https://channel.example.org/v1.json","expires":"2026-10-01T00:00:00Z","now":"2026-11-16T09:30:00Z","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifests are re-signed regularly, so a stale one means a mirror is serving an old copy, the channel is no longer maintained, or this machine's clock is wrong.","fix":{"command":"idris2x pin 0.8.0","note":"To pin from the expired manifest anyway, set IDRIS2X_ALLOW_EXPIRED=1. That gives up protection against being shown an outdated list of releases, so use it only when you know why the manifest is old.","auto":"none"},"explain":"idris2x explain E-CHANNEL-EXPIRED","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXPIRED.adoc"}
 ----
 
 == E-STORE-IO

@@ -216,7 +216,8 @@ IDRIS2_PATH=/somewhere IDRIS2X_ADVICE_ENV=0 t "doctor with that note silenced" 0
 assert "  silenced note is absent"   test -z "$(grep '^note:' "$W/out.txt")"
 mkdir -p "$W/fakebin"; printf '#!/bin/sh\necho "Idris2 LSP stand-in for Idris 2 0.7.0"\n' > "$W/fakebin/idris2-lsp"; chmod +x "$W/fakebin/idris2-lsp"
 PATH="$W/fakebin:$PATH" t "doctor with a stand-in idris2-lsp for another version" 0 "$X" doctor
-assert "  doctor notes the mismatch (stand-in program, not a real idris2-lsp)" grep -q "^note: idris2-lsp on PATH does not report Idris 2 0.8.0" "$W/out.txt"
+assert "  doctor notes the mismatch, the pin on its fact line (stand-in program, not a real idris2-lsp)" \
+  sh -c 'grep -A1 "^note: idris2-lsp on PATH does not report the Idris 2 version this project pins" "$1" | tail -n 1 | grep -qx "    project-pins: 0.8.0"' _ "$W/out.txt"
 PATH="$W/fakebin:$PATH" IDRIS2X_ADVICE=0 t "doctor with all advice off" 0 "$X" doctor
 assert "  no notes at all"           test -z "$(grep '^note:' "$W/out.txt")"
 echo; echo "== RESULT: $pass passed, $fail failed  (work: $W)"; [ "$fail" = 0 ]

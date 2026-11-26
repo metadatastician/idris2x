@@ -374,8 +374,14 @@ pub fn advise(a: Advice) -> R<()> {
         return Ok(());
     }
     let text = fill(d.text, &ctx, false);
+    let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
+    let facts: String = d
+        .facts
+        .iter()
+        .map(|(l, k)| format!("    {l}: {}\n", get(k)))
+        .collect();
     out(&format!(
-        "note: {text}\nnote: silence this note with {}=0\n",
+        "note: {text}\n{facts}note: silence this note with {}=0\n",
         d.silence
     ))
 }

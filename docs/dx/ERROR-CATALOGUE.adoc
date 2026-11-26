@@ -365,6 +365,24 @@ launcher panicked and reported `E-INTERNAL`, which tells the user the fault is i
 A closed standard output (`>&-`) is not detected. The Rust runtime reopens it as `/dev/null` before the launcher
 starts, so the output is thrown away, as it would be with `>/dev/null`.
 
+On the same day, eight templates were reworded so that no sentence quotes a value read from the lock or the channel
+(owner ruling by selector, option A). ADR 0012 lets lock text fill a fact slot only. The value stays on its fact line,
+where it was already shown in full, and the sentence now describes it instead of naming it. The glibc summary, for
+example, says the system's glibc is "older than the pinned capsule needs" and no longer names the version the
+capsule needs. The cases are `E-GLIBC-FLOOR/too-old`,
+`E-PROBE-CODEGEN/version-mismatch`, `E-CHANNEL-SCHEMA/lock-newer` and `channel-newer`, `E-PIN-DRIFT/toml-vs-lock`,
+`E-CHANNEL-ROLLBACK/version-went-back` and `E-CHANNEL-EXPIRED/expired`. In `E-PIN-DRIFT` the fix command
+`+idris2x pin {toml}+` keeps its value: a fix slot accepts lock text once it has passed the version check.
+
+The advice note `lsp-mismatch` quoted the pinned version twice. An `[[advice]]` entry may now carry `facts`, written
+as in a `[[case]]`, and the pinned version moved to a fact line printed between the note and its silencing line:
+
+----
+note: idris2-lsp on PATH does not report the Idris 2 version this project pins. Editors may show wrong errors until it is rebuilt for that version.
+    project-pins: 0.8.0
+note: silence this note with IDRIS2X_ADVICE_LSP=0
+----
+
 == What is tested, exactly
 
 [cols="2,3",options="header"]

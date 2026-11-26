@@ -25,6 +25,8 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   `scripts/gen-errors-rs.sh`, renders every message byte for byte as the prototype does. It answers `explain`, `help`
   and `version` only. Context text is typed by provenance (ADR 0012).
 * `E-OUTPUT` (exit 25): a failed write to standard output is a typed error, not a panic reported as `E-INTERNAL`.
+* Eight error templates and one advice note no longer quote a lock or channel value in a sentence (ADR 0012); the
+  value stays on its fact line. `[[advice]]` entries may carry `facts`.
 
 ==== Not yet
 
