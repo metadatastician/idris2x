@@ -191,16 +191,20 @@ fn fill(s: &str, ctx: &[(&str, &str)], quote: bool) -> String {
 }
 /// Greedy word wrap at `w` characters, splitting on spaces only.
 fn wrap(s: &str, w: usize) -> String {
-    let mut lines = vec![String::new()];
+    let (mut o, mut n) = (String::new(), 0);
     for word in s.split(' ').filter(|x| !x.is_empty()) {
-        let last = lines.last_mut().expect("lines is never empty");
-        match last.chars().count() {
-            0 => last.push_str(word),
-            n if n + 1 + word.chars().count() <= w => *last += &format!(" {word}"),
-            _ => lines.push(word.into()),
+        let l = word.chars().count();
+        if n > 0 && n + 1 + l <= w {
+            o.push(' ');
+            n += 1;
+        } else if n > 0 {
+            o.push('\n');
+            n = 0;
         }
+        o.push_str(word);
+        n += l;
     }
-    lines.join("\n")
+    o
 }
 fn paint(on: bool, code: &str, s: &str) -> String {
     if on {
@@ -224,26 +228,24 @@ fn js(s: &str) -> String {
     format!("\"{}\"", s.chars().map(esc).collect::<String>())
 }
 
-/// Render case `k` with its context values, or say which value is missing.
-fn render(
-    k: usize,
-    ctx: &[(&str, &str)],
-    form: Form,
-    a: bool,
-    w: usize,
-) -> Result<Rendered, String> {
-    let (c, tty) = (&CASES[k], form == Form::Tty);
-    let e = &ERRORS[c.error];
+/// The first value case `k` uses that `ctx` lacks. A `Fail` never lacks one: the generator gives each
+/// variant every key its case uses. Only the `__render` hook, fed from the command line, can.
+fn missing(k: usize, ctx: &[(&str, &str)]) -> Option<&'static str> {
+    let c = &CASES[k];
     let all = [
         c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_cmd, c.fix_note,
     ];
     let mut keys = all
-        .iter()
-        .flat_map(|t| keys_in(t))
+        .into_iter()
+        .flat_map(keys_in)
         .chain(c.facts.iter().map(|f| f.1));
-    if let Some(key) = keys.find(|key| !ctx.iter().any(|p| p.0 == *key)) {
-        return Err(format!("missing context value: {key}"));
-    }
+    keys.find(|key| !ctx.iter().any(|p| p.0 == *key))
+}
+/// Render case `k` with its context values. A value it lacks stays as its placeholder in text and is empty on a
+/// fact line: see `missing`.
+fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rendered {
+    let (c, tty) = (&CASES[k], form == Form::Tty);
+    let e = &ERRORS[c.error];
     let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
     let [summary, story, state, why, lead, note, auto] = [
         c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_note, c.auto,
@@ -266,11 +268,12 @@ fn render(
             kv(&[("id", e.id), ("case", c.case)]),
             kv(&[("title", e.title), ("summary", &summary)]),
         );
-        let (cx, tail) = (kv(ctx), kv(&[("state", &state), ("why", &why)]));
-        let fix = kv(&[("command", &cmd), ("note", &note), ("auto", &auto)]);
+        let obj = |pairs: &[(&str, &str)]| format!("{{{}}}", kv(pairs));
+        let (cx, tail) = (obj(ctx), kv(&[("state", &state), ("why", &why)]));
+        let fix = obj(&[("command", &cmd), ("note", &note), ("auto", &auto)]);
         let end = kv(&[("explain", &explain), ("docs", &docs)]);
         let x = e.exit;
-        format!("{{\"schema\":1,\"tool\":\"idris2x\",\"level\":\"error\",{head},\"exit\":{x},{mid},\"context\":{{{cx}}},{tail},\"fix\":{{{fix}}},{end}}}")
+        format!("{{\"schema\":1,\"tool\":\"idris2x\",\"level\":\"error\",{head},\"exit\":{x},{mid},\"context\":{cx},{tail},\"fix\":{fix},{end}}}")
     } else if a {
         let h = format!("-- {} (exit {}) ", e.id, e.exit);
         let rule = "-".repeat((w as isize - h.chars().count() as isize - 8).max(2) as usize);
@@ -329,17 +332,16 @@ fn render(
         ]);
         l.join("\n")
     };
-    Ok(Rendered(out))
+    Rendered(out)
 }
-fn render_env(k: usize, ctx: &[(&str, &str)], form: Form) -> Result<Rendered, String> {
+fn render_env(k: usize, ctx: &[(&str, &str)], form: Form) -> Rendered {
     render(k, ctx, form, var("IDRIS2X_STYLE") == "a", width())
 }
 
 /// Print `f` on stderr, leave its JSON in IDRIS2X_ERROR_FILE, and exit with its code.
 pub fn fail(f: Fail) -> ! {
     let (k, ctx) = f.parts();
-    let r =
-        |form| render_env(k, &ctx, form).expect("a Fail variant carries every value its case uses");
+    let r = |form| render_env(k, &ctx, form);
     _ = r(form()).print(&mut std::io::stderr());
     if let Some(p) = std::env::var_os("IDRIS2X_ERROR_FILE").filter(|p| !p.is_empty()) {
         if let Err(e) = std::fs::File::create(&p).and_then(|mut f| r(Form::Json).print(&mut f)) {
@@ -410,7 +412,10 @@ pub fn render_hook(args: &[String]) -> R<()> {
         .iter()
         .position(|c| ERRORS[c.error].id == id && c.case == case);
     let k = found.ok_or_else(|| bug(format!("no message data for {id}/{case}")))?;
-    let r = render_env(k, &ctx, form).map_err(bug)?;
+    if let Some(key) = missing(k, &ctx) {
+        return Err(bug(format!("missing context value: {key}")));
+    }
+    let r = render_env(k, &ctx, form);
     out(&format!("{}\n", r.0))
 }
 /// `explain` lists every error; `explain ID` gives its long form, offline, from the same table.
