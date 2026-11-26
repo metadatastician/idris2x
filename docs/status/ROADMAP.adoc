@@ -5,7 +5,9 @@
 == Current Status
 
 Phase 0 complete (2026-11-16): design pinned in ADRs 0004–0011 and tested on real builds (see PHASE0-REPORT.adoc).
-Phase 1 not started. Nothing is released.
+Phase 1 in progress (2026-11-26): the Rust launcher is being built in four milestones. Milestone 1 (messages) is
+merged; milestones 2 and 3 are open draft PRs; milestone 4 (pin and channel trust, chaos CI gate) is not started.
+Nothing is released, and no capsule is published.
 
 == Milestones
 
@@ -33,4 +35,5 @@ Phase 1 not started. Nothing is released.
 == Next actions
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
-. Decide and start the Rust launcher at xhigh effort; port `scripts/proto/idris2x.sh` behaviour drill by drill.
+. Finish the Rust launcher: review and merge milestones 2 and 3, then build milestone 4, porting
+  `scripts/proto/idris2x.sh` behaviour drill by drill.

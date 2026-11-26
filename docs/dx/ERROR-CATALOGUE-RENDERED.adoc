@@ -4383,3 +4383,85 @@ idris2x: <ESC>[1;31merror[E-INTERNAL]<ESC>[0m: the prototype needs flock and can
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-INTERNAL","case":"missing-tool","exit":70,"title":"idris2x has a bug","summary":"the prototype needs flock and cannot find it","context":{"tool":"flock"},"state":"Nothing was run.","why":"The prototype is a shell script that calls ordinary system tools. The real launcher will not need them.","fix":{"command":"","note":"Install flock with your system's package manager, then run the same command again.","auto":"none"},"explain":"idris2x explain E-INTERNAL","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-INTERNAL.adoc"}
 ----
+
+== Hidden characters in a value
+
+A value from a lock, a capsule or the host can hold characters that move the cursor, clear the screen or reorder the
+text around them. The path in this sample holds one character from each range that `src/msg.rs` (`hidden`) and
+`scripts/proto/clean.jq` name: escape, carriage return, bell, delete, the C1 control sequence introducer, no-break
+space, soft hyphen, zero-width space, right-to-left override, word joiner, left-to-right isolate and byte order mark.
+Text and terminal forms show each as `?`. `--json` keeps the value and writes each as `\uXXXX`.
+
+=== E-USAGE, case `no-such-file`, with a hostile path
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-USAGE (exit 2)
+
+I cannot find the file capsule?[2J???????????.tar.gz.
+
+    you-gave     capsule?[2J???????????.tar.gz
+    looked-from  /home/ada/proofs
+
+Nothing was installed or changed.
+
+A relative path is read from the current directory.
+
+Check the spelling, or give the full path.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-USAGE (exit 2) ---------------------------------------------------- idris2x<ESC>[0m
+
+I cannot find the file capsule?[2J???????????.tar.gz.
+
+    you-gave     capsule?[2J???????????.tar.gz
+    looked-from  /home/ada/proofs
+
+Nothing was installed or changed.
+
+A relative path is read from the current directory.
+
+Check the spelling, or give the full path.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-USAGE]: no such file: capsule?[2J???????????.tar.gz
+    you-gave: capsule?[2J???????????.tar.gz
+    looked-from: /home/ada/proofs
+  state: Nothing was installed or changed.
+  why: A relative path is read from the current directory.
+  fix: Check the spelling, or give the full path.
+  see: idris2x explain E-USAGE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: no such file: capsule?[2J???????????.tar.gz
+    you-gave: capsule?[2J???????????.tar.gz
+    looked-from: /home/ada/proofs
+  <ESC>[1mstate<ESC>[0m: Nothing was installed or changed.
+  <ESC>[1mwhy<ESC>[0m: A relative path is read from the current directory.
+  <ESC>[1mfix<ESC>[0m: Check the spelling, or give the full path.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"no-such-file","exit":2,"title":"the command line was not understood","summary":"no such file: capsule\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff.tar.gz","context":{"path":"capsule\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff.tar.gz","dir":"/home/ada/proofs"},"state":"Nothing was installed or changed.","why":"A relative path is read from the current directory.","fix":{"command":"","note":"Check the spelling, or give the full path.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+----

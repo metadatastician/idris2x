@@ -33,7 +33,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ERRORS_TOML="${IDRIS2X_ERRORS_TOML:-$HERE/../../src/errors/errors.toml}"
 render() { # render FORM ID CASE key=value... -> the message on stdout (FORM: tty | plain | json)
   local form=$1 id=$2 case=$3 w=${COLUMNS:-80}; shift 3; [ "$w" -gt 80 ] && w=80; [ "$w" -lt 40 ] && w=40
-  "$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -er -f "$HERE/render.jq" --arg id "$id" --arg case "$case" \
+  "$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -er -L "$HERE" -f "$HERE/render.jq" --arg id "$id" --arg case "$case" \
     --arg style "${IDRIS2X_STYLE:-b}" --arg form "$form" --arg width "$w" --arg runbook "$RUNBOOK" \
     --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")"
 }
@@ -50,7 +50,7 @@ fail() { # fail ID CASE key=value... — print the message, leave the machine-re
   exit "${EXIT[$id]:-70}"
 }
 hexid() { od -An -tx1 | tr -d ' \n'; }     # 8-byte signify key id as hex
-note() { [ "${IDRIS2X_QUIET:-0}" = 1 ] || echo "idris2x: $*" >&2; }
+note() { [ "${IDRIS2X_QUIET:-0}" = 1 ] || printf "idris2x: %s\n" "$(printf %s "$*" | jq -Rrsj -L "$HERE" 'include "clean"; clean')" >&2; }
 need() { command -v "$1" >/dev/null 2>&1 || fail E-INTERNAL missing-tool tool="$1"; }
 for t in curl jq sha256sum tar flock openssl; do need $t; done
 
@@ -262,8 +262,8 @@ advice() { # advice ID key=value... — a note that is not an error; text, silen
   local id=$1 j; shift; [ "${IDRIS2X_ADVICE:-1}" = 0 ] && return 0
   j=$("$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -c --arg id "$id" '.advice[] | select(.id == $id)'); [ -n "$j" ] || fail E-INTERNAL bug detail="no advice called $id" version="$PROTO_VERSION"
   local var; var=$(jq -r .silence <<< "$j"); [ "${!var:-1}" = 0 ] && return 0
-  jq -r --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")" \
-    '"note: " + (.text | gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | $ctx[$k] // "{" + $k + "}")),
+  jq -r -L "$HERE" --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")" \
+    'include "clean"; ($ctx | map_values(clean)) as $ctx | "note: " + (.text | gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | $ctx[$k] // "{" + $k + "}")),
      ((.facts // "") | split(" ")[] | select(. != "") | split("=") | "    " + .[0] + ": " + ($ctx[.[1]] // error("advice fact has no value: " + .[1]))),
      "note: silence this note with " + .silence + "=0"' <<< "$j"; }
 cmd_selftest() { local root; root=$(cmd_install --locked); compose_env "$root"

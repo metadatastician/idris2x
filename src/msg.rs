@@ -235,7 +235,7 @@ fn js(s: &str) -> String {
         '\r' => "\\r".into(),
         '\u{8}' => "\\b".into(),
         '\u{c}' => "\\f".into(),
-        c if (c as u32) < 0x20 || c == '\u{7f}' => format!("\\u{:04x}", c as u32),
+        c if hidden(c) => format!("\\u{:04x}", c as u32),
         c => c.into(),
     };
     format!("\"{}\"", s.chars().map(esc).collect::<String>())
@@ -257,6 +257,14 @@ fn missing(k: usize, ctx: &[(&str, &str)]) -> Option<&'static str> {
 /// Render case `k` with its context values. A value it lacks stays as its placeholder in text and is empty on a
 /// fact line: see `missing`.
 fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rendered {
+    let (json, mut kept) = (form == Form::Json, vec![]);
+    for &(k, v) in ctx {
+        kept.push((k, if json { v.into() } else { clean(v) }));
+    }
+    let ctx: &[(&str, &str)] = &kept
+        .iter()
+        .map(|(k, v)| (*k, v.as_str()))
+        .collect::<Vec<_>>();
     let (c, tty) = (&CASES[k], form == Form::Tty);
     let e = &ERRORS[c.error];
     let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
@@ -368,7 +376,7 @@ pub fn fail(f: Fail) -> ! {
 }
 pub fn note(s: &str) {
     if var("IDRIS2X_QUIET") != "1" {
-        eprintln!("idris2x: {s}");
+        eprintln!("idris2x: {}", clean(s));
     }
 }
 /// Write `s` to stdout. A failed write is E-OUTPUT: never a panic, and never silence.
@@ -379,11 +387,16 @@ pub fn out(s: &str) -> R<()> {
         detail: host(e.to_string()).into(),
     })
 }
-/// `s` with each control character shown as `?`, for a report line that holds a path or a capsule's own text.
+/// A character that can hide or rewrite text on a terminal: a control character (C0, DEL or C1), a no-break or soft
+/// hyphen space, a zero-width character or a bidirectional control. scripts/proto/clean.jq `hidden` is the same set.
+fn hidden(c: char) -> bool {
+    let zw = matches!(c, '\u{a0}' | '\u{ad}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202f}');
+    c.is_control() || zw || matches!(c, '\u{2060}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+}
+/// `s` with each hidden character shown as `?`. Every value in a text or terminal message, and every note, goes
+/// through it; JSON keeps the value and escapes these characters instead.
 pub fn clean(s: &str) -> String {
-    s.chars()
-        .map(|c| if c.is_control() { '?' } else { c })
-        .collect()
+    s.chars().map(|c| if hidden(c) { '?' } else { c }).collect()
 }
 /// One report line for `f`, as doctor prints it: the summary, which holds no lock value (ADR 0012), then the id.
 pub fn brief(f: &Fail) -> String {
@@ -398,12 +411,12 @@ pub fn advice(a: Advice) -> Option<String> {
     if var("IDRIS2X_ADVICE") == "0" || var(d.silence) == "0" {
         return None;
     }
-    let text = fill(d.text, &ctx, false);
+    let text = clean(&fill(d.text, &ctx, false));
     let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
     let facts: String = d
         .facts
         .iter()
-        .map(|(l, k)| format!("    {l}: {}\n", get(k)))
+        .map(|(l, k)| format!("    {l}: {}\n", clean(get(k))))
         .collect();
     Some(format!(
         "note: {text}\n{facts}note: silence this note with {}=0\n",

@@ -53,6 +53,7 @@ Malicious or compromised mirror; compromised CI runner or GitHub token; network 
 ==== Spoofing
 * *Fake manifest / fake mirror.* Mitigated: Ed25519 signature with the key pinned in the launcher; key-id must match; pre-hashed formats rejected (`E-SIG-INVALID`). Drilled: tampered manifest, wrong key.
 * *Repository squatting after rename/transfer.* GitHub keeps a 301 from the old name until it is re-registered. Mitigation: lock URLs list two providers (GitHub Releases plus an object-store mirror on a domain we control); signatures make squatting a denial, not a forgery.
+* *A message that reads differently on a terminal.* A lock, a capsule's `capsule.json` or a host path can hold escape sequences, carriage returns or bidirectional controls. Printed as they are, these rewrite or reorder what the user reads, including a fix command the user will paste. Mitigated (DX rule C9): text and terminal messages, and every note, show each such character in a value as `?`; `--json` writes it as `\uXXXX`. Tested: a golden sample rendered by both launchers, and `tests/install.rs`. Residual: `fetch.log`, and output that a program reads back (`env` lines, a printed store path), keep values exactly.
 * *First-launcher trust is TOFU over TLS.* Mitigation: publish the root key fingerprint in at least two independent places (README, release notes, DNS TXT) and ship the launcher through independently reviewed manifests (Homebrew, winget, Nix) whose own hashes pin it; `self-update` verifies new launchers with the embedded key. Residual: `curl | sh` users.
 
 ==== Tampering

@@ -67,6 +67,16 @@ E-INTERNAL|missing-tool|tool=flock
 S
 }
 block() { printf '.%s\n[source,text]\n----\n' "$1"; sed 's/\x1b/<ESC>/g'; printf -- '----\n\n'; }
+show() { # show ID CASE key=value...: the five renderings of one case
+  local s; for s in a b; do
+    IDRIS2X_STYLE=$s "$X" __render plain "$@" | block "Style ${s^^}, plain (not a terminal, NO_COLOR set, or TERM=dumb)"
+    IDRIS2X_STYLE=$s "$X" __render tty   "$@" | block "Style ${s^^}, interactive terminal"
+  done
+  "$X" __render json "$@" | block "--json (both styles)"; }
+# One character from each hidden range (src/msg.rs `hidden`, scripts/proto/clean.jq), written as escapes so this file
+# holds none: ESC, CR, BEL, DEL, C1 CSI, no-break space, soft hyphen, zero-width space, right-to-left override, word
+# joiner, left-to-right isolate, byte order mark.
+H=$'\e[2J\r\a\x7f\xc2\x9b\xc2\xa0\xc2\xad\xe2\x80\x8b\xe2\x80\xae\xe2\x81\xa0\xe2\x81\xa6\xef\xbb\xbf'
 new=$( cat <<H
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -90,12 +100,21 @@ H
     IFS='|' read -r -a ctx <<< "$rest"
     [ "$id" = "$prev" ] || printf '== %s\n\n' "$id"; prev=$id
     printf '=== %s, case `%s`\n\n' "$id" "$case"
-    for s in a b; do
-      IDRIS2X_STYLE=$s "$X" __render plain "$id" "$case" "${ctx[@]}" | block "Style ${s^^}, plain (not a terminal, NO_COLOR set, or TERM=dumb)"
-      IDRIS2X_STYLE=$s "$X" __render tty   "$id" "$case" "${ctx[@]}" | block "Style ${s^^}, interactive terminal"
-    done
-    "$X" __render json "$id" "$case" "${ctx[@]}" | block "--json (both styles)"
-  done < <(samples) )
+    show "$id" "$case" "${ctx[@]}"
+  done < <(samples)
+  cat <<'T'
+== Hidden characters in a value
+
+A value from a lock, a capsule or the host can hold characters that move the cursor, clear the screen or reorder the
+text around them. The path in this sample holds one character from each range that `src/msg.rs` (`hidden`) and
+`scripts/proto/clean.jq` name: escape, carriage return, bell, delete, the C1 control sequence introducer, no-break
+space, soft hyphen, zero-width space, right-to-left override, word joiner, left-to-right isolate and byte order mark.
+Text and terminal forms show each as `?`. `--json` keeps the value and writes each as `\uXXXX`.
+
+=== E-USAGE, case `no-such-file`, with a hostile path
+
+T
+  show E-USAGE no-such-file "path=capsule${H}.tar.gz" dir=/home/ada/proofs )
 want=$("$R/scripts/lib/toml2json.sh" "$R/src/errors/errors.toml" | jq -r '.case[] | "\(.error)|\(.case)"' | sort)
 have=$(samples | cut -d'|' -f1,2 | sort)
 [ "$want" = "$have" ] || { echo "dx-golden: samples() and the [[case]] list in errors.toml differ:" >&2; diff <(echo "$want") <(echo "$have") >&2 || true; exit 1; }

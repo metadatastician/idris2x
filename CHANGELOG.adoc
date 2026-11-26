@@ -49,6 +49,10 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   New advice `gc-compiled-programs` warns that programs compiled with `--cg chez` name their capsule.
 * Milestone 3 brings the launcher to 1,825 of 2,000 lines. The projection made at milestone 2 (1,700 to 1,800 for
   all of Phase 1) was too low: milestone 4, pin and channel trust, is estimated at 200 to 250 lines more.
+* Every value in a text or terminal message, and every note, shows each control character, no-break or soft hyphen
+  space, zero-width character and bidirectional control as `?`, in the Rust launcher and the prototype alike. `--json`
+  keeps the value and writes these characters as `\uXXXX`. Before, a lock, a capsule or a host path could put escape
+  sequences on the user's terminal.
 
 ==== Not yet
 
