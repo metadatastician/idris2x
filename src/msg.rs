@@ -196,11 +196,19 @@ fn width() -> usize {
     c.unwrap_or(80).clamp(40, 80) as usize
 }
 
-/// The shell quoting of render.jq: safe words stay bare, anything else is single-quoted.
+/// The shell quoting of render.jq: safe words stay bare, anything else is single-quoted. A value with a hidden
+/// character is written as $'...' (POSIX 2024), each byte of a hidden character as a three-digit octal escape, so the
+/// command names the real value and the character itself never reaches the terminal.
 pub fn shq(s: &str) -> String {
     let safe = |c: char| c.is_ascii_alphanumeric() || "_./:@%+=,-".contains(c);
+    let esc = |c: char| match c {
+        '\\' | '\'' => format!("\\{c}"),
+        c if hidden(c) => c.to_string().bytes().map(|b| format!("\\{b:03o}")).collect(),
+        c => c.into(),
+    };
     match !s.is_empty() && s.chars().all(safe) {
         true => s.into(),
+        false if s.chars().any(hidden) => format!("$'{}'", s.chars().map(esc).collect::<String>()),
         false => format!("'{}'", s.replace('\'', "'\\''")),
     }
 }
@@ -279,7 +287,8 @@ fn missing(k: usize, ctx: &[(&str, &str)]) -> Option<&'static str> {
 /// Render case `k` with its context values. A value it lacks stays as its placeholder in text and is empty on a
 /// fact line: see `missing`.
 fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rendered {
-    let (json, mut kept) = (form == Form::Json, vec![]);
+    // The fix command quotes each value as it is, not as it is shown, so the command names the real path.
+    let (json, mut kept, cmd) = (form == Form::Json, vec![], fill(CASES[k].fix_cmd, ctx, true));
     for &(k, v) in ctx {
         kept.push((k, if json { v.into() } else { clean(v) }));
     }
@@ -290,7 +299,7 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
     let [summary, story, state, why, lead, note, auto] =
         [c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_note, c.auto]
             .map(|t| fill(t, ctx, false));
-    let (cmd, docs) = (fill(c.fix_cmd, ctx, true), format!("{}/{}.adoc", runbook(), e.id));
+    let docs = format!("{}/{}.adoc", runbook(), e.id);
     let explain = format!("idris2x explain {}", e.id);
     let out = if form == Form::Json {
         fn kv(pairs: &[(&str, &str)]) -> String {

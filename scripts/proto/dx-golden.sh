@@ -123,7 +123,17 @@ Text and terminal forms show each as `?`. `--json` keeps the value and writes ea
 === E-USAGE, case `no-such-file`, with a hostile path
 
 T
-  show E-USAGE no-such-file "path=capsule${H}.tar.gz" dir=/home/ada/proofs )
+  show E-USAGE no-such-file "path=capsule${H}.tar.gz" dir=/home/ada/proofs
+  cat <<'T'
+
+=== E-HASH-MISMATCH, case `store-modified`, with a hostile store path
+
+A fix command is shell text the user will paste, so it names the real path, not the one shown with `?`. The value is
+written as `$'...'` (POSIX 2024): each byte of a hidden character as a three-digit octal escape, and `\` and `'` with a
+backslash. The hidden characters themselves never reach the terminal. `--json` writes the same command.
+
+T
+  show E-HASH-MISMATCH store-modified "digest=sha256:$A" "dir=/home/ada/.cache/idris2x/store/sha256-$A${H}'x\\y" )
 want=$("$R/scripts/lib/toml2json.sh" "$R/src/errors/errors.toml" | jq -r '.case[] | "\(.error)|\(.case)"' | sort)
 have=$(samples | cut -d'|' -f1,2 | sort)
 [ "$want" = "$have" ] || { echo "dx-golden: samples() and the [[case]] list in errors.toml differ:" >&2; diff <(echo "$want") <(echo "$have") >&2 || true; exit 1; }

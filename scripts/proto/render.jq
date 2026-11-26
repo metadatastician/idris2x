@@ -10,7 +10,15 @@ include "clean";
 # One pass over the template: an inserted value is never scanned again, so it cannot pull in another key's value.
 def fill($c): gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | if $c | has($k) then $c[$k] else "{" + $k + "}" end);
 # A value placed in a fix command is shell text the user will paste: leave plain words bare, single-quote everything else.
-def shq: if test("^[A-Za-z0-9_./:@%+=,-]+$") then . else "'" + gsub("'"; "'\\''") + "'" end;
+# A value with a hidden character is written as $'...' (POSIX 2024), each byte of a hidden character as a three-digit
+# octal escape, so the command names the real value and the character never reaches the terminal. src/msg.rs `shq`.
+def oct3: . as $n | [64, 8, 1] | map(($n / . | floor) % 8 | tostring) | add;
+def byte: ascii_downcase | explode | map(if . >= 97 then . - 87 else . - 48 end) | .[0] * 16 + .[1];
+def esc: if hidden then [.] | implode | @uri | ltrimstr("%") | split("%") | map("\\" + (byte | oct3)) | add
+  elif . == 92 or . == 39 then "\\" + ([.] | implode) else [.] | implode end;
+def shq: if test("^[A-Za-z0-9_./:@%+=,-]+$") then .
+  elif explode | any(hidden) then "$'" + (explode | map(esc) | add) + "'"
+  else "'" + gsub("'"; "'\\''") + "'" end;
 def wrap($w): reduce (split(" ")[] | select(. != "")) as $word ([""];
     if (.[-1] | length) == 0 then .[-1] = $word
     elif ((.[-1] | length) + 1 + ($word | length)) <= $w then .[-1] += " " + $word
@@ -18,10 +26,10 @@ def wrap($w): reduce (split(" ")[] | select(. != "")) as $word ([""];
 def para($w): if . == "" then empty else wrap($w) end;
 def paint($on; $code): if $on then "\u001b[" + $code + "m" + . + "\u001b[0m" else . end;
 ($width | tonumber) as $w | ($form == "tty") as $tty
-| ($ctx | if $form == "json" then . else map_values(clean) end) as $ctx
+| $ctx as $raw | ($ctx | if $form == "json" then . else map_values(clean) end) as $ctx
 | (.error[] | select(.id == $id)) as $e
 | ((.case // [])[] | select(.error == $id and .case == $case)) as $k
-| ($k | with_entries(select(.value | type == "string") | if .key == "fix_cmd" then .value |= fill($ctx | map_values(shq)) else .value |= fill($ctx) end)) as $t
+| ($k | with_entries(select(.value | type == "string") | if .key == "fix_cmd" then .value |= fill($raw | map_values(shq)) else .value |= fill($ctx) end)) as $t
 | ($t.facts | split(" ") | map(select(. != "") | split("=") | {label: .[0], value: ($ctx[.[1]] // error("missing context value: " + .[1]))})) as $facts
 | if any($k | to_entries[] | select(.value | type == "string") | .value | scan("\\{([a-z_]+)\\}") | .[0]; . as $p | $ctx | has($p) | not) then error("unfilled {placeholder} in " + $id + "/" + $case) else . end
 | ($runbook + "/" + $id + ".adoc") as $docs
