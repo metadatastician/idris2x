@@ -60,7 +60,7 @@ them.
 | None yet. Checked by hand on 2026-11-17 with Idris 2 0.8.0 (Chez 10.4.1): `scripts/check-proofs.sh idris2` passes both modules, and its overall line is `RESULT: FAIL (1 failure(s), 0 unexpected pass(es))`. The one failure is `.machine_readable/coaptation/core/Coaptation.idr` (a `with` block in `resolveComplete` is not covering), a template file identical on `main`, not part of this claim. No headless, pinned receipt exists.
 
 | DX-PROV-2
-| The Rust launcher's message module upholds the same four properties. What exists (milestone 1): `src/msg.rs` labels text `Embedded`, `Host`, `Lock` or `Checked`; a private module holds ADR 0012's policy table, so no other module can add a row; and a slot accepts text only through a `From` impl that the table allows. Six `compile_fail` doctests in `src/msg.rs` show the compiler refusing lock text in a fix slot, lock or checked text in prose, a forged label, rendered output read back as text, and non-`'static` embedded text. `scripts/check-msg-negatives.sh` checks that each fails with its stated error code, not merely with some error. Not yet in place: the `Channel` label and its negative cases (milestone 4, when the launcher first reads a channel), so T1 to T5 are not yet claimed for Rust. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, both scoped to `check_digest` and `check_version` (an accepted text matches the format), `fill` (one pass: an inserted value is never scanned again), `shq` (the result is one shell word) and `clean` (the result holds no hidden character). Neither toolchain is installed or pinned in this repository yet.
+| The Rust launcher's message module upholds the same four properties. What exists (milestone 1): `src/msg.rs` labels text `Embedded`, `Host`, `Lock` or `Checked`; a private module holds ADR 0012's policy table, so no other module can add a row; and a slot accepts text only through a `From` impl that the table allows. Six `compile_fail` doctests in `src/msg.rs` show the compiler refusing lock text in a fix slot, lock or checked text in prose, a forged label, rendered output read back as text, and non-`'static` embedded text. `scripts/check-msg-negatives.sh` checks that each fails with its stated error code, not merely with some error. Milestone 4 adds the `Channel` label, which the table lets fill fact slots only, and two more doctests that refuse it in a fix slot and in prose (eight negatives in all). The script also builds a copy of the crate whose table allows `Channel` in both, and fails unless both channel negatives then compile, so they test the table; and it fails if any file but `src/pin.rs` names `msg::channel` or imports it. These support T1 (no fix slot takes channel text) and T2 (only the resolver labels channel text), but they are tests and a source check, not a proof; T3 to T5 are not tested for Rust. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, both scoped to `check_digest` and `check_version` (an accepted text matches the format), `fill` (one pass: an inserted value is never scanned again), `shq` (the result is one shell word) and `clean` (the result holds no hidden character). Neither toolchain is installed or pinned in this repository yet.
 | `open`
 | `ungraded`
 | not applicable (engineering)
@@ -99,6 +99,22 @@ them.
 | not applicable (engineering)
 | None. The gc tests run in `cargo test`; these are tests, not a proof receipt.
 
+| TRUST-1
+| `pin` keeps a manifest, or writes a lock from it, only when its signature verifies under the key built in or named in `idris2x.toml`, and never moves a lock to a lower version of the same channel (I5, ADR 0008). What exists (milestone 4): in `src/pin.rs`, `pin` checks the key id and the Ed25519 signature before any field is read, and keeps the manifest and its signature only afterwards, each by one rename; `resolve` refuses a newer format, a `min_launcher` above this launcher, a rollback and an expired manifest, checks each value it copies, and writes the lock by one rename. `tests/pin.rs` checks that each refusal leaves the lock and the cache as they were. Seven mutants, each removing one of these checks or moving the keeping before the signature check, each failed a test when run by hand on 2026-11-26; that run is not in CI. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to `b64` and `signify` (each accepts only its stated shape) and to the order in `pin` (no `put` is reached before `verify` succeeds). Ed25519 and JSON parsing are boundaries below.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The pin tests run in `cargo test`; these are tests, not a proof receipt.
+
+| EXEC-1
+| `exec` starts only a path inside the capsule. What exists (milestone 4): in `src/run.rs`, `exec` takes the program's entry from the `exec` map in `capsule.json`; the first word, and each later word that does not start with `-`, must be non-empty and pass `store::plain` (only normal and `.` components) before it is joined to the capsule's root. `tests/run.rs` checks that absolute, `..`, empty and non-string words are refused (`E-CAPSULE-INVALID/bad-exec`), and a mutant without the check failed it when run by hand on 2026-11-26. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to `plain` (a path it accepts, joined to a root, stays under that root lexically) and to the word loop in `exec`. A symbolic link inside the capsule is STORE-1's concern: extraction refuses one that leaves the tree.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The exec tests run in `cargo test`; these are tests, not a proof receipt.
+
 
 |===
 
@@ -113,7 +129,7 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 | Boundary | What is assumed, and why | Claims
 
 | Ingress labelling
-| The code that reads the channel, the lock and the host calls the matching entry point (`fromChannel`, `fromLock`, `fromHost`). The model cannot see that code: a `String` read from the channel and handed to `fromHost` would be mislabelled. The model proves non-flow *after* labelling, and rejects relabelling of rendered output (negative case 8). The Rust launcher keeps it to three functions in `src/msg.rs`, `embedded`, `host` and `lock`, so it can be reviewed by reading their call sites. `embedded` takes only `&'static str`, which stops a string read at run time by accident but not on purpose: `Box::leak` would get one past it, and is the same kind of mislabelling.
+| The code that reads the channel, the lock and the host calls the matching entry point (`fromChannel`, `fromLock`, `fromHost`). The model cannot see that code: a `String` read from the channel and handed to `fromHost` would be mislabelled. The model proves non-flow *after* labelling, and rejects relabelling of rendered output (negative case 8). The Rust launcher keeps it to four functions in `src/msg.rs`, `embedded`, `host`, `lock` and `channel`, so it can be reviewed by reading their call sites; `scripts/check-msg-negatives.sh` keeps every call of `channel` in `src/pin.rs`. `embedded` takes only `&'static str`, which stops a string read at run time by accident but not on purpose: `Box::leak` would get one past it, and is the same kind of mislabelling.
 | DX-PROV-1, DX-PROV-2
 
 | Format checks
@@ -127,6 +143,18 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 | `ring` SHA-256 (`ASSUMED`, third-party)
 | `ring`'s SHA-256 is correct, so equal digests mean equal bytes up to the hash's collision resistance.
 | STORE-2
+
+| `ring` Ed25519 (`ASSUMED`, third-party)
+| `ring` accepts an Ed25519 signature only if it was made with the private half of the given public key (RFC 8032), up to the scheme's own security.
+| TRUST-1
+
+| `serde_json` parsing (`ASSUMED`, third-party)
+| `serde_json` reads a verified manifest's fields as the JSON text holds them. The launcher checks the format of every value it copies into a lock; the parsing itself is not checked.
+| TRUST-1
+
+| Rename is atomic
+| On one file system, a rename replaces its target whole or not at all (POSIX), so a reader sees the old lock or the new one.
+| TRUST-1
 
 | Staging tree is private
 | Nothing else writes under the staging directory while an install holds the per-digest lock. Another process running as the same user could break this; the launcher does not defend against that.

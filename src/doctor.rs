@@ -15,20 +15,14 @@ type Line = (&'static str, &'static str, String);
 fn store_line(c: &Path) -> (&'static str, String) {
     let c_ = c.display();
     if !c.is_dir() {
-        return (
-            "info",
-            format!("{c_} does not exist yet; the first install creates it"),
-        );
+        return ("info", format!("{c_} does not exist yet; the first install creates it"));
     }
     let p = c.join(format!(".doctor-{}", std::process::id()));
     let r = std::fs::File::create(&p).and_then(|f| f.try_lock().map_err(std::io::Error::from));
     _ = std::fs::remove_file(&p);
     match r {
         Ok(()) => ("ok", format!("{c_} is writable and locks work")),
-        Err(e) => (
-            "problem",
-            format!("{c_} cannot be written or locked ({e}) -> E-STORE-IO"),
-        ),
+        Err(e) => ("problem", format!("{c_} cannot be written or locked ({e}) -> E-STORE-IO")),
     }
 }
 
@@ -44,33 +38,19 @@ fn pin_lines(
     let v = pin.version.shown();
     let t = format!("{} pins idris2 {v} for this machine", pin.lock);
     say("ok", "lock", t);
-    let dir = cache.map_or_else(PathBuf::new, |c| {
-        c.join(format!("store/sha256-{}", pin.digest))
-    });
+    let dir = cache.map_or_else(PathBuf::new, |c| c.join(format!("store/sha256-{}", pin.digest)));
     let short = format!("sha256:{}…", &pin.digest[..12]);
     if cache.is_none() {
-        say(
-            "skip",
-            "capsule",
-            "not checked: the store cannot be found".into(),
-        );
+        say("skip", "capsule", "not checked: the store cannot be found".into());
     } else if !dir.join(".complete").is_file() {
         let t = format!("{short} is not installed yet; idris2x install installs it");
         say("info", "capsule", t);
     } else if !store::sums(&dir) {
         let digest = crate::msg::lock(format!("sha256:{}", pin.digest)).into();
         let dir = host(dir.display().to_string()).into();
-        say(
-            "problem",
-            "capsule",
-            brief(&Fail::HashMismatchStoreModified { digest, dir }),
-        );
+        say("problem", "capsule", brief(&Fail::HashMismatchStoreModified { digest, dir }));
     } else {
-        say(
-            "ok",
-            "capsule",
-            format!("{short} is installed and matches its checksums"),
-        );
+        say("ok", "capsule", format!("{short} is installed and matches its checksums"));
         let iv = meta(&dir, "idris2");
         let (s, t) = match capsule::probe(&dir) {
             Err(f) => ("problem", brief(&f)),
@@ -81,10 +61,7 @@ fn pin_lines(
     }
     if let Some(lsp) = run::on_path("idris2-lsp") {
         let mut c = std::process::Command::new(lsp);
-        let o = c
-            .arg("--version")
-            .stdin(std::process::Stdio::null())
-            .output();
+        let o = c.arg("--version").stdin(std::process::Stdio::null()).output();
         if !o.is_ok_and(|o| String::from_utf8_lossy(&[o.stdout, o.stderr].concat()).contains(v)) {
             let pinned = pin.version.clone().into();
             notes.extend(advice(Advice::LspMismatch { pinned }));
@@ -99,10 +76,7 @@ fn pin_lines(
         let name = host.unwrap_or(u);
         let (s, t) = match net::head(u) {
             Ok(ms) => ("ok", format!("{name} answered in {ms} ms")),
-            Err(e) => (
-                "problem",
-                format!("{name} did not answer ({e}) -> E-NETWORK"),
-            ),
+            Err(e) => ("problem", format!("{name} did not answer ({e}) -> E-NETWORK")),
         };
         say(s, "mirror", t);
     }
@@ -117,7 +91,7 @@ pub fn doctor(json: bool, offline: bool) -> R<()> {
     };
     let (mut lines, mut notes, mut sent) = (vec![(s, "store", t)], vec![], false);
     // An IDRIS2X_OFFLINE that cannot be read is a problem, and doctor then sends nothing.
-    let offline = store::offline().unwrap_or_else(|f| {
+    let offline = lock::flag("IDRIS2X_OFFLINE").unwrap_or_else(|f| {
         lines.push(("problem", "setting", brief(&f)));
         true
     }) || offline;
@@ -142,10 +116,7 @@ pub fn doctor(json: bool, offline: bool) -> R<()> {
         let names = host(set.join(", ")).into();
         notes.extend(advice(Advice::EnvIgnored { names }));
     }
-    let lines: Vec<Line> = lines
-        .into_iter()
-        .map(|(s, c, t)| (s, c, clean(&t)))
-        .collect();
+    let lines: Vec<Line> = lines.into_iter().map(|(s, c, t)| (s, c, clean(&t))).collect();
     let problems = lines.iter().filter(|l| l.0 == "problem").count();
     let glibc = lock::glibc();
     if json {
@@ -164,7 +135,5 @@ pub fn doctor(json: bool, offline: bool) -> R<()> {
     let left = if sent { " except the mirror check" } else { "" };
     let (about, notes) = (crate::about(), notes.concat());
     let end = format!("{p}, {k}. Nothing was changed. No data left this machine{left}.\n");
-    out(&format!(
-        "{about} on {target}{glibc}\n\n{rows}{notes}\n{end}"
-    ))
+    out(&format!("{about} on {target}{glibc}\n\n{rows}{notes}\n{end}"))
 }

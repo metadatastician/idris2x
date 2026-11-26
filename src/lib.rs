@@ -13,6 +13,7 @@ pub mod gc;
 pub mod lock;
 pub mod msg;
 pub mod net;
+pub mod pin;
 pub mod run;
 pub mod store;
 

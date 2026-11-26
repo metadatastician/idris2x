@@ -19,6 +19,8 @@ E-USAGE|no-such-file|path=capsule.tar.gz|dir=/home/ada/proofs
 E-USAGE|no-such-id|word=E-HASH
 E-USAGE|prototype-setting|variable=IDRIS2X_CHANNEL_URL|what=the address of the channel manifest
 E-USAGE|bad-setting|variable=IDRIS2X_LOCK_TIMEOUT|what=a whole number of seconds|value=ten
+E-USAGE|no-channel|file=/home/ada/proofs/idris2x.toml
+E-USAGE|no-such-program|word=racket|programs=chez, idris2
 E-PIN-NOT-FOUND|no-lock|lock=idris2x.lock|dir=/home/ada/proofs
 E-PIN-NOT-FOUND|no-target|lock=idris2x.lock|target=aarch64-unknown-linux-gnu|covered=x86_64-apple-darwin, x86_64-unknown-linux-gnu|version=0.8.0
 E-PIN-NOT-FOUND|no-version|lock=idris2x.lock|version=0.9.0|available=0.7.0, 0.8.0
@@ -48,13 +50,17 @@ E-PROBE-CODEGEN|codegen-failed|probe=chez_codegen (compile)|store=/home/ada/.cac
 E-PROBE-CODEGEN|cannot-start|program=/home/ada/.cache/idris2x/store/sha256-$A/bin/scheme|detail=Permission denied (os error 13)
 E-CHANNEL-SCHEMA|lock-newer|file=idris2x.lock|found=2|supports=1|version=0.1.0
 E-CHANNEL-SCHEMA|channel-newer|url=https://channel.example.org/v1.json|found=2|supports=1|version=0.1.0
+E-CHANNEL-SCHEMA|needs-newer-launcher|url=https://channel.example.org/v1.json|needs=0.3.0|version=0.1.0
+E-CHANNEL-SCHEMA|malformed-manifest|url=https://channel.example.org/v1.json|field=expires
 E-PIN-DRIFT|toml-vs-lock|toml=0.8.1|locked=0.8.0
+E-PIN-DRIFT|bad-toml|file=/home/ada/proofs/idris2x.toml|at=line 4|problem=it sets a key that idris2x does not read
 E-OFFLINE|capsule-missing|digest=sha256:$A|store=/home/ada/.cache/idris2x/store|mode=IDRIS2X_OFFLINE=1|lock=idris2x.lock
 E-OFFLINE|no-manifest|cache=/home/ada/.cache/idris2x/manifests/v1.json|mode=IDRIS2X_OFFLINE=1|version=0.8.0
 E-CAPSULE-INVALID|unsafe-path|digest=sha256:$A
 E-CAPSULE-INVALID|no-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|tree-mismatch|digest=sha256:$A
 E-CAPSULE-INVALID|bad-metadata|digest=sha256:$A
+E-CAPSULE-INVALID|bad-exec|program=idris2|entry="../../../bin/sh"|store=/home/ada/.cache/idris2x/store/sha256-$A
 E-CHANNEL-ROLLBACK|version-went-back|url=https://channel.example.org/v1.json|seen=7|offered=5|version=0.8.0
 E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-10-01T00:00:00Z|now=2026-11-16T09:30:00Z|version=0.8.0
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x

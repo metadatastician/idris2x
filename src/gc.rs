@@ -53,9 +53,7 @@ fn mb(b: u64) -> String {
 }
 fn names(dir: &Path) -> Vec<String> {
     let all = fs::read_dir(dir).into_iter().flatten().flatten();
-    let mut v: Vec<String> = all
-        .map(|e| e.file_name().to_string_lossy().into())
-        .collect();
+    let mut v: Vec<String> = all.map(|e| e.file_name().to_string_lossy().into()).collect();
     v.sort();
     v
 }
@@ -104,21 +102,13 @@ pub fn gc(keep: usize, dry: bool, yes: bool) -> R<()> {
             true => format!("chez {}", meta(p, "chez")),
             false => format!("idris2 {iv}"),
         };
-        format!(
-            "    {}  sha256:{}…  {}\n",
-            clean(&what),
-            &d[..12],
-            mb(size(p))
-        )
+        format!("    {}  sha256:{}…  {}\n", clean(&what), &d[..12], mb(size(p)))
     };
     if gone.is_empty() {
         let n = plural(done.len());
         return out(&format!("{text}idris2x: nothing to remove; keeping {n}\n"));
     }
-    let (n, free) = (
-        plural(gone.len()),
-        mb(gone.iter().map(|g| size(&g.2)).sum()),
-    );
+    let (n, free) = (plural(gone.len()), mb(gone.iter().map(|g| size(&g.2)).sum()));
     text += &format!("idris2x: would remove {n} and free {free}:\n");
     text.extend(gone.iter().map(row));
     text += &format!("idris2x: keeping {}:\n", plural(done.len()));
@@ -132,11 +122,7 @@ pub fn gc(keep: usize, dry: bool, yes: bool) -> R<()> {
         _ = std::io::stdin().read_line(&mut answer);
     }
     if dry || !yes && answer.trim() != "yes" {
-        let how = if dry {
-            ""
-        } else {
-            " Pass --yes to remove them."
-        };
+        let how = if dry { "" } else { " Pass --yes to remove them." };
         return out(&format!("{text}Nothing was removed.{how}\n"));
     }
     let (mut n, mut freed) = (0, 0);
@@ -145,10 +131,7 @@ pub fn gc(keep: usize, dry: bool, yes: bool) -> R<()> {
         if remove(&c, Some(d), p)? {
             (n, freed) = (n + 1, freed + b);
         } else {
-            text += &format!(
-                "idris2x: kept sha256:{}…: an install holds its lock\n",
-                &d[..12]
-            );
+            text += &format!("idris2x: kept sha256:{}…: an install holds its lock\n", &d[..12]);
         }
     }
     let (n, freed) = (plural(n), mb(freed));

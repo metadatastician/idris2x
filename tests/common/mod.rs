@@ -92,7 +92,7 @@ pub fn capsule(scheme: &str, extra: &[(&str, &[u8])]) -> Vec<u8> {
     capsule_tgz(scheme, extra).done()
 }
 pub fn capsule_tgz(scheme: &str, extra: &[(&str, &[u8])]) -> Tgz {
-    let json = br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0"}"#;
+    let json = br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0","exec":{"chez":["bin/scheme"],"idris2":["bin/scheme","--program","bin/idris2_app/idris2.so"]}}"#;
     let mut files: Vec<(&str, &[u8])> =
         vec![("capsule.json", json), ("bin/idris2_app/idris2.so", b"so")];
     files.extend_from_slice(extra);

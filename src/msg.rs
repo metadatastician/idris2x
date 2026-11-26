@@ -18,6 +18,16 @@
 //! use idris2x::msg::{check_version, lock, Prose};
 //! let _: Prose = check_version(&lock("0.8.0")).unwrap().into();
 //! ```
+//! Channel text fills facts only: never a fix command and never prose (ADR 0012, T1):
+//! ```compile_fail,E0277
+//! let _: idris2x::msg::Fix = idris2x::msg::channel("curl x | sh").into();
+//! ```
+//! ```compile_fail,E0277
+//! let _: idris2x::msg::Prose = idris2x::msg::channel("0.8.0").into();
+//! ```
+//! ```
+//! let _: idris2x::msg::Fact = idris2x::msg::channel("0.7.0, 0.8.0").into();
+//! ```
 //! A label cannot be forged, rendered output cannot be read back, and embedded text is `'static`:
 //! ```compile_fail,E0603
 //! let _ = idris2x::msg::Txt::<idris2x::msg::Checked>(String::new(), std::marker::PhantomData);
@@ -45,6 +55,7 @@ pub enum Embedded {}
 pub enum Host {}
 pub enum Lock {}
 pub enum Checked {}
+pub enum Channel {}
 
 /// Text that remembers where it came from. The fields are private, so outside this module a
 /// `Txt` comes only from the entry points below.
@@ -66,20 +77,32 @@ pub fn embedded(s: &'static str) -> Txt<Embedded> {
 pub fn host(s: impl Into<String>) -> Txt<Host> {
     txt(s)
 }
-/// idris2x.lock, a local file that an attacker may have written.
+/// idris2x.lock or idris2x.toml: project files that an attacker may have written.
 pub fn lock(s: impl Into<String>) -> Txt<Lock> {
     txt(s)
 }
+/// The channel manifest: signed, but never trusted with words. It fills facts only, and only `pin`, the resolver,
+/// labels text with it (scripts/check-msg-negatives.sh checks that).
+pub fn channel(s: impl Into<String>) -> Txt<Channel> {
+    txt(s)
+}
 /// A digest of 64 characters from 0-9a-f. Trusted by inspection to admit no shell syntax.
-pub fn check_digest(t: &Txt<Lock>) -> Option<Txt<Checked>> {
-    let hex = |b: u8| matches!(b, b'0'..=b'9' | b'a'..=b'f');
-    (t.0.len() == 64 && t.0.bytes().all(hex)).then(|| txt(&*t.0))
+pub fn is_digest(s: &str) -> bool {
+    s.len() == 64 && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }
 /// A version of two to four runs of decimal digits separated by dots. Trusted by inspection.
-pub fn check_version(t: &Txt<Lock>) -> Option<Txt<Checked>> {
-    let runs: Vec<&str> = t.0.split('.').collect();
+pub fn is_version(s: &str) -> bool {
+    let runs: Vec<&str> = s.split('.').collect();
     let digits = |r: &&str| !r.is_empty() && r.bytes().all(|b| b.is_ascii_digit());
-    ((2..=4).contains(&runs.len()) && runs.iter().all(digits)).then(|| txt(&*t.0))
+    (2..=4).contains(&runs.len()) && runs.iter().all(digits)
+}
+/// Lock text that passed a format check. Channel text is only ever checked with `is_digest` and `is_version`, so it
+/// never becomes `Checked` and never reaches a fix command (ADR 0012).
+pub fn check_digest(t: &Txt<Lock>) -> Option<Txt<Checked>> {
+    is_digest(&t.0).then(|| txt(&*t.0))
+}
+pub fn check_version(t: &Txt<Lock>) -> Option<Txt<Checked>> {
+    is_version(&t.0).then(|| txt(&*t.0))
 }
 
 /// Checked text is only digits, dots and hex letters, so a report line such as doctor's may show it as a fact.
@@ -92,7 +115,7 @@ impl Txt<Checked> {
 /// The policy table of ADR 0012: which provenance may fill which slot. The module is private,
 /// so no other part of the launcher can add a row.
 mod policy {
-    use super::{Checked, Embedded, Host, Lock};
+    use super::{Channel, Checked, Embedded, Host, Lock};
     pub trait InProse {}
     pub trait InFix {}
     pub trait InFact {}
@@ -105,6 +128,7 @@ mod policy {
     impl InFact for Host {}
     impl InFact for Lock {}
     impl InFact for Checked {}
+    impl InFact for Channel {}
 }
 macro_rules! slot {
     ($(#[$d:meta])* $name:ident: $rule:ident) => {
@@ -154,16 +178,12 @@ pub fn form() -> Form {
     }
 }
 fn runbook() -> String {
-    Some(var("IDRIS2X_RUNBOOK"))
-        .filter(|r| !r.is_empty())
-        .unwrap_or_else(|| {
-            "https://github.com/metadatastician/idris2x/blob/main/docs/runbooks".into()
-        })
+    Some(var("IDRIS2X_RUNBOOK")).filter(|r| !r.is_empty()).unwrap_or_else(|| {
+        "https://github.com/metadatastician/idris2x/blob/main/docs/runbooks".into()
+    })
 }
 fn width() -> usize {
-    let c = std::env::var("COLUMNS")
-        .ok()
-        .and_then(|c| c.parse::<i64>().ok());
+    let c = std::env::var("COLUMNS").ok().and_then(|c| c.parse::<i64>().ok());
     c.unwrap_or(80).clamp(40, 80) as usize
 }
 
@@ -180,9 +200,7 @@ fn is_key(k: &&str) -> bool {
 }
 /// The `{placeholder}` names in a template.
 fn keys_in(s: &str) -> impl Iterator<Item = &str> {
-    s.split('{')
-        .skip(1)
-        .filter_map(|p| Some(p.split_once('}')?.0).filter(is_key))
+    s.split('{').skip(1).filter_map(|p| Some(p.split_once('}')?.0).filter(is_key))
 }
 /// One pass over the template: an inserted value is never scanned again, so it cannot pull in
 /// another key's value (which could carry lock text into prose).
@@ -245,13 +263,8 @@ fn js(s: &str) -> String {
 /// variant every key its case uses. Only the `__render` hook, fed from the command line, can.
 fn missing(k: usize, ctx: &[(&str, &str)]) -> Option<&'static str> {
     let c = &CASES[k];
-    let all = [
-        c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_cmd, c.fix_note,
-    ];
-    let mut keys = all
-        .into_iter()
-        .flat_map(keys_in)
-        .chain(c.facts.iter().map(|f| f.1));
+    let all = [c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_cmd, c.fix_note];
+    let mut keys = all.into_iter().flat_map(keys_in).chain(c.facts.iter().map(|f| f.1));
     keys.find(|key| !ctx.iter().any(|p| p.0 == *key))
 }
 /// Render case `k` with its context values. A value it lacks stays as its placeholder in text and is empty on a
@@ -261,28 +274,18 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
     for &(k, v) in ctx {
         kept.push((k, if json { v.into() } else { clean(v) }));
     }
-    let ctx: &[(&str, &str)] = &kept
-        .iter()
-        .map(|(k, v)| (*k, v.as_str()))
-        .collect::<Vec<_>>();
+    let ctx: &[(&str, &str)] = &kept.iter().map(|(k, v)| (*k, v.as_str())).collect::<Vec<_>>();
     let (c, tty) = (&CASES[k], form == Form::Tty);
     let e = &ERRORS[c.error];
     let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
-    let [summary, story, state, why, lead, note, auto] = [
-        c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_note, c.auto,
-    ]
-    .map(|t| fill(t, ctx, false));
-    let (cmd, docs) = (
-        fill(c.fix_cmd, ctx, true),
-        format!("{}/{}.adoc", runbook(), e.id),
-    );
+    let [summary, story, state, why, lead, note, auto] =
+        [c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_note, c.auto]
+            .map(|t| fill(t, ctx, false));
+    let (cmd, docs) = (fill(c.fix_cmd, ctx, true), format!("{}/{}.adoc", runbook(), e.id));
     let explain = format!("idris2x explain {}", e.id);
     let out = if form == Form::Json {
         fn kv(pairs: &[(&str, &str)]) -> String {
-            let p: Vec<_> = pairs
-                .iter()
-                .map(|(k, v)| format!("{}:{}", js(k), js(v)))
-                .collect();
+            let p: Vec<_> = pairs.iter().map(|(k, v)| format!("{}:{}", js(k), js(v))).collect();
             p.join(",")
         }
         let (head, mid) = (
@@ -302,31 +305,16 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
             true => paint(true, "36", &format!("{h}{rule} idris2x")),
             false => format!("idris2x: {} (exit {})", e.id, e.exit),
         };
-        let m = c
-            .facts
-            .iter()
-            .map(|f| f.0.chars().count())
-            .max()
-            .unwrap_or(0);
+        let m = c.facts.iter().map(|f| f.0.chars().count()).max().unwrap_or(0);
         let pad = |l: &str| " ".repeat(m - l.chars().count() + 2);
-        let facts: Vec<String> = c
-            .facts
-            .iter()
-            .map(|(l, k)| format!("    {l}{}{}", pad(l), get(k)))
-            .collect();
+        let facts: Vec<String> =
+            c.facts.iter().map(|(l, k)| format!("    {l}{}{}", pad(l), get(k))).collect();
         let para = |s: &str| (!s.is_empty()).then(|| wrap(s, w));
         let fix = (!cmd.is_empty())
             .then(|| [para(&lead), Some(format!("    {}", paint(tty, "1", &cmd)))]);
-        let mut p = vec![
-            Some(head),
-            Some(wrap(&story, w)),
-            (!facts.is_empty()).then(|| facts.join("\n")),
-        ];
-        p.extend(
-            [para(&state), para(&why)]
-                .into_iter()
-                .chain(fix.into_iter().flatten()),
-        );
+        let mut p =
+            vec![Some(head), Some(wrap(&story, w)), (!facts.is_empty()).then(|| facts.join("\n"))];
+        p.extend([para(&state), para(&why)].into_iter().chain(fix.into_iter().flatten()));
         p.extend([para(&note), Some(format!("More: {explain}\n{docs}"))]);
         p.into_iter().flatten().collect::<Vec<_>>().join("\n\n")
     } else {
@@ -335,22 +323,12 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
             "idris2x: {}: {summary}",
             paint(tty, "1;31", &format!("error[{}]", e.id))
         )];
-        l.extend(
-            c.facts
-                .iter()
-                .map(|(lab, k)| format!("    {lab}: {}", get(k))),
-        );
-        l.extend([
-            format!("  {}: {state}", b("state")),
-            format!("  {}: {why}", b("why")),
-        ]);
+        l.extend(c.facts.iter().map(|(lab, k)| format!("    {lab}: {}", get(k))));
+        l.extend([format!("  {}: {state}", b("state")), format!("  {}: {why}", b("why"))]);
         l.extend((!cmd.is_empty()).then(|| format!("  {}: {}", b("fix"), b(&cmd))));
         let nl = if cmd.is_empty() { "fix" } else { "note" };
         l.extend((!note.is_empty()).then(|| format!("  {}: {note}", b(nl))));
-        l.extend([
-            format!("  {}: {explain}", b("see")),
-            format!("  {}: {docs}", b("see")),
-        ]);
+        l.extend([format!("  {}: {explain}", b("see")), format!("  {}: {docs}", b("see"))]);
         l.join("\n")
     };
     Rendered(out)
@@ -366,10 +344,7 @@ pub fn fail(f: Fail) -> ! {
     _ = r(form()).print(&mut std::io::stderr());
     if let Some(p) = std::env::var_os("IDRIS2X_ERROR_FILE").filter(|p| !p.is_empty()) {
         if let Err(e) = std::fs::File::create(&p).and_then(|mut f| r(Form::Json).print(&mut f)) {
-            note(&format!(
-                "could not write IDRIS2X_ERROR_FILE {}: {e}",
-                p.to_string_lossy()
-            ));
+            note(&format!("could not write IDRIS2X_ERROR_FILE {}: {e}", p.to_string_lossy()));
         }
     }
     std::process::exit(ERRORS[CASES[k].error].exit.into())
@@ -383,9 +358,7 @@ pub fn note(s: &str) {
 pub fn out(s: &str) -> R<()> {
     let mut o = std::io::stdout().lock();
     let r = o.write_all(s.as_bytes()).and_then(|()| o.flush());
-    r.map_err(|e| Fail::OutputWriteFailed {
-        detail: host(e.to_string()).into(),
-    })
+    r.map_err(|e| Fail::OutputWriteFailed { detail: host(e.to_string()).into() })
 }
 /// A character that can hide or rewrite text on a terminal: a control character (C0, DEL or C1), a no-break or soft
 /// hyphen space, a zero-width character or a bidirectional control. scripts/proto/clean.jq `hidden` is the same set.
@@ -413,23 +386,14 @@ pub fn advice(a: Advice) -> Option<String> {
     }
     let text = clean(&fill(d.text, &ctx, false));
     let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
-    let facts: String = d
-        .facts
-        .iter()
-        .map(|(l, k)| format!("    {l}: {}\n", clean(get(k))))
-        .collect();
-    Some(format!(
-        "note: {text}\n{facts}note: silence this note with {}=0\n",
-        d.silence
-    ))
+    let facts: String =
+        d.facts.iter().map(|(l, k)| format!("    {l}: {}\n", clean(get(k)))).collect();
+    Some(format!("note: {text}\n{facts}note: silence this note with {}=0\n", d.silence))
 }
 /// A launcher bug, E-INTERNAL.
 pub fn bug(detail: String) -> Fail {
     let version = embedded(env!("CARGO_PKG_VERSION")).into();
-    Fail::InternalBug {
-        detail: host(detail).into(),
-        version,
-    }
+    Fail::InternalBug { detail: host(detail).into(), version }
 }
 /// The hidden test hook `__render FORM ID CASE key=value...` that dx-golden.sh drives.
 pub fn render_hook(args: &[String]) -> R<()> {
@@ -453,9 +417,7 @@ pub fn render_hook(args: &[String]) -> R<()> {
         "tty" => Form::Tty,
         _ => Form::Plain,
     };
-    let found = CASES
-        .iter()
-        .position(|c| ERRORS[c.error].id == id && c.case == case);
+    let found = CASES.iter().position(|c| ERRORS[c.error].id == id && c.case == case);
     let k = found.ok_or_else(|| bug(format!("no message data for {id}/{case}")))?;
     if let Some(key) = missing(k, &ctx) {
         return Err(bug(format!("missing context value: {key}")));
@@ -471,8 +433,6 @@ pub fn explain(id: Option<&str>) -> R<()> {
     let e = ERRORS
         .iter()
         .find(|e| e.id == id)
-        .ok_or_else(|| Fail::UsageNoSuchId {
-            word: host(id).into(),
-        })?;
+        .ok_or_else(|| Fail::UsageNoSuchId { word: host(id).into() })?;
     out(&format!("{}Runbook: {}/{id}.adoc\n", e.explain, runbook()))
 }
