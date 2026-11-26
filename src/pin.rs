@@ -126,7 +126,9 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
         Value::Null => "0.0",
         m => m.as_str().filter(|m| is_version(m)).ok_or_else(|| bad("min_launcher"))?,
     };
-    if runs(min) > runs(env!("CARGO_PKG_VERSION")) {
+    // is_version keeps each run within 64 bits, so this cannot fail; if it did, the field is refused, never read as 0.
+    let needs = runs(min).ok_or_else(|| bad("min_launcher"))?;
+    if Some(needs) > runs(env!("CARGO_PKG_VERSION")) {
         return Err(Fail::ChannelSchemaNeedsNewerLauncher {
             url: lock(url).into(),
             needs: channel(min).into(),

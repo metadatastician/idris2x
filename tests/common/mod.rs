@@ -16,6 +16,7 @@ pub const SCHEME: &str = "#!/bin/sh
 # A stand-in for Chez: the reset environment must hold, or the probe sees a wrong answer.
 [ \"$IDRIS2_PREFIX\" = \"$IDRIS2X_CAPSULE\" ] || { echo prefix leaked; exit 1; }
 [ -z \"$IDRIS2_PACKAGE_PATH\" ] || { echo package path leaked; exit 1; }
+[ -z \"$LD_PRELOAD$LD_AUDIT\" ] || { echo loader library leaked; exit 1; }
 case \"$1\" in
   -q) cat >/dev/null; printf 42 ;;
   --program) echo 'Idris 2, version 0.8.0' ;;
@@ -92,7 +93,14 @@ pub fn capsule(scheme: &str, extra: &[(&str, &[u8])]) -> Vec<u8> {
     capsule_tgz(scheme, extra).done()
 }
 pub fn capsule_tgz(scheme: &str, extra: &[(&str, &[u8])]) -> Tgz {
-    let json = br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0","exec":{"chez":["bin/scheme"],"idris2":["bin/scheme","--program","bin/idris2_app/idris2.so"]}}"#;
+    described(
+        br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0","exec":{"chez":["bin/scheme"],"idris2":["bin/scheme","--program","bin/idris2_app/idris2.so"]}}"#,
+        scheme,
+        extra,
+    )
+}
+/// The same capsule with another capsule.json, listed in sha256sums.txt like every file.
+pub fn described(json: &[u8], scheme: &str, extra: &[(&str, &[u8])]) -> Tgz {
     let mut files: Vec<(&str, &[u8])> =
         vec![("capsule.json", json), ("bin/idris2_app/idris2.so", b"so")];
     files.extend_from_slice(extra);
@@ -167,14 +175,50 @@ pub fn serve(body: Vec<u8>, status: u16, cut: Option<usize>) -> (String, Arc<Mut
             } else {
                 part.len()
             };
+            // A redirect points back here, so a hop that was followed shows in the log.
+            let to = if (300..400).contains(&code) {
+                "Location: /moved\r\n"
+            } else {
+                ""
+            };
             _ = write!(
                 s,
-                "HTTP/1.1 {code} X\r\nContent-Length: {len}\r\nConnection: close\r\n\r\n"
+                "HTTP/1.1 {code} X\r\n{to}Content-Length: {len}\r\nConnection: close\r\n\r\n"
             );
             _ = s.write_all(part);
         }
     });
     (url, log)
+}
+/// An HTTP server on 127.0.0.1 that answers nothing (`head` false) or sends headers and 10 bytes of a longer file
+/// (`head` true), then holds the connection open without sending more.
+pub fn stall(head: bool) -> String {
+    let l = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!(
+        "http://127.0.0.1:{}/c.tar.gz",
+        l.local_addr().unwrap().port()
+    );
+    std::thread::spawn(move || {
+        for s in l.incoming().flatten() {
+            std::thread::spawn(move || {
+                let mut r = BufReader::new(s.try_clone().unwrap());
+                let mut line = String::new();
+                while r.read_line(&mut line).unwrap_or(0) > 0 && line != "\r\n" {
+                    line.clear();
+                }
+                let mut s = s;
+                if head {
+                    _ = write!(
+                        s,
+                        "HTTP/1.1 200 X\r\nContent-Length: 100000\r\n\r\n0123456789"
+                    );
+                    _ = s.flush();
+                }
+                std::thread::sleep(std::time::Duration::from_secs(120));
+            });
+        }
+    });
+    url
 }
 
 pub fn run(t: &Tmp, args: &[&str], env: &[(&str, &str)]) -> Output {

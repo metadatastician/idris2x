@@ -96,7 +96,7 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
         "http://example.org/\u{1b}[2J\u{9b}\u{202e}c.tar.gz",
     );
     // A user part does not make a host local, and a local mirror may not redirect anywhere.
-    let (moved, _) = serve(vec![], 302, None);
+    let (moved, hops) = serve(vec![], 302, None);
     let sneaky = "http://localhost:80@example.org/c.tar.gz".to_string();
     let plain = "http://example.org/c.tar.gz".to_string();
     let mirrors = [
@@ -137,6 +137,11 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     assert!(!err.contains(['\u{1b}', '\u{9b}', '\u{202e}']), "{err}");
     let escaped = r"example.org/\u001b[2J\u009b\u202ec.tar.gz: refused";
     assert!(json.contains(escaped), "{json}");
+    assert_eq!(
+        hops.lock().unwrap().len(),
+        1,
+        "the redirect was not followed"
+    );
 }
 
 #[test]
@@ -229,6 +234,11 @@ fn refused(name: &str, tgz: Vec<u8>, id: &str, case: &str, exit: i32) {
         exit,
     );
     assert!(store(&t).is_empty(), "{name}: the store is untouched");
+    assert_eq!(
+        fs::read(t.p("c.tgz")).unwrap(),
+        tgz,
+        "{name}: the bundle is left where it was"
+    );
     assert!(
         !t.p("cache/escaped").exists() && !t.p("escaped").exists(),
         "{name}: nothing was written outside"
@@ -308,6 +318,17 @@ fn hostile_archives_are_refused_before_anything_leaves_staging() {
     let escaping = Tgz::new().file("capsule.json", b"{}").file(
         "sha256sums.txt",
         format!("{}  ../c.tgz\n", sha(b"x")).as_bytes(),
+    );
+    // The list must cover capsule.json, as the factory's does, so verify can trust it later.
+    let uncovered = Tgz::new()
+        .file("capsule.json", br#"{"name":"x","chez":"10.0.0"}"#)
+        .file("sha256sums.txt", b"");
+    refused(
+        "uncovered",
+        uncovered.done(),
+        "E-CAPSULE-INVALID",
+        "tree-mismatch",
+        21,
     );
     refused(
         "sums-escape",
@@ -419,6 +440,8 @@ fn settings_are_read_strictly() {
         ("IDRIS2X_OFFLINE", "2"),
         ("IDRIS2X_LOCK_TIMEOUT", "ten"),
         ("IDRIS2X_LOCK_TIMEOUT", "-1"),
+        ("IDRIS2X_NET_TIMEOUT", "0"),
+        ("IDRIS2X_NET_TIMEOUT", "ten"),
     ] {
         let json = failed(
             &t,
@@ -515,6 +538,13 @@ fn a_bad_lock_is_named_and_nothing_is_downloaded() {
         "malformed-lock",
         10,
     );
+    // A floor too large to compare is a fault in the lock, never a floor of 0.
+    let huge = format!(
+        r#"{{"sha256":"{}","size":1,"min_glibc":"18446744073709551616.0"}}"#,
+        sha(b"x")
+    );
+    let json = case(&bad(&huge), "E-PIN-NOT-FOUND", "malformed-lock", 10);
+    assert!(json.contains("glibc floor"), "{json}");
     let floor = format!(
         r#"{{"sha256":"{}","size":1,"min_glibc":"99.0"}}"#,
         sha(b"x")
@@ -554,7 +584,12 @@ fn settings_that_are_unset_or_not_text_are_refused_not_guessed() {
     failed(&t, &o, "E-STORE-IO", "no-cache-dir", 24);
     assert!(!t.p(".cache").exists());
     let not_text = std::ffi::OsStr::from_bytes(b"idris2x\xff.lock");
-    for name in ["IDRIS2X_LOCK", "IDRIS2X_CACHE", "IDRIS2X_LOCK_TIMEOUT"] {
+    for name in [
+        "IDRIS2X_LOCK",
+        "IDRIS2X_CACHE",
+        "IDRIS2X_LOCK_TIMEOUT",
+        "IDRIS2X_NET_TIMEOUT",
+    ] {
         let mut c = Command::new(env!("CARGO_BIN_EXE_idris2x"));
         c.env_clear()
             .current_dir(&t.0)
@@ -608,4 +643,104 @@ fn archive_modes_keep_only_the_permission_bits() {
         .permissions()
         .mode();
     assert!(mode & 0o7000 == 0 && mode & 0o100 != 0, "{mode:o}");
+}
+
+#[test]
+fn a_mirror_that_stops_sending_fails_over_to_the_next() {
+    let t = Tmp::new("stall");
+    let tgz = capsule(SCHEME, &[]);
+    let (good, _) = serve(tgz.clone(), 200, None);
+    let (quiet, mid) = (stall(false), stall(true));
+    write_lock(&t, &sha(&tgz), tgz.len(), &[quiet.clone(), mid.clone()]);
+    let slow = [("IDRIS2X_NET_TIMEOUT", "1")];
+    let began = std::time::Instant::now();
+    let json = failed(
+        &t,
+        &run(&t, &["install"], &slow),
+        "E-NETWORK",
+        "all-mirrors-failed",
+        14,
+    );
+    assert!(began.elapsed().as_secs() < 30, "{:?}", began.elapsed());
+    assert!(
+        json.contains(&format!("{quiet}: ")) && json.contains(&format!("{mid}: ")),
+        "{json}"
+    );
+    assert!(store(&t).is_empty());
+    // With a mirror that answers after them, the install completes from it.
+    write_lock(&t, &sha(&tgz), tgz.len(), &[quiet, mid, good]);
+    ok(&run(&t, &["install"], &slow));
+    assert_eq!(store(&t).len(), 1);
+}
+
+#[test]
+fn a_capsule_of_another_idris2_is_refused_and_one_of_chez_only_installs() {
+    let t = Tmp::new("pin-mismatch");
+    let other = described(
+        br#"{"name":"x","idris2":"0.7.0","chez":"10.0.0"}"#,
+        SCHEME,
+        &[],
+    )
+    .done();
+    write_lock(&t, &sha(&other), other.len(), &[]);
+    fs::write(t.p("c.tgz"), &other).unwrap();
+    let o = run(&t, &["install", "--from", "c.tgz"], &[]);
+    let json = failed(&t, &o, "E-CAPSULE-INVALID", "pin-mismatch", 21);
+    assert!(json.contains("0.7.0") && json.contains("0.8.0"), "{json}");
+    assert!(store(&t).is_empty());
+    // Chez Scheme only: no other Idris 2 than the pinned one, so it installs (exec refuses it later).
+    let chez = described(br#"{"name":"chez-only","chez":"10.0.0"}"#, SCHEME, &[]).done();
+    write_lock(&t, &sha(&chez), chez.len(), &[]);
+    fs::write(t.p("c.tgz"), &chez).unwrap();
+    ok(&run(&t, &["install", "--from", "c.tgz"], &[]));
+}
+
+#[test]
+fn verify_reads_capsule_json_again() {
+    let t = Tmp::new("verify-meta");
+    let tgz = capsule(SCHEME, &[]);
+    write_lock(&t, &sha(&tgz), tgz.len(), &[]);
+    fs::write(t.p("c.tgz"), &tgz).unwrap();
+    let dir = PathBuf::from(ok(&run(&t, &["install", "--from", "c.tgz"], &[])).trim());
+    let sums = fs::read_to_string(dir.join("sha256sums.txt")).unwrap();
+    // Each change keeps the list true to the tree, so only the metadata checks can catch it.
+    let entry = |json: Option<&[u8]>| {
+        let mut list: String = sums
+            .lines()
+            .filter(|l| !l.ends_with("  capsule.json"))
+            .map(|l| format!("{l}\n"))
+            .collect();
+        match json {
+            Some(j) => {
+                fs::write(dir.join("capsule.json"), j).unwrap();
+                list += &format!("{}  capsule.json\n", sha(j));
+            }
+            None => fs::remove_file(dir.join("capsule.json")).unwrap(),
+        }
+        fs::write(dir.join("sha256sums.txt"), list).unwrap();
+        failed(
+            &t,
+            &run(&t, &["verify"], &[]),
+            "E-HASH-MISMATCH",
+            "store-modified",
+            11,
+        );
+    };
+    entry(None);
+    entry(Some(br#"{"chez":"10.0.0"}"#));
+    entry(Some(br#"{"name":"x","idris2":"0.7.0","chez":"10.0.0"}"#));
+}
+
+#[test]
+fn loader_libraries_are_not_inherited_by_the_probes() {
+    let t = Tmp::new("preload");
+    let tgz = capsule(SCHEME, &[]);
+    write_lock(&t, &sha(&tgz), tgz.len(), &[]);
+    fs::write(t.p("c.tgz"), &tgz).unwrap();
+    let env = [
+        ("LD_PRELOAD", "/nonexistent/p.so"),
+        ("LD_AUDIT", "/nonexistent/a.so"),
+    ];
+    ok(&run(&t, &["install", "--from", "c.tgz"], &env));
+    ok(&run(&t, &["verify"], &env));
 }

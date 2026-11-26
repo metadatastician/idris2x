@@ -423,3 +423,11 @@ the version check, or gives an Idris 2 version that does not pass it. `E-STORE-I
 `IDRIS2X_CACHE`, `XDG_CACHE_HOME` and `HOME` all unset. The launcher put the store in the current directory then.
 `E-USAGE/bad-setting` now also covers `IDRIS2X_LOCK` and `IDRIS2X_CACHE`, and any setting that is not Unicode text.
 Tests in `tests/install.rs` reach all of these.
+
+One more case was added on 2026-11-26, after the second review of milestone 2. `E-CAPSULE-INVALID/pin-mismatch`
+(exit 21) covers a capsule whose `capsule.json` names a different Idris 2 than the lock pins. A capsule of Chez Scheme
+only names none, and it still installs. The checksum list must now cover `capsule.json`, as the factory's list does, or
+the capsule is refused as `tree-mismatch`. `verify` reads `capsule.json` again. The `unsafe-path` state no longer says
+that a bundle given with `--from` was deleted. The prototype did delete it; now it keeps it, as the launcher does.
+`E-USAGE/bad-setting` also covers `IDRIS2X_NET_TIMEOUT`: the seconds a download may go without data before that
+mirror counts as failed. Tests in `tests/install.rs` reach all of these.

@@ -67,13 +67,17 @@ pub fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
 
 /// Download this machine's capsule to `out` and check its digest. `what` and `at` name the place on a disk failure.
 fn download(pin: &Pin, out: &Path, what: &str, at: &Path) -> R<()> {
+    let stall = setting("IDRIS2X_NET_TIMEOUT", "a whole number of seconds, at least 1", 30, |v| {
+        v.parse().ok().filter(|&n| n > 0)
+    })?;
     let log = cache()?.join("staging/fetch.log");
     if pin.urls.is_empty() {
         let (digest, lock, version) =
             (sha(&pin.digest), host(&pin.lock).into(), pin.version.clone().into());
         return Err(Fail::PinNotFoundNoUrls { digest, lock, version });
     }
-    let url = net::fetch(out, &pin.urls, pin.size, &log).map_err(|e| {
+    let stall = std::time::Duration::from_secs(stall);
+    let url = net::fetch(out, &pin.urls, pin.size, &log, stall).map_err(|e| {
         _ = fs::remove_file(out);
         match e {
             Lost::Disk(e) => write_failed(what, &e, at),
@@ -201,6 +205,11 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
         Ok(()) if !capsule::valid(&stage) => {
             Err(Fail::CapsuleInvalidBadMetadata { digest: sha(d) })
         }
+        Ok(()) if !capsule::holds(&stage, &pin.version) => Err(Fail::CapsuleInvalidPinMismatch {
+            digest: sha(d),
+            version: pin.version.clone().into(),
+            found: lock(capsule::meta(&stage, "idris2")).into(),
+        }),
         Ok(()) => capsule::probe(&stage),
         Err(Bad::Unsafe) => Err(Fail::CapsuleInvalidUnsafePath { digest: sha(d) }),
         // The archive matched its digest and still cannot be read: it is not a capsule.
@@ -236,7 +245,8 @@ pub fn verify(pin: &Pin) -> R<()> {
     if !dir.join(".complete").is_file() {
         return Err(Fail::PinNotFoundNotInstalled { digest: sha(&pin.digest) });
     }
-    if !sums(&dir) {
+    // capsule.json is read again: the entry must still describe what the lock pins, whichever launcher installed it.
+    if !sums(&dir) || !capsule::valid(&dir) || !capsule::holds(&dir, &pin.version) {
         return Err(Fail::HashMismatchStoreModified {
             digest: sha(&pin.digest),
             dir: host(s(&dir)).into(),
@@ -262,7 +272,7 @@ pub fn bundle(pin: &Pin, out: &Path) -> R<()> {
     Ok(())
 }
 
-/// Every line of sha256sums.txt names a file inside the tree whose digest matches.
+/// Every line of sha256sums.txt names a file inside the tree whose digest matches, and one of them is capsule.json.
 pub fn sums(dir: &Path) -> bool {
     let list = fs::read_to_string(dir.join("sha256sums.txt")).unwrap_or_default();
     let ok = |l: &str| {
@@ -270,7 +280,11 @@ pub fn sums(dir: &Path) -> bool {
             plain(Path::new(p)) && sha_file(&dir.join(p)).is_ok_and(|g| g == h)
         })
     };
-    !list.is_empty() && list.lines().all(ok)
+    // capsule.json says what the capsule is, so the list must cover it, as the factory's list does.
+    let meta = |l: &str| {
+        l.split_once("  ").is_some_and(|(_, p)| p.trim_start_matches("./") == "capsule.json")
+    };
+    list.lines().any(meta) && list.lines().all(ok)
 }
 
 enum Bad {

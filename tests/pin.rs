@@ -390,10 +390,21 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
 #[test]
 fn a_malformed_manifest_is_refused_by_field() {
     let c = Chan::new("pin-malformed");
-    let cases: [(&str, Value, &str); 8] = [
+    let cases: [(&str, Value, &str); 10] = [
         ("/expires", json!("2099-01-01"), "expires"),
         ("/channel_version", json!(-1), "channel_version"),
         ("/min_launcher", json!(5), "min_launcher"),
+        // A version too large to compare is refused, never read as 0.
+        (
+            "/min_launcher",
+            json!("18446744073709551616.0"),
+            "min_launcher",
+        ),
+        (
+            "/bundles/idris2@0.8.0/T/min_glibc",
+            json!("2.18446744073709551616"),
+            "capsule entry",
+        ),
         ("/deprecated", json!("idris2@0.8.0"), "deprecated"),
         (
             "/compat/idris2@0.8.0/chez",

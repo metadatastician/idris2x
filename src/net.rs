@@ -8,6 +8,7 @@ use crate::msg::note;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::Path;
+use std::time::Duration;
 
 /// A failed copy: reading the source, or writing the destination.
 pub enum Io {
@@ -73,16 +74,23 @@ fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
 }
 
 const REFUSED: &str = "refused: plain http is allowed only to this machine";
-/// The HTTP client: rustls on ring and the system's trust store. `secs` to connect, and for the whole request if `whole`.
-fn agent(secs: u64, whole: bool) -> ureq::Agent {
+/// The HTTP client: rustls on ring and the system's trust store. `secs` to connect, and for the whole request if
+/// `whole`. A read or a write that waits `stall` for data fails, before the answer or in the middle of the body.
+fn agent(secs: u64, whole: bool, stall: Duration) -> ureq::Agent {
     use std::sync::Arc;
     use ureq::tls::{RootCerts, TlsConfig};
     let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier);
     let tls =
         tls.unversioned_rustls_crypto_provider(Arc::new(rustls::crypto::ring::default_provider()));
-    let t = Some(std::time::Duration::from_secs(secs));
+    let t = Some(Duration::from_secs(secs));
     let config = ureq::Agent::config_builder().tls_config(tls.build());
-    config.timeout_connect(t).timeout_global(t.filter(|_| whole)).build().into()
+    config
+        .timeout_connect(t)
+        .timeout_global(t.filter(|_| whole))
+        .timeout_per_read(Some(stall))
+        .timeout_per_write(Some(stall))
+        .build()
+        .into()
 }
 /// doctor's mirror check: one HEAD request, nothing downloaded. The milliseconds it took, or why it failed.
 pub fn head(u: &str) -> Result<u128, String> {
@@ -90,13 +98,20 @@ pub fn head(u: &str) -> Result<u128, String> {
     if !allowed(u) {
         return Err(REFUSED.into());
     }
-    let r = agent(5, true).head(u).call();
+    let r = agent(5, true, Duration::from_secs(5)).head(u).call();
     r.map(|_| t0.elapsed().as_millis()).map_err(|e| e.to_string())
 }
 
-/// Download to `out` from the first address that works; return that address. Each failure goes to `log`.
-pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<String, Lost> {
-    let (agent, mut tried) = (agent(10, false), vec![]);
+/// Download to `out` from the first address that works; return that address. Each failure goes to `log`. A mirror
+/// that sends nothing for `stall`, before its answer or in the middle of the file, has failed like any other.
+pub fn fetch(
+    out: &Path,
+    urls: &[String],
+    size: u64,
+    log: &Path,
+    stall: Duration,
+) -> Result<String, Lost> {
+    let (agent, mut tried) = (agent(10, false, stall), vec![]);
     for u in urls {
         let once = || {
             if allowed(u) {
@@ -120,6 +135,10 @@ pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<Strin
                 logged(log, &line);
                 note(&format!("fetch failed from {u} (trying next mirror)"));
                 tried.push(line);
+                // The next mirror starts clean: bytes from one that failed are never resumed from another.
+                if out.exists() {
+                    fs::remove_file(out).map_err(Lost::Disk)?;
+                }
             }
         }
     }
@@ -136,6 +155,6 @@ pub fn doc(u: &str) -> Result<Vec<u8>, String> {
     if !allowed(u) {
         return Err(format!("{u}: {REFUSED}"));
     }
-    let r = agent(30, true).get(u).call().map_err(e)?;
+    let r = agent(30, true, Duration::from_secs(30)).get(u).call().map_err(e)?;
     r.into_body().with_config().limit(1 << 22).read_to_vec().map_err(e)
 }

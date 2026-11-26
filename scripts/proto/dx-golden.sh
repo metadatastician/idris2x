@@ -61,6 +61,7 @@ E-CAPSULE-INVALID|no-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|tree-mismatch|digest=sha256:$A
 E-CAPSULE-INVALID|bad-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|bad-exec|program=idris2|entry="../../../bin/sh"|store=/home/ada/.cache/idris2x/store/sha256-$A
+E-CAPSULE-INVALID|pin-mismatch|digest=sha256:$A|version=0.8.0|found=0.7.0
 E-CHANNEL-ROLLBACK|version-went-back|url=https://channel.example.org/v1.json|seen=7|offered=5|version=0.8.0
 E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-10-01T00:00:00Z|now=2026-11-16T09:30:00Z|version=0.8.0
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x

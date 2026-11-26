@@ -12,6 +12,7 @@ CHANNEL_URL="${IDRIS2X_CHANNEL_URL:-}"
 PUBKEY_FILE="${IDRIS2X_PUBKEY_FILE:-}"                # signify-format .pub (Go launcher: embedded)
 OFFLINE="${IDRIS2X_OFFLINE:-0}"
 LOCK_TIMEOUT="${IDRIS2X_LOCK_TIMEOUT:-600}"
+NET_TIMEOUT="${IDRIS2X_NET_TIMEOUT:-30}"      # seconds a download may go without data, before its answer or mid-file
 RUNBOOK="${IDRIS2X_RUNBOOK:-https://github.com/metadatastician/idris2x/blob/main/docs/runbooks}"
 JSON_OUT="${IDRIS2X_JSON:-0}"
 
@@ -70,7 +71,7 @@ resolve() { # prints: digest size urls... for this host, from the lock only (no 
   # Lock values reach downloads, store paths and printed fix commands, so they are format-checked here, once (ADR 0012:
   # a checked value carries the Checked provenance; raw lock text never reaches a fix command).
   local v; v=$(lock_get '.toolchain.idris2 // empty')
-  [[ "$v" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=version
+  [[ "$v" =~ ^[0-9]{1,19}(\.[0-9]{1,19}){1,3}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=version
   local d; d=$(lock_get ".capsules[\"$t\"].sha256 // empty")
   [ -n "$d" ] || fail E-PIN-NOT-FOUND no-target lock="$LOCK" target="$t" covered="$(lock_get '.capsules|keys|join(", ")')" version="$v"
   [[ "$d" =~ ^[0-9a-f]{64}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=digest
@@ -98,8 +99,9 @@ verify_sig() { # verify_sig MESSAGE SIGFILE PUBFILE   (signify / minisign-legacy
 fetch_to() { # fetch_to OUT URL...  -> 0 on success; resumes partial downloads; TRIED records why each address failed
   local out=$1 u err rc; shift; TRIED=; FETCH_WRITE_ERR=
   for u in "$@"; do
-    err=$(curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -C - -o "$out" "$u" 2>&1) && { LAST_URL=$u; return 0; }; rc=$?
-    if [ "$rc" != 23 ] && [ "$rc" != 153 ]; then rm -f "$out"; err=$(curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 -o "$out" "$u" 2>&1) && { LAST_URL=$u; return 0; }; rc=$?; fi
+    err=$(curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 --speed-limit 1 --speed-time "$NET_TIMEOUT" -C - -o "$out" "$u" 2>&1) && { LAST_URL=$u; return 0; }; rc=$?
+    if [ "$rc" != 23 ] && [ "$rc" != 153 ]; then rm -f "$out"; err=$(curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 --speed-limit 1 --speed-time "$NET_TIMEOUT" -o "$out" "$u" 2>&1) && { LAST_URL=$u; return 0; }; rc=$?; fi
+    rm -f "$out"   # the next mirror starts clean: bytes from one that failed are never resumed from another
     echo "$u: $err" >> "$CACHE/staging/fetch.log"; err=${err##*$'\n'}; err=${err#curl: }; TRIED="${TRIED:+$TRIED; }$u: ${err:-curl exit $rc}"
     [ "$rc" = 153 ] && err="the file size limit was reached"   # 128 + SIGXFSZ
     if [ "$rc" = 23 ] || [ "$rc" = 153 ]; then FETCH_WRITE_ERR=$err; return 1; fi     # could not write: the disk, not the network
@@ -151,11 +153,14 @@ install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
     [ -n "${IDRIS2X_FROM:-}" ] && fail E-HASH-MISMATCH bundle lock="$LOCK" want="sha256:$digest" got="sha256:$got" bytes="$n" source="$tarball"
     rm -f "$tarball"; fail E-HASH-MISMATCH download lock="$LOCK" want="sha256:$digest" got="sha256:$got" bytes="$n" source="${LAST_URL:-unknown}"
   fi
-  safe_tar_list "$tarball" || { rm -f "$tarball"; fail E-CAPSULE-INVALID unsafe-path digest="sha256:$digest"; }
+  safe_tar_list "$tarball" || { [ -n "${IDRIS2X_FROM:-}" ] || rm -f "$tarball"; fail E-CAPSULE-INVALID unsafe-path digest="sha256:$digest"; }
   local stage; stage=$(mktemp -d "$CACHE/staging/stage.XXXXXX") || fail E-STORE-IO cannot-create path="$CACHE/staging"
   tar -xzf "$tarball" -C "$stage" --no-same-owner 2>>"$CACHE/staging/fetch.log" || { rm -rf "$stage"; fail E-STORE-IO write-failed detail="unpacking the capsule" path="$CACHE"; }
   [ -f "$stage/capsule.json" ] || { rm -rf "$stage"; fail E-CAPSULE-INVALID no-metadata digest="sha256:$digest"; }
-  (cd "$stage" && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || { rm -rf "$stage"; fail E-CAPSULE-INVALID tree-mismatch digest="sha256:$digest"; }
+  (cd "$stage" && grep -Eq '^[0-9a-f]{64}  (\./)?capsule\.json$' sha256sums.txt && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || { rm -rf "$stage"; fail E-CAPSULE-INVALID tree-mismatch digest="sha256:$digest"; }
+  local iv; iv=$(cap '.idris2 // ""' "$stage")        # no other Idris 2 than the pinned one; a Chez-only capsule holds none
+  [ -z "$iv" ] || [ "$iv" = "$(lock_get .toolchain.idris2)" ] || { rm -rf "$stage"
+    fail E-CAPSULE-INVALID pin-mismatch digest="sha256:$digest" version="$(lock_get .toolchain.idris2)" found="$iv"; }
   probe_capsule "$stage" || { rm -rf "$stage"; exit "${EXIT[E-PROBE-CODEGEN]}"; }
   rm -rf "$dir"                                     # a dir without .complete is garbage by definition
   mv -T "$stage" "$dir" || { rm -rf "$stage"; fail E-STORE-IO rename-failed path="$dir"; }
@@ -169,7 +174,8 @@ cap() { jq -r "$1" "$2/capsule.json"; }
 compose_env() { # compose_env STOREDIR — the environment contract (ADR 0005): a RESET of every Idris2/Chez search path
   local root=$1 cv; cv=$(cap .chez "$root")
   if [ "${IDRIS2X_INHERIT_ENV:-0}" != 1 ]; then   # inherited values are code-search paths => code execution; drop them
-    unset IDRIS2_PATH IDRIS2_PACKAGE_PATH IDRIS2_DATA IDRIS2_LIBS IDRIS2_CG IDRIS2_INC_CGS LD_LIBRARY_PATH DYLD_LIBRARY_PATH
+    unset IDRIS2_PATH IDRIS2_PACKAGE_PATH IDRIS2_DATA IDRIS2_LIBS IDRIS2_CG IDRIS2_INC_CGS LD_LIBRARY_PATH DYLD_LIBRARY_PATH \
+      LD_PRELOAD LD_AUDIT
   fi
   export IDRIS2X_CAPSULE="$root" IDRIS2_PREFIX="$root" CHEZ="$root/bin/scheme" SCHEMEHEAPDIRS="$root/lib/csv$cv/%m"
   export IDRIS2_INC_SRC="$root/bin/idris2_app"
@@ -228,7 +234,7 @@ cmd_env()  { local root; root=$(cmd_install --locked); compose_env "$root"
   else for v in IDRIS2X_CAPSULE IDRIS2_PREFIX CHEZ SCHEMEHEAPDIRS IDRIS2_INC_SRC LD_LIBRARY_PATH PATH; do echo "export $v=\"${!v}\""; done; fi; }
 cmd_verify() { local res; res=$(resolve) || exit $?; read -r digest _ <<< "${res%%$'\n'*}"; local dir; dir=$(store_dir "$digest")
   [ -f "$dir/.complete" ] || fail E-PIN-NOT-FOUND not-installed digest="sha256:$digest"
-  (cd "$dir" && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || fail E-HASH-MISMATCH store-modified digest="sha256:$digest" dir="$dir"
+  (cd "$dir" && grep -Eq '^[0-9a-f]{64}  (\./)?capsule\.json$' sha256sums.txt && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || fail E-HASH-MISMATCH store-modified digest="sha256:$digest" dir="$dir"
   probe_capsule "$dir" || exit "${EXIT[E-PROBE-CODEGEN]}"; note "OK sha256:$digest verified ($(cap .name "$dir"))"; }
 cmd_gc() { local keep=3; [ "${1:-}" = --keep-last ] && keep=$2
   mkdir -p "$CACHE/store" "$CACHE/staging"; local d n=0

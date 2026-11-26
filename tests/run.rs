@@ -19,6 +19,7 @@ case "$1" in
   --program) shift 2
     case "$1" in
       --version) echo 'Idris 2, version 0.8.0' ;;
+      loader) echo "loader ${LD_PRELOAD-unset} ${LD_AUDIT-unset}" ;;
       --cg|-o) [ "$1" = --cg ] && shift 2
         mkdir -p build/exec && printf '#!/bin/sh\necho chez_codegen ok\n' > "build/exec/$2" && chmod +x "build/exec/$2" ;;
       *) echo "idris2 $* prefix=$IDRIS2_PREFIX pkg=$IDRIS2_PACKAGE_PATH" ;;
@@ -108,6 +109,19 @@ fn exec_and_run_reset_the_environment_and_pass_every_word() {
         2,
     );
     assert!(j.contains(r#""programs":"chez, idris2""#), "{j}");
+    // The loader's libraries are code too: dropped by default, passed on only by --inherit-env (ADR 0005).
+    let lib = [
+        ("LD_PRELOAD", "/nonexistent/p.so"),
+        ("LD_AUDIT", "/nonexistent/a.so"),
+    ];
+    let out = ok(&run(&t, &["exec", "--", "idris2", "loader"], &lib));
+    assert_eq!(out, "loader unset unset\n");
+    let out = ok(&run(
+        &t,
+        &["exec", "--inherit-env", "--", "idris2", "loader"],
+        &lib,
+    ));
+    assert_eq!(out, "loader /nonexistent/p.so /nonexistent/a.so\n");
     // A Chez that cannot be started is a typed failure, not a crash.
     let scheme = root.join("bin/scheme");
     let mut p = fs::metadata(&scheme).unwrap().permissions();

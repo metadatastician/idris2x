@@ -17,4 +17,6 @@
 
 . Reproduce with `idris2x doctor --json` and attach the output.
 . Classify: data fix (channel patch), engine fix (launcher), or upstream outage.
+. A mirror that sends nothing for `IDRIS2X_NET_TIMEOUT` seconds (30 by default), before its answer or in the middle of
+  the file, counts as failed. The next mirror starts the file again from the beginning.
 . If a channel patch resolves it, open a Class A/B PR; the rehearsal pipeline must be green on 3 targets.
