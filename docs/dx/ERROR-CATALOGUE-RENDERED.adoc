@@ -1916,8 +1916,10 @@ When the network is back, run it again:
 
     idris2x install --locked
 
-If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror
-answers 404, the capsule was withdrawn: see the runbook below.
+If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow
+rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go
+without data (30 by default). If every mirror answers 404, the capsule was
+withdrawn: see the runbook below.
 
 More: idris2x explain E-NETWORK
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
@@ -1943,8 +1945,10 @@ When the network is back, run it again:
 
     <ESC>[1midris2x install --locked<ESC>[0m
 
-If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror
-answers 404, the capsule was withdrawn: see the runbook below.
+If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow
+rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go
+without data (30 by default). If every mirror answers 404, the capsule was
+withdrawn: see the runbook below.
 
 More: idris2x explain E-NETWORK
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
@@ -1960,7 +1964,7 @@ idris2x: error[E-NETWORK]: every mirror failed for the pinned capsule
   state: Nothing was installed. The store is unchanged.
   why: Each address in the lock was tried in turn and each one failed for the reason shown after it.
   fix: idris2x install --locked
-  note: If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.
+  note: If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go without data (30 by default). If every mirror answers 404, the capsule was withdrawn: see the runbook below.
   see: idris2x explain E-NETWORK
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
 ----
@@ -1975,7 +1979,7 @@ idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: every mirror failed for the pinned
   <ESC>[1mstate<ESC>[0m: Nothing was installed. The store is unchanged.
   <ESC>[1mwhy<ESC>[0m: Each address in the lock was tried in turn and each one failed for the reason shown after it.
   <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x install --locked<ESC>[0m
-  <ESC>[1mnote<ESC>[0m: If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.
+  <ESC>[1mnote<ESC>[0m: If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go without data (30 by default). If every mirror answers 404, the capsule was withdrawn: see the runbook below.
   <ESC>[1msee<ESC>[0m: idris2x explain E-NETWORK
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
 ----
@@ -1983,7 +1987,7 @@ idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: every mirror failed for the pinned
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"all-mirrors-failed","exit":14,"title":"the download could not be completed","summary":"every mirror failed for the pinned capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","tried":"https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net","log":"/home/ada/.cache/idris2x/staging/fetch.log"},"state":"Nothing was installed. The store is unchanged.","why":"Each address in the lock was tried in turn and each one failed for the reason shown after it.","fix":{"command":"idris2x install --locked","note":"If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"all-mirrors-failed","exit":14,"title":"the download could not be completed","summary":"every mirror failed for the pinned capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","tried":"https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net","log":"/home/ada/.cache/idris2x/staging/fetch.log"},"state":"Nothing was installed. The store is unchanged.","why":"Each address in the lock was tried in turn and each one failed for the reason shown after it.","fix":{"command":"idris2x install --locked","note":"If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go without data (30 by default). If every mirror answers 404, the capsule was withdrawn: see the runbook below.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
 ----
 
 === E-NETWORK, case `manifest-unreachable`
@@ -3236,7 +3240,8 @@ I refused to unpack it.
 
     capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
 
-Nothing was unpacked or installed. The archive was deleted.
+Nothing was installed. Any files already unpacked were deleted, and so was a
+downloaded archive. A bundle you gave with --from was left where it was.
 
 The archive has an absolute path, a .. component or a link that leaves its own
 directory. A correctly built capsule never does, so the archive is faulty or
@@ -3259,7 +3264,8 @@ I refused to unpack it.
 
     capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
 
-Nothing was unpacked or installed. The archive was deleted.
+Nothing was installed. Any files already unpacked were deleted, and so was a
+downloaded archive. A bundle you gave with --from was left where it was.
 
 The archive has an absolute path, a .. component or a link that leaves its own
 directory. A correctly built capsule never does, so the archive is faulty or
@@ -3277,7 +3283,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INV
 ----
 idris2x: error[E-CAPSULE-INVALID]: the capsule archive has a member that would be written outside the store
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
-  state: Nothing was unpacked or installed. The archive was deleted.
+  state: Nothing was installed. Any files already unpacked were deleted, and so was a downloaded archive. A bundle you gave with --from was left where it was.
   why: The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.
   fix: Do not unpack it by hand. Report the digest above to idris2x using the runbook below.
   see: idris2x explain E-CAPSULE-INVALID
@@ -3289,7 +3295,7 @@ idris2x: error[E-CAPSULE-INVALID]: the capsule archive has a member that would b
 ----
 idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule archive has a member that would be written outside the store
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
-  <ESC>[1mstate<ESC>[0m: Nothing was unpacked or installed. The archive was deleted.
+  <ESC>[1mstate<ESC>[0m: Nothing was installed. Any files already unpacked were deleted, and so was a downloaded archive. A bundle you gave with --from was left where it was.
   <ESC>[1mwhy<ESC>[0m: The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.
   <ESC>[1mfix<ESC>[0m: Do not unpack it by hand. Report the digest above to idris2x using the runbook below.
   <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
@@ -3299,7 +3305,7 @@ idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule archive has a 
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"unsafe-path","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule archive has a member that would be written outside the store","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was unpacked or installed. The archive was deleted.","why":"The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.","fix":{"command":"","note":"Do not unpack it by hand. Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"unsafe-path","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule archive has a member that would be written outside the store","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. Any files already unpacked were deleted, and so was a downloaded archive. A bundle you gave with --from was left where it was.","why":"The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.","fix":{"command":"","note":"Do not unpack it by hand. Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
 ----
 
 === E-CAPSULE-INVALID, case `no-metadata`
@@ -3530,6 +3536,102 @@ idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's capsule.json
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"bad-metadata","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's capsule.json does not describe it","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were deleted.","why":"capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.","fix":{"command":"","note":"Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+----
+
+=== E-CAPSULE-INVALID, case `pin-mismatch`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CAPSULE-INVALID (exit 21)
+
+The capsule matched its digest, and it holds a different version of Idris 2 than
+the lock pins.
+
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins      0.8.0
+    capsule-holds  0.7.0
+
+Nothing was installed. The unpacked files were deleted.
+
+The lock names this capsule by its digest for one version of Idris 2, and the
+capsule's own capsule.json names another. The lock was edited by hand, or the
+channel listed the wrong capsule.
+
+Write the lock again from the channel:
+
+    idris2x pin 0.8.0
+
+If it fails the same way, the channel lists the wrong capsule: report the digest
+above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CAPSULE-INVALID (exit 21) ----------------------------------------- idris2x<ESC>[0m
+
+The capsule matched its digest, and it holds a different version of Idris 2 than
+the lock pins.
+
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins      0.8.0
+    capsule-holds  0.7.0
+
+Nothing was installed. The unpacked files were deleted.
+
+The lock names this capsule by its digest for one version of Idris 2, and the
+capsule's own capsule.json names another. The lock was edited by hand, or the
+channel listed the wrong capsule.
+
+Write the lock again from the channel:
+
+    <ESC>[1midris2x pin 0.8.0<ESC>[0m
+
+If it fails the same way, the channel lists the wrong capsule: report the digest
+above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CAPSULE-INVALID]: the capsule holds a different Idris 2 than the lock pins
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins: 0.8.0
+    capsule-holds: 0.7.0
+  state: Nothing was installed. The unpacked files were deleted.
+  why: The lock names this capsule by its digest for one version of Idris 2, and the capsule's own capsule.json names another. The lock was edited by hand, or the channel listed the wrong capsule.
+  fix: idris2x pin 0.8.0
+  note: If it fails the same way, the channel lists the wrong capsule: report the digest above to idris2x using the runbook below.
+  see: idris2x explain E-CAPSULE-INVALID
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule holds a different Idris 2 than the lock pins
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins: 0.8.0
+    capsule-holds: 0.7.0
+  <ESC>[1mstate<ESC>[0m: Nothing was installed. The unpacked files were deleted.
+  <ESC>[1mwhy<ESC>[0m: The lock names this capsule by its digest for one version of Idris 2, and the capsule's own capsule.json names another. The lock was edited by hand, or the channel listed the wrong capsule.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If it fails the same way, the channel lists the wrong capsule: report the digest above to idris2x using the runbook below.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"pin-mismatch","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule holds a different Idris 2 than the lock pins","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","version":"0.8.0","found":"0.7.0"},"state":"Nothing was installed. The unpacked files were deleted.","why":"The lock names this capsule by its digest for one version of Idris 2, and the capsule's own capsule.json names another. The lock was edited by hand, or the channel listed the wrong capsule.","fix":{"command":"idris2x pin 0.8.0","note":"If it fails the same way, the channel lists the wrong capsule: report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
 ----
 
 == E-CHANNEL-ROLLBACK

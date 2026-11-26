@@ -89,8 +89,15 @@ fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
     f.sync_all().map_err(Io::Write)
 }
 
-/// Download to `out` from the first address that works; return that address. Each failure goes to `log`.
-pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<String, Lost> {
+/// Download to `out` from the first address that works; return that address. Each failure goes to `log`. A mirror
+/// that sends nothing for `stall`, before its answer or in the middle of the file, has failed like any other.
+pub fn fetch(
+    out: &Path,
+    urls: &[String],
+    size: u64,
+    log: &Path,
+    stall: std::time::Duration,
+) -> Result<String, Lost> {
     use std::sync::Arc;
     use ureq::tls::{RootCerts, TlsConfig};
     let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier);
@@ -100,6 +107,8 @@ pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<Strin
     let agent = ureq::Agent::config_builder()
         .tls_config(tls.build())
         .timeout_connect(ten)
+        .timeout_per_read(Some(stall))
+        .timeout_per_write(Some(stall))
         .build()
         .into();
     let mut tried = vec![];
@@ -135,6 +144,10 @@ pub fn fetch(out: &Path, urls: &[String], size: u64, log: &Path) -> Result<Strin
                     .and_then(|mut f| writeln!(f, "{line}"));
                 note(&format!("fetch failed from {u} (trying next mirror)"));
                 tried.push(line);
+                // The next mirror starts clean: bytes from one that failed are never resumed from another.
+                if out.exists() {
+                    fs::remove_file(out).map_err(Lost::Disk)?;
+                }
             }
         }
     }
