@@ -58,7 +58,7 @@ jobs:
           scripts/gen-errors-rs.sh --check          # src/errors_gen.rs, the launcher's message table, vs errors.toml
           cargo build --locked --quiet
           IDRIS2X_BIN=target/debug/idris2x scripts/proto/dx-golden.sh --check   # the Rust launcher renders the same bytes
-          bash scripts/check-launcher-loc.sh        # the launcher stays under 1,000 lines of our own code
+          bash scripts/check-launcher-loc.sh        # the launcher stays under 2,000 lines of our own code
           bash scripts/check-msg-negatives.sh       # each compile_fail doctest in src/msg.rs fails for its stated reason
           bash scripts/check-advice-review.sh       # advice entries past their review date fail
 

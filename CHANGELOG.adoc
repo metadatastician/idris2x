@@ -32,6 +32,8 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   the launcher's own containment checks, check the tree and run the two embedded probes, then rename into the store.
 * `E-PIN-NOT-FOUND/unreadable-lock` (exit 10) and `E-USAGE/bad-setting` (exit 2): an unreadable lock and an unreadable
   setting are typed errors. The minimum Rust version is now 1.89, for file locks in the standard library.
+* The launcher line cap is 2,000 lines of our own code, raised from 1,000 by the owner on 2026-11-26. Milestone 2
+  has 1,265 lines; all of Phase 1 is projected at about 1,700 to 1,800.
 
 ==== Not yet
 

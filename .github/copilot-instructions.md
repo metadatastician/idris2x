@@ -100,6 +100,6 @@ These are project facts, measured in Phase 0 (docs/status/PHASE0-REPORT.adoc). T
 * **Resume only immutable, digest-addressed downloads.** Never resume the channel manifest or any mutable document.
 * **Archive extraction** rejects absolute names, `..`, links escaping the staging tree, devices and setuid bits, and uses a containment check, never `join(dst, clean(name))`.
 * **Languages:** Rust for the launcher, bash + jq + awk for scripts. No Python, Go or Node.js (estate policy and this repo's anchor). The capsule factory *invokes* upstream Makefiles; it never patches Idris 2 or Chez Scheme (zero-fork policy).
-* **The launcher stays under 1,000 lines of our own code.** A feature that does not fit belongs in the channel (data) or the capsule.
+* **The launcher stays under 2,000 lines of our own code.** A feature that does not fit belongs in the channel (data) or the capsule.
 * **The maintenance agent** may only propose one of four shapes (`compat_patch`, `pin_bump`, `mirror_add`, `escalate`), never signs, never approves or merges its own PR, never widens `src/definitions/targets.toml`. Any open issue labelled `agent:kill-switch` stops it.
 * **Report faithfully.** The launcher, factory and published capsules do not exist yet; do not describe planned behaviour as shipped.
