@@ -466,6 +466,86 @@ idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_CHANNEL_URL is not set
 {"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"prototype-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_CHANNEL_URL is not set","context":{"variable":"IDRIS2X_CHANNEL_URL","what":"the address of the channel manifest"},"state":"Nothing was run.","why":"The bash prototype reads its channel address and trusted key from the environment. The real launcher will have both built in.","fix":{"command":"","note":"Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh for a working example.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
 ----
 
+=== E-USAGE, case `bad-setting`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-USAGE (exit 2)
+
+IDRIS2X_LOCK_TIMEOUT must be a whole number of seconds, and it is set to
+something else.
+
+    setting  IDRIS2X_LOCK_TIMEOUT
+    value    ten
+
+Nothing was run.
+
+idris2x refuses a setting it cannot read. It does not fall back to a default, so
+a typo never changes what runs.
+
+Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the
+default.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-USAGE (exit 2) ---------------------------------------------------- idris2x<ESC>[0m
+
+IDRIS2X_LOCK_TIMEOUT must be a whole number of seconds, and it is set to
+something else.
+
+    setting  IDRIS2X_LOCK_TIMEOUT
+    value    ten
+
+Nothing was run.
+
+idris2x refuses a setting it cannot read. It does not fall back to a default, so
+a typo never changes what runs.
+
+Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the
+default.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-USAGE]: IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds
+    setting: IDRIS2X_LOCK_TIMEOUT
+    value: ten
+  state: Nothing was run.
+  why: idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.
+  fix: Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.
+  see: idris2x explain E-USAGE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds
+    setting: IDRIS2X_LOCK_TIMEOUT
+    value: ten
+  <ESC>[1mstate<ESC>[0m: Nothing was run.
+  <ESC>[1mwhy<ESC>[0m: idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.
+  <ESC>[1mfix<ESC>[0m: Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"bad-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds","context":{"variable":"IDRIS2X_LOCK_TIMEOUT","what":"a whole number of seconds","value":"ten"},"state":"Nothing was run.","why":"idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.","fix":{"command":"","note":"Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+----
+
 == E-PIN-NOT-FOUND
 
 === E-PIN-NOT-FOUND, case `no-lock`
@@ -1038,6 +1118,90 @@ idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: idris2x.lock has a malformed
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"malformed-lock","exit":10,"title":"nothing is pinned for this version and target","summary":"idris2x.lock has a malformed digest for this machine","context":{"lock":"idris2x.lock","target":"x86_64-unknown-linux-gnu","field":"digest"},"state":"Nothing was downloaded or changed.","why":"A digest is exactly 64 lowercase hexadecimal characters and a version is numbers separated by dots. Anything else means the lock was edited by hand or damaged, and it is refused before it can reach a download, a store path or a printed command.","fix":{"command":"idris2x pin <version>","note":"If the lock is under version control, compare it with the last committed version first.","auto":"placeholder"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
+----
+
+=== E-PIN-NOT-FOUND, case `unreadable-lock`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-NOT-FOUND (exit 10)
+
+idris2x.lock is here, and I could not read it as a lock file.
+
+    problem  expected value at line 1 column 1
+
+Nothing was downloaded or changed.
+
+A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is
+not that JSON, is refused, not guessed at.
+
+Write the lock again from the channel:
+
+    idris2x pin <version>
+
+If the lock is under version control, compare it with the last committed version
+first.
+
+More: idris2x explain E-PIN-NOT-FOUND
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-NOT-FOUND (exit 10) ------------------------------------------- idris2x<ESC>[0m
+
+idris2x.lock is here, and I could not read it as a lock file.
+
+    problem  expected value at line 1 column 1
+
+Nothing was downloaded or changed.
+
+A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is
+not that JSON, is refused, not guessed at.
+
+Write the lock again from the channel:
+
+    <ESC>[1midris2x pin <version><ESC>[0m
+
+If the lock is under version control, compare it with the last committed version
+first.
+
+More: idris2x explain E-PIN-NOT-FOUND
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-NOT-FOUND]: cannot read idris2x.lock as a lock file
+    problem: expected value at line 1 column 1
+  state: Nothing was downloaded or changed.
+  why: A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at.
+  fix: idris2x pin <version>
+  note: If the lock is under version control, compare it with the last committed version first.
+  see: idris2x explain E-PIN-NOT-FOUND
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: cannot read idris2x.lock as a lock file
+    problem: expected value at line 1 column 1
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin <version><ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If the lock is under version control, compare it with the last committed version first.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-NOT-FOUND
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"unreadable-lock","exit":10,"title":"nothing is pinned for this version and target","summary":"cannot read idris2x.lock as a lock file","context":{"lock":"idris2x.lock","problem":"expected value at line 1 column 1"},"state":"Nothing was downloaded or changed.","why":"A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at.","fix":{"command":"idris2x pin <version>","note":"If the lock is under version control, compare it with the last committed version first.","auto":"placeholder"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
 ----
 
 == E-HASH-MISMATCH

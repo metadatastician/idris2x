@@ -12,7 +12,7 @@
 name = "idris2x"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.89"
 license = "MPL-2.0"
 description = "Hermetic, lockfile-pinned toolchain materializer for Idris 2 + Chez Scheme: signed, self-testing capsules and a tiny launcher designed to survive abandonment"
 authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
@@ -20,6 +20,13 @@ repository = "https://github.com/metadatastician/idris2x"
 readme = "README.adoc"
 
 [dependencies]
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+ring = "0.17"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde_json = "1"
+signal-hook = { version = "0.4.6", default-features = false }
+tar = { version = "0.4", default-features = false }
+ureq = { version = "3.5.2", default-features = false, features = ["rustls-no-provider", "platform-verifier"] }
 
 # std-only benchmark: no criterion, so the minted Cargo.lock stays
 # dependency-free. `cargo bench --no-run --locked` compiles it.

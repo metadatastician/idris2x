@@ -52,6 +52,12 @@ pub struct Txt<P>(String, PhantomData<P>);
 fn txt<P>(s: impl Into<String>) -> Txt<P> {
     Txt(s.into(), PhantomData)
 }
+/// A copy keeps its label.
+impl<P> Clone for Txt<P> {
+    fn clone(&self) -> Self {
+        txt(&*self.0)
+    }
+}
 /// Launcher constants. Only text compiled into the binary is `'static`.
 pub fn embedded(s: &'static str) -> Txt<Embedded> {
     txt(s)
@@ -385,7 +391,8 @@ pub fn advise(a: Advice) -> R<()> {
         d.silence
     ))
 }
-fn bug(detail: String) -> Fail {
+/// A launcher bug, E-INTERNAL.
+pub fn bug(detail: String) -> Fail {
     let version = embedded(env!("CARGO_PKG_VERSION")).into();
     Fail::InternalBug {
         detail: host(detail).into(),

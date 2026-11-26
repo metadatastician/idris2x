@@ -407,3 +407,10 @@ Nineteen cases have a golden rendering and no live drill. They include every cas
 Limits of that evidence. The capsule in these runs used Debian's Chez Scheme 9.5.8 labelled as 10.4.1, and Idris 2
 0.8.0 built from source on the same machine; it is a test fixture, not a capsule the factory would publish. The
 terminal form is tested by forcing colour, not on a real terminal. Nothing was tested on macOS or Windows.
+
+Two cases were added on 2026-11-26 for milestone 2 of the Rust launcher (install from a lock).
+`E-PIN-NOT-FOUND/unreadable-lock` (exit 10) covers a lock that exists but cannot be opened or is not JSON. The
+prototype passed such a file to `jq` and printed `jq`'s error. `E-USAGE/bad-setting` (exit 2) covers an
+`IDRIS2X_OFFLINE` or `IDRIS2X_LOCK_TIMEOUT` value the launcher cannot read. The prototype treated any value but `1` as
+off, and passed the timeout to `flock` unchecked. The launcher now refuses the value instead of falling back to a
+default (I3). Tests in `tests/install.rs` reach both cases.

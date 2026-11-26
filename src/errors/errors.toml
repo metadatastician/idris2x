@@ -217,6 +217,18 @@ fix_lead = "Write the lock again from the channel:"
 fix_cmd = "idris2x pin <version>"
 fix_note = "If the lock is under version control, compare it with the last committed version first."
 auto = "placeholder"
+[[case]]
+error = "E-PIN-NOT-FOUND"
+case = "unreadable-lock"
+summary = "cannot read {lock} as a lock file"
+story = "{lock} is here, and I could not read it as a lock file."
+facts = "problem=problem"
+state = "Nothing was downloaded or changed."
+why = "A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at."
+fix_lead = "Write the lock again from the channel:"
+fix_cmd = "idris2x pin <version>"
+fix_note = "If the lock is under version control, compare it with the last committed version first."
+auto = "placeholder"
 
 [[case]]
 error = "E-HASH-MISMATCH"
@@ -401,6 +413,18 @@ why = "The bash prototype reads its channel address and trusted key from the env
 fix_lead = ""
 fix_cmd = ""
 fix_note = "Set {variable} and run the command again. See scripts/proto/chaos.sh for a working example."
+auto = "none"
+[[case]]
+error = "E-USAGE"
+case = "bad-setting"
+summary = "{variable} is not {what}"
+story = "{variable} must be {what}, and it is set to something else."
+facts = "setting=variable value=value"
+state = "Nothing was run."
+why = "idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs."
+fix_lead = ""
+fix_cmd = ""
+fix_note = "Set {variable} to {what}, or unset it to use the default."
 auto = "none"
 
 [[case]]

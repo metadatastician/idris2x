@@ -27,6 +27,11 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * `E-OUTPUT` (exit 25): a failed write to standard output is a typed error, not a panic reported as `E-INTERNAL`.
 * Eight error templates and one advice note no longer quote a lock or channel value in a sentence (ADR 0012); the
   value stays on its fact line. `[[advice]]` entries may carry `facts`.
+* Rust launcher, milestone 2 (not released): `install`, `verify` and `fetch -o` read `idris2x.lock` with no network,
+  download over https (or plain http to this machine only), resume a partial download, check the digest, unpack with
+  the launcher's own containment checks, check the tree and run the two embedded probes, then rename into the store.
+* `E-PIN-NOT-FOUND/unreadable-lock` (exit 10) and `E-USAGE/bad-setting` (exit 2): an unreadable lock and an unreadable
+  setting are typed errors. The minimum Rust version is now 1.89, for file locks in the standard library.
 
 ==== Not yet
 

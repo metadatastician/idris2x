@@ -18,6 +18,7 @@ E-USAGE|missing-argument|command=pin|what=a version to pin|usage=idris2x pin <ve
 E-USAGE|no-such-file|path=capsule.tar.gz|dir=/home/ada/proofs
 E-USAGE|no-such-id|word=E-HASH
 E-USAGE|prototype-setting|variable=IDRIS2X_CHANNEL_URL|what=the address of the channel manifest
+E-USAGE|bad-setting|variable=IDRIS2X_LOCK_TIMEOUT|what=a whole number of seconds|value=ten
 E-PIN-NOT-FOUND|no-lock|lock=idris2x.lock|dir=/home/ada/proofs
 E-PIN-NOT-FOUND|no-target|lock=idris2x.lock|target=aarch64-unknown-linux-gnu|covered=x86_64-apple-darwin, x86_64-unknown-linux-gnu|version=0.8.0
 E-PIN-NOT-FOUND|no-version|lock=idris2x.lock|version=0.9.0|available=0.7.0, 0.8.0
@@ -25,6 +26,7 @@ E-PIN-NOT-FOUND|not-installed|digest=sha256:$A
 E-PIN-NOT-FOUND|no-idris2|name=chez-10.4.1-x86_64-unknown-linux-gnu
 E-PIN-NOT-FOUND|no-urls|lock=idris2x.lock|digest=sha256:$A|version=0.8.0
 E-PIN-NOT-FOUND|malformed-lock|lock=idris2x.lock|target=x86_64-unknown-linux-gnu|field=digest
+E-PIN-NOT-FOUND|unreadable-lock|lock=idris2x.lock|problem=expected value at line 1 column 1
 E-HASH-MISMATCH|download|lock=idris2x.lock|want=sha256:$A|got=sha256:$B|bytes=17706495 bytes (the lock says 35412990)|source=https://mirror.example.org/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
 E-HASH-MISMATCH|bundle|lock=idris2x.lock|want=sha256:$A|got=sha256:$B|bytes=35412990 bytes (the lock says 35412990)|source=/media/usb/capsule.tar.gz
 E-HASH-MISMATCH|store-modified|digest=sha256:$A|dir=/home/ada/.cache/idris2x/store/sha256-$A
