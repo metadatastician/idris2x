@@ -36,8 +36,9 @@ fn signify(text: &str, n: usize) -> Option<(String, Vec<u8>)> {
     Some((hex(&b[2..10]), b[10..].to_vec()))
 }
 
-/// Is `t` a real time from 1970 on, as RFC 3339 UTC to the second? Its fields are read as numbers (the days-from-civil
-/// algorithm) and the time is written back by `utc`: only a time that comes back the same, byte for byte, passes.
+/// Is `t` a real time, as RFC 3339 UTC to the second with a four-digit year? Its fields are read as numbers (the
+/// days-from-civil algorithm) and the time is written back by `utc`: only a time that comes back the same, byte for
+/// byte, passes.
 fn real(t: &str) -> bool {
     let n = |a: usize| t.get(a..a + 2).and_then(|d| d.parse::<i64>().ok());
     let f = || {

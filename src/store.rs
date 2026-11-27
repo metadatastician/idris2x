@@ -89,12 +89,12 @@ pub fn sha_file(p: &Path) -> io::Result<String> {
         }
     }
 }
-/// A date as RFC 3339 UTC, from seconds since 1970 (the civil-from-days algorithm).
 /// Seconds since 1970 by this machine's clock; a clock before 1970 reads as 0.
 pub fn now() -> i64 {
     let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
     t.map_or(0, |t| t.as_secs().try_into().unwrap_or(i64::MAX))
 }
+/// A date as RFC 3339 UTC, from seconds since 1970 (the civil-from-days algorithm).
 pub fn utc(t: i64) -> String {
     let (z, sec) = (t.div_euclid(86400) + 719468, t.rem_euclid(86400));
     let doe = z.rem_euclid(146097);
