@@ -33,6 +33,7 @@ concurrency:
 
 jobs:
   chaos:
+    name: "chaos"
     runs-on: ubuntu-24.04
     timeout-minutes: 60   # measured about 16 minutes on GitHub (run 45932797650); more than doubled for runner variance
     permissions:
