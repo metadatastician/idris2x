@@ -67,7 +67,7 @@ toc::[]
 | Offline / air-gap path as a first-class command | Planned (prototyped, drilled) | rare; usually ad hoc
 | Typed, stable error IDs with runbooks and exact fixes | Planned (taxonomy and runbooks present) | Rust compiler error index, Elm compiler messages
 | Complete, checkable uninstall | Planned (documented) | uv, bun (single directory)
-| Chaos drills of failure modes in CI | Prototyped (121 checks, not yet in CI) | uncommon in this category
+| Chaos drills of failure modes in CI | Runs against both launchers in CI (128 checks; passing on GitHub, runs on every PR; becomes a required check once the owner applies `.github/rulesets/Chaos-Gate.json`) | uncommon in this category
 | Zero telemetry, documented network surface | Designed | uv (opt-in), Zig
 |===
 

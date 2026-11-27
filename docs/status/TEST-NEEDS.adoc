@@ -13,8 +13,8 @@ which the `rust-cli` archetype pruned; it did not describe this repository and h
 |===
 | Category | Count | Details
 
-| Launcher unit tests (Rust) | 0 | The launcher is not written yet (Phase 1). `cargo test --all-targets` runs and passes with no tests.
-| Chaos drills | 121 checks | `scripts/proto/chaos.sh` against the bash prototype and a real Linux x86_64 capsule; 121 of 121 pass (2026-11-17). This is the executable specification the Rust launcher must pass.
+| Launcher tests (Rust) | 45 | `cargo test --all-targets`: 1 library test and 44 command-line tests in `tests/` (cli, install, pin, run); 45 of 45 pass (2026-11-27).
+| Chaos drills |  128 checks | `scripts/proto/chaos.sh` against a real Linux x86_64 capsule; 128 of 128 pass against the bash prototype and 128 of 128 against the Rust launcher (`IDRIS2X_BIN`), in both message styles (2026-11-27). The CI job (`.github/workflows/chaos.yml`, through `scripts/proto/chaos-gate.sh`) runs all four on GitHub and passed on 2026-11-27 (run 45932797650, at 5f53e0c). It runs on every pull request. It is not yet a required check: `.github/rulesets/Chaos-Gate.json` makes it one once the owner applies it.
 | Canaries | 12 | `tests/canaries/run.sh`; 11 of 12 pass on a relocated capsule, `unicode_paths` fails on an upstream Idris 2 bug (expected failure for 0.8.0).
 | Generator drift checks | 3 | `scripts/gen-runbooks.sh --check`, `scripts/gen-issue-forms.sh --check`, `scripts/sync-wiki.sh --check`; run in `wiki-sync.yml`.
 | Estate gates | inherited | root shape, SPDX, mint tokens, placeholders, I-JSON/JCS, lock sync, workflow edges, proven suite.
@@ -22,12 +22,14 @@ which the `rust-cli` archetype pruned; it did not describe this repository and h
 | Fuzz tests | 0 | Planned for archive extraction (proof plan in the wiki).
 |===
 
-The chaos drills and canaries need a built Chez + Idris 2 capsule, so they do not run in CI yet; wiring them into the
-capsule factory workflow is Phase 1 work.
+The chaos job builds Chez Scheme and Idris 2 from the pinned sources on every run, so the drills, `selftest`'s three
+probes among them, run in CI when launcher, test, script or workflow files change. The twelve canaries
+(`tests/canaries/run.sh`) do not run in CI yet; wiring them into the capsule factory workflow is Phase 1 work.
 
 == Needs, in priority order
 
-. Port the chaos suite into the Rust launcher's CI as its gate (Phase 1).
+. Owner: apply `.github/rulesets/Chaos-Gate.json`, which makes the chaos job a required check (it already runs on
+  every PR).
 . Unit and property tests for the pure core: resolution, lock parsing, digest comparison, archive path containment.
 . Fuzzing of archive extraction against escaping paths and links.
 . Canaries on all four Tier 1 targets in the factory workflow, including the relocation probe into a path with spaces.

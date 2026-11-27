@@ -5,9 +5,14 @@
 == Current Status
 
 Phase 0 complete (2026-11-16): design pinned in ADRs 0004–0011 and tested on real builds (see PHASE0-REPORT.adoc).
-Phase 1 in progress (2026-11-26): the Rust launcher is being built in four milestones. Milestone 1 (messages) is
-merged; milestones 2 and 3 are open draft PRs. Milestone 4 has pin and channel trust built and tested with
-`cargo test`; the chaos suite does not yet run against the Rust launcher, so it is not yet the CI gate.
+Phase 1 in progress (2026-11-27): the Rust launcher was built in four milestones, and all four are merged
+(milestone 4, pin, channel trust and the exec map, in #9), built and tested with `cargo test`. The chaos suite now
+drives the Rust launcher too (128 of 128 on each launcher, both styles, 2026-11-27, run by hand through
+`scripts/proto/chaos-gate.sh`). The CI job `.github/workflows/chaos.yml` runs the same four runs on GitHub. Its
+first run failed one check, because the suite passed the job's `IDRIS2_PREFIX` on to its drills. With that fixed,
+it passed on 2026-11-27 (run 45932797650 at 5f53e0c: four runs of 128 passed, 0 failed, in 16 minutes). It is not
+yet a required check. It runs on every pull request, and `.github/rulesets/Chaos-Gate.json` makes it one once the
+owner applies that ruleset; until then a red run does not block a merge.
 Nothing is released, and no capsule is published.
 
 == Milestones
@@ -19,8 +24,9 @@ Nothing is released, and no capsule is published.
 * [x] Fact-check the plan against primary sources; record ADRs
 
 === Phase 1 — MVP (Rust launcher + factory)
-* [ ] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 2,000 lines of our own code; the cap was 1,000 until the owner raised it on 2026-11-26)
-* [ ] Chaos suite as the launcher's CI gate
+* [x] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 2,000 lines of our own code; the cap was 1,000 until the owner raised it on 2026-11-26). All four milestones merged, 2026-11-27; not released.
+* [ ] Chaos suite as the launcher's CI gate (the job passes on GitHub and runs on every PR; it gates once the owner has
+  applied `.github/rulesets/Chaos-Gate.json`, which has not happened yet)
 * [ ] Factory CI for idris2@0.8.0 × four Tier 1 targets (manylinux_2_28, native macOS), signed channel
 * [ ] Error-message and DX design system applied to every output (parallel DX thread)
 * [ ] Dogfood in estate proof lanes
@@ -36,6 +42,6 @@ Nothing is released, and no capsule is published.
 == Next actions
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
-. Finish the Rust launcher: review and merge milestones 2 to 4.
-. Port the chaos suite (`scripts/proto/chaos.sh`) to drive the Rust launcher, and run it in CI with a Chez Scheme
-  built from source. Then add `cargo vendor` and `cargo deny` (ADR 0007).
+. Owner: apply `.github/rulesets/Chaos-Gate.json`, so that the chaos job gates every PR.
+. Run the Creusot date proof (merged in #13) in CI, with pinned tools.
+. Add `cargo vendor` and `cargo deny` (ADR 0007).

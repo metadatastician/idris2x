@@ -69,12 +69,28 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * New cases `E-USAGE/no-channel` and `E-USAGE/no-such-program` (exit 2), `E-CHANNEL-SCHEMA/needs-newer-launcher` and
   `E-CHANNEL-SCHEMA/malformed-manifest` (exit 18), `E-PIN-DRIFT/bad-toml` (exit 19) and
   `E-CAPSULE-INVALID/bad-exec` (exit 21). `wrong-key` and `prototype-setting` now speak of a key in `idris2x.toml`.
+* Review fixes for milestone 4. New cases: `E-CHANNEL-ROLLBACK/seen-version-unknown` (exit 22) stops `pin` when the
+  lock cannot say which channel version it saw; only a missing lock file is a first pin. `E-LOCK-TIMEOUT/pin-held`
+  (exit 15): pins of one lock file take turns, locked on the file's real directory. `E-PIN-DRIFT/channel-changed`
+  (exit 19): `pin` re-reads `idris2x.toml` in its turn. `E-PIN-DRIFT/other-version` (exit 19): `pin` refuses a
+  version `idris2x.toml` does not ask for. `pin` keeps a manifest only after every check passes, refuses empty URL
+  lists and repeated tables, and treats a time before 1970 as expired. The lock is written through a new temporary
+  file, so a planted file or link is never followed. A fix command whose value holds a hidden character is left out
+  of the text and terminal forms; `IDRIS2X_JSON=1` writes it exactly. No exit code changed.
 * Channel text has its own label, `Channel`, which fills fact lines only (ADR 0012). Two more `compile_fail`
   doctests show it refused in prose and fix slots. `scripts/check-msg-negatives.sh` now also checks that only
   `src/pin.rs` labels channel text, and that both channel negatives compile once the policy table allows it.
 * The launcher's source is laid out with `use_small_heuristics = "Max"` (`src/rustfmt.toml`, owner ruling,
   2026-11-26), which puts a short item on one line up to the 100-column width. Milestone 4 brings the launcher to
   1,812 of 2,000 lines; with the default layout the same code is 2,164.
+* The chaos suite drives the Rust launcher as well as the prototype (`IDRIS2X_BIN`): 128 checks on each, in both
+  message styles. `.github/workflows/chaos.yml` builds Chez Scheme 10.4.1 and Idris 2 v0.8.0 from the pinned
+  sources and runs `scripts/proto/chaos-gate.sh`, which fails unless all four runs pass with equal counts. The job
+  passed on GitHub on 2026-11-27. The prototype's `exec` now takes the program name, and the prototype refuses an
+  empty `min_glibc`, as the Rust launcher does.
+* The chaos job runs on every pull request, and `.github/rulesets/Chaos-Gate.json` (with its producer mapping in
+  `.machine_readable/required-contexts-allow.txt`) makes it a required check once the owner applies it. Nothing is
+  enforced until then.
 * The date arithmetic of `pin` and `store` moves to `src/civil.rs`, and Creusot, with Pearlite contracts on that
   file, proves it (DATE-1 in `docs/status/PROOF-STATUS.adoc`): `days` and `civil` are inverse on real dates, with no
   overflow, for every value `pin` and `store` pass them. A normal build drops the contracts, so the launcher gains no
@@ -84,5 +100,5 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 
 ==== Not yet
 
-* The chaos suite as the Rust launcher's CI gate, `cargo vendor` and `cargo deny`, the capsule factory CI and
-  published capsules (Phase 1).
+* The chaos ruleset applied on GitHub, the Creusot proof in CI, `cargo vendor` and `cargo deny`, the capsule factory CI
+  and published capsules (Phase 1).

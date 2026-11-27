@@ -8,8 +8,14 @@
 # wrong key, rollback, expiry, offline, air-gap bundle, lock contention, unsafe tar, paths with spaces.
 # Wording is a contract too: `says` compares the whole message with the text rendered from src/errors/errors.toml for the
 # expected case and the drill's real values, and dx-golden.sh pins that text. Run once per style: IDRIS2X_STYLE=a|b (default b).
+# IDRIS2X_BIN names the launcher to drill: the prototype beside this script by default, or the Rust binary. The
+# expected text always comes from the prototype's renderer, so a launcher is never checked against its own wording.
 set -uo pipefail
-P=$(cd "$(dirname "$0")" && pwd); X="$P/idris2x.sh"
+# The drills start from a known environment: no name the launcher resets (ADR 0005) is inherited from the caller. A CI
+# job or an Idris developer's shell may export IDRIS2_PREFIX, and this script's own variable of that name would then be
+# exported to every drill, where doctor rightly reports it.
+while read -r v; do unset "$v"; done < <(compgen -e | grep -E '^(IDRIS2_|DYLD_)|^(LD_LIBRARY_PATH|CHEZ|SCHEMEHEAPDIRS)$')
+P=$(cd "$(dirname "$0")" && pwd); X=${IDRIS2X_BIN:-$P/idris2x.sh}; R="$P/idris2x.sh"; V=$("$X" --version | cut -d" " -f2)
 CHEZ_PREFIX=$1; IDRIS2_PREFIX=${2:-}; CHEZ_SRC=${3:-}; IDRIS2_SRC=${4:-}
 W=${CHAOS_WORK:-$(mktemp -d)}; OUT="$W/release"; mkdir -p "$OUT"; PORT=${PORT:-8099}
 export no_proxy="127.0.0.1,localhost" NO_PROXY="127.0.0.1,localhost" IDRIS2X_QUIET=1
@@ -26,17 +32,36 @@ head -c $((SIZE/2)) "$TGZ" > "$OUT/trunc.tar.gz"
 mkdir -p "$W/evil/sub"; echo x > "$W/evil/evil.txt"; (cd "$W/evil/sub" && tar -P -czf "$OUT/unsafe.tar.gz" ../evil.txt 2>/dev/null); UNSAFE_SHA=$(sha256sum "$OUT/unsafe.tar.gz" | cut -d' ' -f1)
 "${FIXTURE_SERVER:?set FIXTURE_SERVER to the built examples/fixture_server binary}" "$OUT" "$PORT" >"$W/http.log" 2>&1 & SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
 export IDRIS2X_CHANNEL_URL="http://127.0.0.1:$PORT/v1.json" IDRIS2X_PUBKEY_FILE="$W/key.pub"
+# Where the two launchers differ by design, a drill takes the value for the launcher under test from here.
+#   manifest  the kept channel manifest. The prototype keeps v1.json beside its signature; the Rust launcher keeps one
+#             signify file per channel address, signature and body together, so the pair is replaced whole (I2).
+#   sigwhat, sigfile  what a garbled signature is called, and the file named. The Rust launcher names the address it
+#             fetched, since nothing reaches its cache before every check has passed.
+#   e404, e7  the transport's words for a 404 and for a refused connection: curl's, or the ureq library's.
+if [ "${V%-proto}" != "$V" ]; then
+  manifest() { echo "$IDRIS2X_CACHE/manifests/v1.json"; }
+  sigwhat="the signature is not base64"; sigfile() { echo "$IDRIS2X_CACHE/manifests/v1.json.sig.tmp"; }
+  e404="(22) The requested URL returned error: 404"; e7="(7) Failed to connect to 127.0.0.1 port 1 after 0 ms: Couldn't connect to server"
+else
+  manifest() { echo "$IDRIS2X_CACHE/manifests/$(printf %s "$IDRIS2X_CHANNEL_URL" | sha256sum | cut -c1-16).sig"; }
+  sigwhat="the signature is not a signify Ed25519 signature; pre-hashed (ED) ones are refused"
+  sigfile() { echo "$IDRIS2X_CHANNEL_URL.sig"; }
+  e404="http status: 404"; e7="io: Connection refused (os error 111)"
+fi
 pass=0; fail=0
 t() { local name=$1 expect=$2; shift 2; local rc t0; t0=$(date +%s%N); "$@" >"$W/out.txt" 2>&1; rc=$?; local ms=$(( ($(date +%s%N)-t0)/1000000 ))
   if [ "$rc" = "$expect" ]; then pass=$((pass+1)); printf '[PASS] %-36s exit=%s %5dms %s\n' "$name" "$rc" "$ms" "$(grep -o 'E-[A-Z-]*' "$W/out.txt" | head -1)"
   else fail=$((fail+1)); printf '[FAIL] %-36s exit=%s expected=%s\n' "$name" "$rc" "$expect"; sed 's/^/        /' "$W/out.txt" | head -4; fi; }
 assert() { local name=$1; shift; if "$@" >/dev/null 2>&1; then pass=$((pass+1)); printf '[PASS] %s\n' "$name"; else fail=$((fail+1)); printf '[FAIL] %s\n' "$name"; fi; }
 says() { local name=$1; shift    # says NAME ID CASE key=value... : the last command printed exactly this message and nothing else
-  if "$X" __render plain "$@" > "$W/want.txt" 2>&1 && diff <(sed -E "${MASK:-s/^//}" "$W/want.txt") <(sed -E "${MASK:-s/^//}" "$W/out.txt") > "$W/diff.txt"; then pass=$((pass+1)); printf '[PASS] %s\n' "$name"
+  if "$R" __render plain "$@" > "$W/want.txt" 2>&1 && diff <(sed -E "${MASK:-s/^//}" "$W/want.txt") <(sed -E "${MASK:-s/^//}" "$W/out.txt") > "$W/diff.txt"; then pass=$((pass+1)); printf '[PASS] %s\n' "$name"
   else fail=$((fail+1)); printf '[FAIL] %s\n' "$name"; sed 's/^/        /' "$W/diff.txt" | head -12; fi; }
 keyid() { sed -n 2p "$1" | base64 -d | tail -c +3 | head -c 8 | od -An -tx1 | tr -d ' \n'; }
 HOST=$(uname -m | sed 's/amd64/x86_64/;s/arm64/aarch64/')-unknown-linux-gnu; unset NO_COLOR IDRIS2X_COLOR IDRIS2X_JSON IDRIS2X_ERROR_FILE
-fresh() { export IDRIS2X_CACHE="$W/cache-$1"; rm -rf "$IDRIS2X_CACHE"; mkdir -p "$W/proj-$1"; cd "$W/proj-$1" || exit 1; }
+fresh() { export IDRIS2X_CACHE="$W/cache-$1"; rm -rf "$IDRIS2X_CACHE"; mkdir -p "$W/proj-$1"; cd "$W/proj-$1" || exit 1; channel "$W/key.pub"; }
+# channel KEY.pub [VERSION]: the channel this project trusts, named both ways: idris2x.toml for the Rust launcher (ADR
+# 0007), the prototype settings for the prototype. Each launcher reads only its own. The toml asks for VERSION (0.8.0).
+channel() { export IDRIS2X_PUBKEY_FILE=$1; printf '[toolchain]\nidris2 = "%s"\n\n[channel]\nurl = "%s"\nkey = "%s"\n' "${2:-0.8.0}" "$IDRIS2X_CHANNEL_URL" "$(sed -n 2p "$1")" > idris2x.toml; }
 pin() { "$X" pin 0.8.0 >/dev/null 2>&1 || echo "  (pin failed)"; }
 with_urls() { jq --argjson u "$1" '.capsules[] .urls = $u' idris2x.lock > lock.tmp && mv lock.tmp idris2x.lock; }
 U="http://127.0.0.1:$PORT"
@@ -46,15 +71,17 @@ assert "dx-golden: every rendered message matches docs/dx/ERROR-CATALOGUE-RENDER
 fresh t0
 t "no lock file -> E-PIN-NOT-FOUND"  10 "$X" install --locked
 says "  exact text: no-lock"         E-PIN-NOT-FOUND no-lock lock=idris2x.lock dir="$(pwd)"
+channel "$W/key.pub" 9.9.9    # the project asks for it, so the Rust launcher's other-version check lets it through
 t "unknown version -> E-PIN-NOT-FOUND" 10 "$X" pin 9.9.9
 says "  exact text: no-version"      E-PIN-NOT-FOUND no-version lock=idris2x.lock version=9.9.9 available=0.8.0
 assert "  a failed pin wrote no lock" test ! -e idris2x.lock
 fresh t0b
 IDRIS2X_OFFLINE=1 t "offline pin, nothing cached -> E-OFFLINE" 20 "$X" pin 0.8.0
-says "  exact text: no-manifest"     E-OFFLINE no-manifest cache="$IDRIS2X_CACHE/manifests/v1.json" mode=IDRIS2X_OFFLINE=1 version=0.8.0
+says "  exact text: no-manifest"     E-OFFLINE no-manifest cache="$(manifest)" mode=IDRIS2X_OFFLINE=1 version=0.8.0
 
 echo "== T1 happy path"; fresh t1
 t "pin 0.8.0"                        0 "$X" pin 0.8.0
+assert "  the kept manifest is where these drills look for it" test -f "$(manifest)"
 t "install --locked (cold)"          0 "$X" install --locked
 DIG=$(jq -r '.capsules[].sha256' idris2x.lock); STORE="$IDRIS2X_CACHE/store/sha256-$DIG"
 assert "  a successful install prints the store path and nothing else" test "$(cat "$W/out.txt")" = "$STORE"
@@ -62,6 +89,10 @@ assert "store/.complete present"     test -f "$STORE/.complete"
 assert "no staging leftovers in tmp" test -z "$(find "$IDRIS2X_CACHE/staging" -mindepth 1 -maxdepth 1 ! -name fetch.log -print -quit)"
 t "install --locked (warm, no-op)"   0 "$X" install --locked
 assert "run -- chez evaluates 42"    test "$(echo '(display (+ 40 2))' | "$X" run -- -q)" = 42
+t "exec of a program the capsule lacks -> E-USAGE" 2 "$X" exec -- lean --version
+says "  exact text: no-such-program (lists what the capsule has)" E-USAGE no-such-program word=lean programs="$(jq -r '.exec | keys | join(", ")' "$STORE/capsule.json")"
+t "exec with no program -> E-USAGE"  2 "$X" exec --locked --
+says "  exact text: missing-argument" E-USAGE missing-argument usage="idris2x exec [--locked] [--inherit-env] [--] <program> <args>" command=exec what="a program from the capsule, such as idris2"
 t "verify (sha256sums + probes)"     0 "$X" verify
 t "doctor"                           0 "$X" doctor
 t "env --json"                       0 "$X" env --json
@@ -97,19 +128,19 @@ t "write limit -> E-STORE-IO (the disk, not the network)" 24 bash -c 'ulimit -f 
 says "  exact text: write-failed"    E-STORE-IO write-failed detail="downloading the capsule (the file size limit was reached)" path="$IDRIS2X_CACHE"
 with_urls "[\"$U/missing.tar.gz\",\"http://127.0.0.1:1/none.tar.gz\"]"
 t "every mirror fails -> E-NETWORK"  14 "$X" install --locked
-says "  exact text: all-mirrors-failed (each address with its own reason)" E-NETWORK all-mirrors-failed digest="sha256:$DIG" tried="$U/missing.tar.gz: (22) The requested URL returned error: 404; http://127.0.0.1:1/none.tar.gz: (7) Failed to connect to 127.0.0.1 port 1 after 0 ms: Couldn't connect to server" log="$IDRIS2X_CACHE/staging/fetch.log"
+says "  exact text: all-mirrors-failed (each address with its own reason)" E-NETWORK all-mirrors-failed digest="sha256:$DIG" tried="$U/missing.tar.gz: $e404; http://127.0.0.1:1/none.tar.gz: $e7" log="$IDRIS2X_CACHE/staging/fetch.log"
 assert "store has no half-capsule"   test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG"
 echo "== T7 trust: tamper, wrong key, rollback, expiry"; fresh t7
 cp "$OUT/v1.json" "$W/v1.good"; jq '.channel_version=999' "$W/v1.good" > "$OUT/v1.json"
 t "tampered manifest -> E-SIG-INVALID" 12 "$X" pin 0.8.0
 says "  exact text: bad-signature"   E-SIG-INVALID bad-signature url="$IDRIS2X_CHANNEL_URL" key="key id $(keyid "$W/key.pub")" version=0.8.0
-assert "  a refused manifest wrote no lock and was not cached" test ! -e idris2x.lock -a ! -e "$IDRIS2X_CACHE/manifests/v1.json"
+assert "  a refused manifest wrote no lock and was not cached" test ! -e idris2x.lock -a ! -e "$(manifest)"
 cp "$W/v1.good" "$OUT/v1.json"
-IDRIS2X_PUBKEY_FILE="$W/other.pub" t "wrong pinned key -> E-SIG-INVALID" 12 "$X" pin 0.8.0
+channel "$W/other.pub"; t "wrong pinned key -> E-SIG-INVALID" 12 "$X" pin 0.8.0; channel "$W/key.pub"
 says "  exact text: wrong-key"       E-SIG-INVALID wrong-key url="$IDRIS2X_CHANNEL_URL" signer="key id $(keyid "$W/key.pub")" key="key id $(keyid "$W/other.pub")"
 cp "$OUT/v1.json.sig" "$W/sig.good"; printf 'untrusted comment: proxy page\n<html>not base64</html>\n' > "$OUT/v1.json.sig"
 t "garbage signature file -> E-SIG-INVALID" 12 "$X" pin 0.8.0
-says "  exact text: malformed"       E-SIG-INVALID malformed what="the signature is not base64" file="$IDRIS2X_CACHE/manifests/v1.json.sig.tmp"
+says "  exact text: malformed"       E-SIG-INVALID malformed what="$sigwhat" file="$(sigfile)"
 cp "$W/sig.good" "$OUT/v1.json.sig"
 pin; jq '.channel.version=5' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "channel rollback -> E-CHANNEL-ROLLBACK" 22 "$X" pin 0.8.0
@@ -140,12 +171,13 @@ IDRIS2X_LOCK_TIMEOUT=1 t "lock held, holder recorded -> E-LOCK-TIMEOUT" 15 "$X" 
 says "  exact text: held (names the running holder)" E-LOCK-TIMEOUT held digest="sha256:$DIG" seconds=1 lockfile="$IDRIS2X_CACHE/locks/sha256-$DIG.lock" holder="process $HOLD (still running)"
 wait "$HOLD"   # bare wait would also wait for the http server
 echo "== T11 unsafe tar member"; fresh t11; pin
-jq --arg s "$UNSAFE_SHA" --arg u "$U/unsafe.tar.gz" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=100)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
+# The lock pins the archive's real size, so the download completes and the drill reaches the unpacking.
+jq --arg s "$UNSAFE_SHA" --arg u "$U/unsafe.tar.gz" --argjson n "$(stat -c%s "$OUT/unsafe.tar.gz")" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=$n)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "'../' member -> E-CAPSULE-INVALID" 21 "$X" install --locked
 says "  exact text: unsafe-path"     E-CAPSULE-INVALID unsafe-path digest="sha256:$UNSAFE_SHA"
 assert "nothing escaped the staging dir" test ! -e "$IDRIS2X_CACHE/staging/evil.txt" -a ! -e "$IDRIS2X_CACHE/evil.txt"
 mkdir -p "$W/esc"; ln -sfn /etc "$W/esc/out"; echo x > "$W/esc/file"; tar -czf "$OUT/escape.tar.gz" -C "$W/esc" out file; ESC_SHA=$(sha256sum "$OUT/escape.tar.gz" | cut -d' ' -f1)
-jq --arg s "$ESC_SHA" --arg u "$U/escape.tar.gz" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=100)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
+jq --arg s "$ESC_SHA" --arg u "$U/escape.tar.gz" --argjson n "$(stat -c%s "$OUT/escape.tar.gz")" '.capsules[] |= (.sha256=$s | .urls=[$u] | .size=$n)' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "symlink pointing outside the tree -> E-CAPSULE-INVALID" 21 "$X" install --locked
 says "  exact text: unsafe-path (link escape)" E-CAPSULE-INVALID unsafe-path digest="sha256:$ESC_SHA"
 
@@ -162,9 +194,11 @@ assert "  nothing named by the bad digest was created" test ! -e "$IDRIS2X_CACHE
 jq '.toolchain.idris2 = "0.8.0; touch pwned"' idris2x.lock > l.tmp && mv l.tmp idris2x.lock
 t "malformed version in the lock -> refused" 10 "$X" install --locked
 says "  exact text: malformed-lock (version)" E-PIN-NOT-FOUND malformed-lock lock=idris2x.lock target="$HOST" field=version
-echo "== T13 gc"; fresh t13; pin; "$X" install --locked >/dev/null 2>&1; mkdir -p "$IDRIS2X_CACHE/store/sha256-deadbeef"
+echo "== T13 gc"; fresh t13; pin; "$X" install --locked >/dev/null 2>&1
+# An install cut short: a store entry with no .complete, under a name idris2x writes (a 64-hex digest).
+INC="$IDRIS2X_CACHE/store/sha256-$(printf cut-short | sha256sum | cut -d" " -f1)"; mkdir -p "$INC"
 t "gc removes incomplete dirs"       0 "$X" gc --keep-last 3
-assert "incomplete dir gone, complete kept" test ! -e "$IDRIS2X_CACHE/store/sha256-deadbeef" -a -f "$IDRIS2X_CACHE/store/sha256-$DIG/.complete"
+assert "incomplete dir gone, complete kept" test ! -e "$INC" -a -f "$IDRIS2X_CACHE/store/sha256-$DIG/.complete"
 echo "== T13b store tampering, then the printed fix"; echo tampered >> "$IDRIS2X_CACHE/store/sha256-$DIG/capsule.json"
 t "modified store entry -> E-HASH-MISMATCH" 11 "$X" verify
 says "  exact text: store-modified"  E-HASH-MISMATCH store-modified digest="sha256:$DIG" dir="$IDRIS2X_CACHE/store/sha256-$DIG"
@@ -178,11 +212,11 @@ assert "  a path with a space is quoted in the fix command" test "$("$X" __rende
 
 
 if [ -n "$IDRIS2_PREFIX" ]; then echo "== T14 idris2 canaries (space-free cache)"; fresh t14; pin; "$X" install --locked >/dev/null 2>&1
-  t "exec -- idris2 --version"       0 "$X" exec -- --version
+  t "exec -- idris2 --version"       0 "$X" exec -- idris2 --version
   t "selftest (chez_codegen, relocatable_artifact, refc)" 0 "$X" selftest
   sed 's/^/        /' "$W/out.txt"
   echo "== T15 documented limitation: compiled programs vs spaces in the store path"; fresh "t15 with spaces"; pin; "$X" install --locked >/dev/null 2>&1
-  t "exec works from spaced store"   0 "$X" exec -- --version
+  t "exec works from spaced store"   0 "$X" exec -- idris2 --version
   t "selftest: compiled program breaks (shebang) -> E-PROBE-CODEGEN with fix hint" 17 "$X" selftest
   says "  exact text: path-has-spaces (names the cause and a fix)" E-PROBE-CODEGEN path-has-spaces probe="chez_codegen (run the compiled program)" store="$IDRIS2X_CACHE/store/sha256-$DIG"
 fi
@@ -202,9 +236,12 @@ cp idris2x.lock lock.keep; jq '.capsules[].min_glibc = "9.99"' lock.keep > idris
 t "host glibc below the capsule's floor -> E-GLIBC-FLOOR" 16 "$X" install --locked
 says "  exact text: too-old"         E-GLIBC-FLOOR too-old host="$(getconf GNU_LIBC_VERSION | cut -d' ' -f2)" needs=9.99 digest="sha256:$DIG"
 assert "  refused before any download" test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG" -a ! -e "$IDRIS2X_CACHE/staging/sha256-$DIG.part"
+jq '.capsules[].min_glibc = ""' lock.keep > idris2x.lock
+t "empty glibc floor in the lock -> refused, never skipped" 10 "$X" install --locked
+says "  exact text: malformed-lock (glibc floor)" E-PIN-NOT-FOUND malformed-lock lock=idris2x.lock target="$HOST" field="glibc floor"
 jq '.schema = 2' lock.keep > idris2x.lock
 t "lock from a newer idris2x -> E-CHANNEL-SCHEMA" 18 "$X" install --locked
-says "  exact text: lock-newer"      E-CHANNEL-SCHEMA lock-newer file=idris2x.lock found=2 supports=1 version=0.0.0-proto
+says "  exact text: lock-newer"      E-CHANNEL-SCHEMA lock-newer file=idris2x.lock found=2 supports=1 version="$V"
 cp lock.keep idris2x.lock
 echo "== T17 advice: notes that are not errors, each with a way to silence it and a review date"
 assert "advice review dates are all in the future" "$P/../check-advice-review.sh"

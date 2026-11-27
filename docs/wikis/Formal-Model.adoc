@@ -31,5 +31,5 @@ rename, then the marker), any `Staged → Absent` on failure. No transition writ
 
 == Tested, not yet proven
 
-The chaos suite (121 checks, all passing) exercises these properties on a real capsule (concurrent installers, crashes via write limits, tampering).
+The chaos suite (128 checks, all passing on both launchers) exercises these properties on a real capsule (concurrent installers, crashes via write limits, tampering).
 Proof work is planned: link:Proof-Plan[Proof plan].

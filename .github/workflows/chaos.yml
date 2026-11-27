@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+# MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+name: Chaos suite
+
+# The launcher's gate: scripts/proto/chaos.sh against BOTH launchers (the bash prototype and the Rust launcher), in BOTH
+# message styles (a and b), through scripts/proto/chaos-gate.sh. It fails unless all four runs exit 0 with no failed
+# check and with equal pass counts, and it refuses to run without the Idris 2 prefix (no silent shrink).
+#
+# The job runs on every pull request so that it can be a required check: .github/rulesets/Chaos-Gate.json requires it
+# once the owner applies that ruleset, and .machine_readable/required-contexts-allow.txt maps it. A paths filter would
+# leave a PR that touches none of the paths waiting for a check that never reports.
+#
+# Toolchains are built from upstream source and pinned: Chez Scheme 10.4.1 by sha256 (docs/decisions/0004-*.adoc),
+# Idris 2 v0.8.0 by commit. Nothing is patched (zero-fork policy).
+#
+# NO `uses:` ANYWHERE, deliberately (same reason as wiki-sync.yml): .github/workflows/actions.lock is
+# keyed by workflow path, and a workflow that pulls an unlisted action fails before any step.
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'Cargo.toml', 'Cargo.lock', 'examples/**', 'tests/**', 'scripts/proto/**', 'src/errors/errors.toml', '.github/workflows/chaos.yml']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chaos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chaos:
+    name: "chaos"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60   # measured about 16 minutes on GitHub (run 45932797650); more than doubled for runner variance
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch the commit (plain git, token as a masked header)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); echo "::add-mask::$auth"
+          git init -q src && cd src
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Install system packages
+        # jq, zstd, signify-openbsd: the capsule factory and the suite. libgmp-dev: Idris 2 links GMP.
+        # build-essential: compiler and make for Chez and Idris 2. uuid-dev: Chez Scheme's optional uuid support
+        # (configure finds it on the system). curl, git, tar: already present, listed so the dependency is explicit.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y -q jq zstd signify-openbsd libgmp-dev build-essential uuid-dev curl git tar
+      - name: Build Chez Scheme 10.4.1 from the upstream release (sha256 pinned)
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/chez-dl" && cd "$RUNNER_TEMP/chez-dl"
+          curl -sSfL --max-time 300 -o csv10.4.1.tar.gz https://github.com/cisco/ChezScheme/releases/download/v10.4.1/csv10.4.1.tar.gz
+          want=2e74952db7bc177f0c3602e2217a341ba677d733eec4cd7726418c3a4e1ef308
+          got=$(sha256sum csv10.4.1.tar.gz | cut -d' ' -f1)
+          if [ "$got" != "$want" ]; then echo "::error::csv10.4.1.tar.gz sha256 is $got, expected $want"; exit 1; fi
+          tar -xzf csv10.4.1.tar.gz
+          cd csv10.4.1
+          ./configure --threads --disable-curses --disable-x11 --installprefix="$RUNNER_TEMP/chez-prefix"
+          make -j"$(nproc)"
+          make install
+          echo "CHEZ_PREFIX=$RUNNER_TEMP/chez-prefix" >> "$GITHUB_ENV"
+          echo "CHEZ_SRC=$RUNNER_TEMP/chez-dl/csv10.4.1" >> "$GITHUB_ENV"
+      - name: Build Idris 2 v0.8.0 (commit pinned)
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/idris2-src"
+          git clone --depth 1 --branch v0.8.0 https://github.com/idris-lang/Idris2 "$src"
+          want=15a3e4e70843f7a34100f6470c04b791330788df
+          got=$(git -C "$src" rev-parse HEAD)
+          if [ "$got" != "$want" ]; then echo "::error::Idris2 v0.8.0 is $got, expected $want"; exit 1; fi
+          cd "$src"
+          export PATH="$CHEZ_PREFIX/bin:$PATH"
+          make bootstrap SCHEME="$CHEZ_PREFIX/bin/scheme" PREFIX="$RUNNER_TEMP/idris2-prefix"
+          make install SCHEME="$CHEZ_PREFIX/bin/scheme" PREFIX="$RUNNER_TEMP/idris2-prefix"
+          echo "IDRIS2_PREFIX=$RUNNER_TEMP/idris2-prefix" >> "$GITHUB_ENV"
+          echo "IDRIS2_SRC=$src" >> "$GITHUB_ENV"
+      - name: Build the launcher and the fixture server
+        working-directory: src
+        run: |
+          set -euo pipefail
+          cargo build --locked --release --bin idris2x --example fixture_server
+      - name: Run the chaos suite, both launchers, both styles
+        working-directory: src
+        env:
+          CHAOS_GATE_WORK: ${{ runner.temp }}/chaos-work
+        run: |
+          set -euo pipefail
+          scripts/proto/chaos-gate.sh "$CHEZ_PREFIX" "$IDRIS2_PREFIX" "$CHEZ_SRC" "$IDRIS2_SRC"
