@@ -100,6 +100,18 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * `.github/workflows/creusot.yml` runs `scripts/check-creusot.sh` in CI, with Creusot installed at the pinned commit
   and the tool versions checked first. Its first run on GitHub passed (run 45988074983, about 17 minutes). It is
   not a required check.
+* Capsule factory CI (not run on GitHub yet): `.github/workflows/factory.yml` builds, proves and attests one capsule
+  per Tier 1 target, and `scripts/factory/` holds its scripts, among them `make-channel.sh`, which writes an unsigned
+  channel manifest from bundle records. `make-capsule.sh` signs only when given a key, and runs on macOS. The Linux
+  x86_64 path was run by hand; the manylinux, macOS and attestation steps were not.
+* Release pipeline (not run yet): `release.yml` checks that the tag matches `Cargo.toml`, builds the launcher for
+  the four Tier 1 targets, calls the capsule factory, and leaves a draft release with an unsigned `v1.json`. It never
+  publishes. On the owner's machine, `scripts/sign-channel.sh` re-checks the draft (sums, digests, Tier 1 coverage,
+  attestations), signs `v1.json` only when the owner types `sign`, and prints the upload and publish commands without
+  running them. `docs/RELEASING.adoc` lists the steps; `src/definitions/channel-version` holds the channel version,
+  which must rise with each release. `tests/sign_channel_test.sh` tests the script (20 cases). A local rehearsal on
+  2026-11-27, with stand-in capsules and a stub `gh`, took a manifest from `make-channel.sh` through
+  `sign-channel.sh` and `signify -V` to `idris2x pin`.
 * Two holes from the Phase 1 design review are fixed (owner ruling, 2026-11-27). `exec` and `run` hold a shared lock
   on the capsule that stays open through `execve`, so `gc` keeps a capsule while a program started from it, or a
   child that keeps the inherited descriptor, runs, and says `in use (its lock is held)`. This needs one `unsafe` call

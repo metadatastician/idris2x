@@ -12,11 +12,13 @@ idris2() { "$ROOT/bin/scheme" --program "$ROOT/bin/idris2_app/idris2.so" "$@"; }
 scheme() { "$ROOT/bin/scheme" "$@"; }
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT; pass=0; fail=0
 check() { local name=$1 expect=$2 got=$3; if [ "$got" = "$expect" ]; then pass=$((pass+1)); printf '[PASS] %-22s %s\n' "$name" "$got"; else fail=$((fail+1)); printf '[FAIL] %-22s got: %s\n' "$name" "$(echo "$got" | head -3 | tr '\n' '|')"; fi; }
-ms() { local t0=$1; echo "$(( ($(date +%s%N)-t0)/1000000 ))ms"; }
+# nowns: nanoseconds since the epoch; BSD date (macOS) has no %N, so fall back to whole seconds there.
+nowns() { local n; n=$(date +%s%N); case $n in *N) echo "$(date +%s)000000000";; *) echo "$n";; esac; }
+ms() { local t0=$1; echo "$(( ($(nowns)-t0)/1000000 ))ms"; }
 # 1 pure_eval
 check pure_eval "42" "$(scheme --script "$HERE/src/pure_eval.ss" 2>&1)"
 # 2 chez_codegen
-t0=$(date +%s%N); cp "$HERE/src/ChezCodegen.idr" "$T/ChezCodegen.idr"; out=$(cd "$T" && idris2 -o chez_codegen ChezCodegen.idr 2>&1 >/dev/null && ./build/exec/chez_codegen 2>&1); check chez_codegen "chez_codegen ok" "$out"; echo "       (compile+run $(ms $t0))"
+t0=$(nowns); cp "$HERE/src/ChezCodegen.idr" "$T/ChezCodegen.idr"; out=$(cd "$T" && idris2 -o chez_codegen ChezCodegen.idr 2>&1 >/dev/null && ./build/exec/chez_codegen 2>&1); check chez_codegen "chez_codegen ok" "$out"; echo "       (compile+run $(ms "$t0"))"
 # 3 refc_codegen
 if command -v cc >/dev/null; then out=$(cd "$T" && idris2 --cg refc -o refc_codegen ChezCodegen.idr 2>&1 >/dev/null && ./build/exec/refc_codegen 2>&1); check refc_codegen "chez_codegen ok" "$out"; else echo "[skip] refc_codegen (no cc)"; fi
 # 4 c_ffi_support
@@ -38,7 +40,7 @@ wait $p1; r1=$?; wait $p2; r2=$?; check concurrent_build "ok" "$([ $r1 = 0 ] && 
 mkdir -p "$T/cänary ünïcode/src"; cp "$HERE/src/ChezCodegen.idr" "$T/cänary ünïcode/src/Main.idr"; out=$(cd "$T/cänary ünïcode" && idris2 -o uni src/Main.idr 2>&1 >/dev/null && ./build/exec/uni 2>&1); check unicode_paths "chez_codegen ok" "$out"
 # 10 large_module: 400 generated definitions typecheck and run
 { echo "module Main"; for i in $(seq 1 400); do echo "f$i : Nat -> Nat"; echo "f$i x = x + $i"; done; echo "main : IO ()"; echo "main = putStrLn (\"large_module ok \" ++ show (f400 (f1 0)))"; } > "$T/Large.idr"
-t0=$(date +%s%N); out=$(cd "$T" && idris2 -o large Large.idr 2>&1 >/dev/null && ./build/exec/large 2>&1); check large_module "large_module ok 401" "$out"; echo "       (compile+run $(ms $t0))"
+t0=$(nowns); out=$(cd "$T" && idris2 -o large Large.idr 2>&1 >/dev/null && ./build/exec/large 2>&1); check large_module "large_module ok 401" "$out"; echo "       (compile+run $(ms "$t0"))"
 # 11 chez_threads
 check chez_threads "chez_threads ok" "$(scheme --script "$HERE/src/chez_threads.ss" 2>&1)"
 fi

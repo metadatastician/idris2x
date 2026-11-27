@@ -93,6 +93,19 @@ names it, so a red run does not block a merge. Its first run on GitHub passed (r
 about 17 minutes, 12 of them installing the tools, because nothing is cached. Its timeout, 40 minutes, comes from
 that run.
 
+== `factory.yml` builds the capsules, and has not run on GitHub yet
+
+It builds one capsule for each Tier 1 target of `src/definitions/targets.toml`, proves each one, and attests it. It signs nothing.
+The owner signs the channel offline. The steps live in `scripts/factory/` (see its README).
+
+* `matrix-check` fails if the matrix and `targets.toml` differ.
+* `capsule (<triple>)` builds, then installs the capsule with the Rust launcher from a throwaway-signed local channel, runs the canaries and `idris2x selftest`, and uploads the artifact `capsule-<triple>`. Linux jobs build and run the canaries in the manylinux_2_28 image, pinned by digest.
+* `attest (<triple>)` attests the tarball with `actions/attest-build-provenance`. Only this job has `id-token: write` and `attestations: write`. It is skipped on pull requests.
+* The workflow is also `workflow_call`, for the release workflow, which must grant those two permissions.
+* It has no `uses:` for checkout (plain git, as `chaos.yml`). `actions.lock` lists the attest, upload and download actions.
+* It is not in `required-contexts-allow.txt` and no ruleset requires it.
+* The `unicode_paths` canary fails on Idris 2 0.8.0 (upstream bug). `run-canaries.sh` names it in the log and does not count it.
+
 == Deed and K9 conformance come from the canon, not from this tree
 
 `dogfood-gate.yml` validates the repo deed and the K9 contracts by calling the
@@ -246,3 +259,25 @@ until the next eligible push to `main`. Deployments are serialised by the
 on the newest completed run.
 ====
 
+
+== `release.yml` makes a draft release; it never signs or publishes
+
+A pushed `v*` tag starts `release.yml`. It has four kinds of job:
+
+* `version` stops the release first unless the tag is `v` followed by the `version` in `Cargo.toml`, which
+  `idris2x version` reports.
+* `launcher` builds the Rust launcher for the four tier 1 targets. Linux builds run in the `manylinux_2_28` image for the
+  runner's architecture, pinned by digest, so the binary needs glibc 2.28 or newer. macOS builds natively, arm64 on
+  `macos-15` and Intel on `macos-15-intel`, the runners the factory uses. Each target uploads `launcher-<triple>`.
+* `factory` calls `factory.yml`, which builds and attests the four capsules (`capsule-<triple>`).
+* `assemble` runs `scripts/factory/make-channel.sh` to write an *unsigned* `v1.json`, checks that the channel version in
+  `src/definitions/channel-version` is greater than the previous release's, writes `SHA256SUMS`, attests the launcher
+  tarballs and `v1.json`, and creates a *draft* release with every asset (`gh release create --draft --verify-tag`).
+
+Only `assemble` has `contents: write`. `id-token: write` and `attestations: write` go to the jobs that attest (`assemble`, and the
+`factory` call, which hands them on to `factory.yml`). The workflow holds no signing key and no step publishes. The owner
+signs `v1.json` offline with `scripts/sign-channel.sh` and publishes by hand; the steps are in `docs/RELEASING.adoc`.
+`tests/sign_channel_test.sh` tests that script and runs in `estate-rules.yml`.
+
+This workflow has not run on GitHub yet. The runner images, the container digests and the `factory.yml` interface are
+unproven until the first tag.

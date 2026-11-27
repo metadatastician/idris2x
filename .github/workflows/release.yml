@@ -2,154 +2,237 @@
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# Release workflow — triggered by version tags (v*).
-# Builds artifacts, generates changelog via git-cliff, creates a GitHub Release,
-# and produces GitHub native build-provenance attestations (OIDC + Sigstore).
+# Release workflow for idris2x, triggered by version tags (v*).
+#
+# It builds the launcher for the four tier 1 targets, calls the capsule factory
+# (factory.yml), assembles an UNSIGNED channel manifest (v1.json) and leaves a
+# DRAFT release holding every asset. It never signs and never publishes: the
+# owner signs v1.json offline with the root signify key and publishes the draft
+# (scripts/sign-channel.sh, docs/RELEASING.adoc). No private key is used here.
 name: Release
 on:
   push:
     tags:
       - 'v*'
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}   # one release run at a time, whatever the tag, so the draft check below holds
   cancel-in-progress: false
 permissions:
   contents: read
 jobs:
-  build:
-    name: Build Artifacts
+  version:
+    name: Tag matches Cargo.toml
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
-      - name: Detect project type and build
-        id: build
-        run: |
-          # Auto-detect build system from project files.
-          # Order matters: more specific markers checked first.
-          if [ -f "mix.exs" ]; then
-            echo "::notice::Detected Elixir/Gleam project (mix.exs)"
-            echo "build_type=mix" >> "$GITHUB_OUTPUT"
-            mix local.hex --force --if-missing
-            mix local.rebar --force --if-missing
-            mix deps.get --only prod
-            MIX_ENV=prod mix release
-          elif [ -f "Cargo.toml" ]; then
-            echo "::notice::Detected Rust project (Cargo.toml)"
-            echo "build_type=cargo" >> "$GITHUB_OUTPUT"
-            cargo build --release
-          elif [ -f "build.zig" ]; then
-            echo "::notice::Detected Zig project (build.zig)"
-            echo "build_type=zig" >> "$GITHUB_OUTPUT"
-            zig build -Doptimize=ReleaseSafe
-          elif [ -f "gossamer.conf.json" ]; then
-            echo "::notice::Detected Gossamer project (gossamer.conf.json)"
-            echo "build_type=gossamer" >> "$GITHUB_OUTPUT"
-            gossamer build
-          elif [ -f "gleam.toml" ]; then
-            echo "::notice::Detected Gleam project (gleam.toml)"
-            echo "build_type=gleam" >> "$GITHUB_OUTPUT"
-            gleam build
-          elif [ -f "rebar.config" ]; then
-            echo "::notice::Detected Erlang/Rebar project (rebar.config)"
-            echo "build_type=rebar" >> "$GITHUB_OUTPUT"
-            rebar3 as prod release
-          elif [ -f "Justfile" ] || [ -f "justfile" ]; then
-            echo "::notice::Detected Justfile — running 'just build'"
-            echo "build_type=just" >> "$GITHUB_OUTPUT"
-            just build
-          else
-            echo "::error::No recognised build system found."
-            echo "Expected one of: mix.exs, Cargo.toml, build.zig, gossamer.conf.json, gleam.toml, rebar.config, Justfile"
-            exit 1
-          fi
-        # TODO: Upload build artifacts if needed (pin actions/upload-artifact
-        #   to a full commit SHA when enabling, per the SHA-pin policy):
-        # - uses: actions/upload-artifact@<full-commit-sha>  # vX.Y.Z
-        #   with:
-        #     name: release-artifacts
-        #     path: target/release/
-  changelog:
-    name: Generate Changelog
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    outputs:
-      changelog: ${{ steps.cliff.outputs.content }}
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v7.0.1
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-      - name: Extract version from tag
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-      - name: Install git-cliff
-        run: |
-          curl -sSfL https://github.com/orhun/git-cliff/releases/latest/download/git-cliff-$(uname -m)-unknown-linux-gnu.tar.gz \
-            | tar -xz --strip-components=1 -C /usr/local/bin/ git-cliff-*/git-cliff
-      - name: Generate changelog for this release
-        id: cliff
-        run: |
-          # Generate changelog for the current tag only
-          CHANGELOG=$(git cliff --latest --strip header)
-          # Write to output using delimiter to handle multiline
-          {
-            echo "content<<CLIFF_EOF"
-            echo "$CHANGELOG"
-            echo "CLIFF_EOF"
-          } >> "$GITHUB_OUTPUT"
-      - name: Update full CHANGELOG.md
-        run: |
-          git cliff --output CHANGELOG.md
-      - name: Upload updated CHANGELOG.md
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: changelog
-          path: CHANGELOG.md
-          retention-days: 5
-  release:
-    name: Create GitHub Release
-    needs: [build, changelog]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: write
-      id-token: write       # mint the OIDC token attestation provenance is signed with
-      attestations: write   # write the build-provenance attestation (the "claim")
-    steps:
-      - uses: actions/checkout@v7.0.1
-      # TODO: Download build artifacts if uploading to the release (pin
-      #   actions/download-artifact to a full commit SHA when enabling):
-      # - uses: actions/download-artifact@<full-commit-sha>  # vX.Y.Z
-      #   with:
-      #     name: release-artifacts
-      #     path: artifacts/
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3.0.4
-        with:
-          body: ${{ needs.changelog.outputs.changelog }}
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
-          generate_release_notes: false
-          # TODO: Add artifact files to the release
-          # files: |
-          #   artifacts/*
+          persist-credentials: false
+      - name: Compare the tag with the package version, which `idris2x version` reports
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-      # GitHub native artifact attestation (build provenance). Generates a
-      # signed, verifiable claim binding each released artifact to this build
-      # (commit, workflow, runner) via OIDC + Sigstore — verify with
-      # `gh attest verify <artifact> --repo ${{ github.repository }}`.
-      # Replaces the older SLSA-generator job; native attestations need no
-      # separate isolated workflow.
-      # TODO: point subject-path at the artifacts this release actually ships
-      #   (must match the `files:` uploaded above, e.g. artifacts/*).
-      - name: Attest build provenance
-        if: ${{ hashFiles('artifacts/*') != '' }}   # skip until real artifacts are wired
-        uses: actions/attest-build-provenance@v4.2.2
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          v=$(awk -F'"' '/^version[ \t]*=/ { print $2; exit }' Cargo.toml)
+          if [ "v$v" != "$TAG" ]; then echo "::error::tag $TAG does not match version '$v' in Cargo.toml"; exit 1; fi
+  launcher:
+    name: Launcher (${{ matrix.triple }})
+    needs: [version]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds inside manylinux_2_28 so the binary needs glibc 2.28 or newer.
+          # Digests read from the quay.io registry API (tag "latest") on 2026-11-27.
+          - triple: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+            image: quay.io/pypa/manylinux_2_28_x86_64@sha256:55a36963bc0504cdf004011001c1072306402f0b8b83be5a5eba7068f93eec53
+            rustup_sha256: 20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c
+            smoke: 'yes'
+          - triple: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_28_aarch64@sha256:126d9eea9d6b1717f3e17b2b3ac51da04ef159a5f935dac36fe92d621dc8f246
+            rustup_sha256: e3853c5a252fca15252d07cb23a1bdd9377a8c6f3efa01531109281ae47f841c
+            smoke: 'yes'
+          # macOS builds natively: arm64 on macos-15, Intel on macos-15-intel, the runners the factory uses.
+          - triple: aarch64-apple-darwin
+            runner: macos-15
+            image: ''
+            smoke: 'yes'
+          - triple: x86_64-apple-darwin
+            runner: macos-15-intel
+            image: ''
+            smoke: 'yes'
+    env:
+      TRIPLE: ${{ matrix.triple }}
+      TAG: ${{ github.ref_name }}
+      RUST_VERSION: '1.97.0'
+      RUSTUP_VERSION: '1.28.2'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          subject-path: 'artifacts/*'
+          persist-credentials: false
+      - name: Build in the manylinux_2_28 container (Linux)
+        if: matrix.image != ''
+        env:
+          IMAGE: ${{ matrix.image }}
+          RUSTUP_SHA256: ${{ matrix.rustup_sha256 }}
+        run: |
+          set -euo pipefail
+          # Actions stay on the host; only the compile runs in the image. The
+          # rustup-init triple is the target triple on both Linux arches.
+          docker run --rm -i -u "$(id -u):$(id -g)" -v "$PWD:/work" -w /work \
+            -e HOME=/tmp/home -e RUST_VERSION -e RUSTUP_VERSION -e RUSTUP_SHA256 -e TRIPLE \
+            "$IMAGE" bash -euo pipefail -s <<'IN_CONTAINER'
+          mkdir -p "$HOME"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            "https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${TRIPLE}/rustup-init" \
+            --output /tmp/rustup-init
+          echo "${RUSTUP_SHA256}  /tmp/rustup-init" | sha256sum --check --strict
+          chmod +x /tmp/rustup-init
+          /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "${RUST_VERSION}"
+          . "$HOME/.cargo/env"
+          ldd --version | sed -n 1p  # sed reads to the end; head would close the pipe and pipefail would see SIGPIPE
+          cargo --version
+          cargo build --release --locked --target "${TRIPLE}"
+          IN_CONTAINER
+      - name: Build natively (macOS)
+        if: matrix.image == ''
+        run: |
+          set -euo pipefail
+          rustup toolchain install "$RUST_VERSION" --profile minimal --target "$TRIPLE"
+          cargo "+$RUST_VERSION" --version
+          cargo "+$RUST_VERSION" build --release --locked --target "$TRIPLE"
+      - name: Smoke test (the binary answers "version")
+        if: matrix.smoke == 'yes'
+        run: |
+          set -euo pipefail
+          "target/$TRIPLE/release/idris2x" version
+      - name: Package the tarball
+        run: |
+          set -euo pipefail
+          test -x "target/$TRIPLE/release/idris2x"
+          name="idris2x-${TAG}-${TRIPLE}"
+          mkdir -p "dist/$name"
+          cp "target/$TRIPLE/release/idris2x" "dist/$name/idris2x"
+          cp LICENSE LICENSE.adoc "dist/$name/"
+          cp -R LICENSES "dist/$name/LICENSES"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          tar -tzf "dist/$name.tar.gz"
+      - name: Upload the tarball
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: launcher-${{ matrix.triple }}
+          path: dist/idris2x-${{ github.ref_name }}-${{ matrix.triple }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+  factory:
+    name: Capsule factory
+    needs: [version]
+    permissions:
+      contents: read
+      id-token: write       # factory.yml attests each capsule
+      attestations: write
+    uses: ./.github/workflows/factory.yml
+  assemble:
+    name: Assemble the draft release
+    needs: [launcher, factory]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write       # create the DRAFT release; nothing publishes it
+      id-token: write       # mint the OIDC token the attestations are signed with
+      attestations: write   # attest the launcher tarballs and v1.json
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_BASE: https://github.com/metadatastician/idris2x/releases/download
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the capsules and bundle records
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: capsule-*
+          path: work/capsules
+          merge-multiple: true
+      - name: Download the launcher tarballs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: launcher-*
+          path: work/launchers
+          merge-multiple: true
+      - name: Check the channel version rises
+        run: |
+          set -euo pipefail
+          cv=$(tr -d '[:space:]' < src/definitions/channel-version)
+          if ! printf '%s' "$cv" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::src/definitions/channel-version must hold one positive integer, got '$cv'"; exit 1
+          fi
+          echo "CHANNEL_VERSION=$cv" >> "$GITHUB_ENV"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::a release for $TAG already exists; delete the draft before re-running (published releases are immutable)"; exit 1
+          fi
+          # One draft at a time. Two drafts could each pass the check below against the same published release and then
+          # be published in the wrong order, which would lower the published channel_version.
+          drafts=$(gh release list --limit 1000 --json tagName,isDraft --jq '[.[] | select(.isDraft) | .tagName] | join(" ")')
+          if [ -n "$drafts" ]; then
+            echo "::error::a draft release already exists ($drafts); publish or delete it before drafting $TAG"; exit 1
+          fi
+          prev=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')
+          if [ -z "$prev" ]; then
+            echo "::warning::no previous release exists, so the channel_version increase is NOT checked (channel_version $cv is the first)"
+            exit 0
+          fi
+          mkdir -p work/prev
+          gh release download "$prev" --pattern v1.json --dir work/prev \
+            || { echo "::error::the previous release $prev has no v1.json to compare channel_version with"; exit 1; }
+          pcv=$(jq -er '.channel_version' work/prev/v1.json) \
+            || { echo "::error::the previous release $prev v1.json has no channel_version"; exit 1; }
+          if [ "$cv" -le "$pcv" ]; then
+            echo "::error::channel_version $cv in src/definitions/channel-version is not greater than $pcv in $prev; bump it and move the tag"; exit 1
+          fi
+          echo "channel_version $cv is greater than $pcv ($prev)"
+      - name: Build the unsigned channel manifest
+        run: |
+          set -euo pipefail
+          expires=$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)
+          mkdir -p work/release
+          bash scripts/factory/make-channel.sh --bundles work/capsules --base-url "$RELEASE_BASE/$TAG" \
+            --channel-version "$CHANNEL_VERSION" --expires "$expires" --out work/release/v1.json
+          jq -e '.channel_version and .expires and (.bundles | length > 0)' work/release/v1.json >/dev/null
+      - name: Collect the assets and write SHA256SUMS
+        run: |
+          set -euo pipefail
+          n=$(ls work/capsules/*.tar.gz | wc -l)
+          if [ "$n" -ne 4 ]; then echo "::error::expected 4 capsules, found $n"; exit 1; fi
+          n=$(ls work/launchers/*.tar.gz | wc -l)
+          if [ "$n" -ne 4 ]; then echo "::error::expected 4 launcher tarballs, found $n"; exit 1; fi
+          cp work/capsules/*.tar.gz work/launchers/*.tar.gz work/release/
+          (cd work/release && sha256sum -- * > ../SHA256SUMS.tmp)
+          mv work/SHA256SUMS.tmp work/release/SHA256SUMS
+          cat work/release/SHA256SUMS
+      - name: Attest the launcher tarballs and v1.json
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            work/release/idris2x-*.tar.gz
+            work/release/v1.json
+      - name: Create the DRAFT release (never published here)
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" --draft --verify-tag --title "$TAG" \
+            --notes "Draft. v1.json is UNSIGNED: the owner signs it offline and publishes it (docs/RELEASING.adoc). Do not use before it is published." \
+            work/release/*
+          gh release view "$TAG" --json isDraft,assets --jq '"draft=\(.isDraft) assets=\(.assets | length)"'

@@ -380,3 +380,9 @@ jobs:
       # hypatia-scan, main-estate-audit, rust-ci and secret-scanner.
       - name: Inline workflow gap fixes (behaviour + negative controls)
         run: bash tests/workflows/workflow_gap_fixes_test.sh
+      # The owner's offline signing step, tested against a stub gh and a
+      # throwaway key: it must sign a good draft and refuse each bad one.
+      - name: Install signify-openbsd
+        run: sudo apt-get install -y --no-install-recommends signify-openbsd
+      - name: Channel signing script (happy path and refusals)
+        run: bash tests/sign_channel_test.sh
