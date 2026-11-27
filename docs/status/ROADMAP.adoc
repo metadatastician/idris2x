@@ -9,7 +9,8 @@ Phase 1 in progress (2026-11-27): the Rust launcher is being built in four miles
 milestone 4 (pin, channel trust and the exec map) is merged into the branch of the open PR #9, built and tested with
 `cargo test`. The chaos suite now drives the Rust launcher too (128 of 128 on each launcher, both styles, 2026-11-27,
 run by hand through `scripts/proto/chaos-gate.sh`). The CI job that makes it the gate (`.github/workflows/chaos.yml`)
-is added and has not yet run.
+has run once on GitHub. It built both toolchains and failed one check, because the suite passed the job's
+`IDRIS2_PREFIX` on to its drills. That is fixed, and the job has not yet passed.
 Nothing is released, and no capsule is published.
 
 == Milestones

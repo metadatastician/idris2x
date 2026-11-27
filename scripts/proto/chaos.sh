@@ -11,6 +11,10 @@
 # IDRIS2X_BIN names the launcher to drill: the prototype beside this script by default, or the Rust binary. The
 # expected text always comes from the prototype's renderer, so a launcher is never checked against its own wording.
 set -uo pipefail
+# The drills start from a known environment: no name the launcher resets (ADR 0005) is inherited from the caller. A CI
+# job or an Idris developer's shell may export IDRIS2_PREFIX, and this script's own variable of that name would then be
+# exported to every drill, where doctor rightly reports it.
+while read -r v; do unset "$v"; done < <(compgen -e | grep -E '^(IDRIS2_|DYLD_)|^(LD_LIBRARY_PATH|CHEZ|SCHEMEHEAPDIRS)$')
 P=$(cd "$(dirname "$0")" && pwd); X=${IDRIS2X_BIN:-$P/idris2x.sh}; R="$P/idris2x.sh"; V=$("$X" --version | cut -d" " -f2)
 CHEZ_PREFIX=$1; IDRIS2_PREFIX=${2:-}; CHEZ_SRC=${3:-}; IDRIS2_SRC=${4:-}
 W=${CHAOS_WORK:-$(mktemp -d)}; OUT="$W/release"; mkdir -p "$OUT"; PORT=${PORT:-8099}
@@ -55,9 +59,9 @@ says() { local name=$1; shift    # says NAME ID CASE key=value... : the last com
 keyid() { sed -n 2p "$1" | base64 -d | tail -c +3 | head -c 8 | od -An -tx1 | tr -d ' \n'; }
 HOST=$(uname -m | sed 's/amd64/x86_64/;s/arm64/aarch64/')-unknown-linux-gnu; unset NO_COLOR IDRIS2X_COLOR IDRIS2X_JSON IDRIS2X_ERROR_FILE
 fresh() { export IDRIS2X_CACHE="$W/cache-$1"; rm -rf "$IDRIS2X_CACHE"; mkdir -p "$W/proj-$1"; cd "$W/proj-$1" || exit 1; channel "$W/key.pub"; }
-# channel KEY.pub: the channel this project trusts, named both ways: idris2x.toml for the Rust launcher (ADR 0007), the
-# prototype settings for the prototype. Each launcher reads only its own.
-channel() { export IDRIS2X_PUBKEY_FILE=$1; printf '[toolchain]\nidris2 = "0.8.0"\n\n[channel]\nurl = "%s"\nkey = "%s"\n' "$IDRIS2X_CHANNEL_URL" "$(sed -n 2p "$1")" > idris2x.toml; }
+# channel KEY.pub [VERSION]: the channel this project trusts, named both ways: idris2x.toml for the Rust launcher (ADR
+# 0007), the prototype settings for the prototype. Each launcher reads only its own. The toml asks for VERSION (0.8.0).
+channel() { export IDRIS2X_PUBKEY_FILE=$1; printf '[toolchain]\nidris2 = "%s"\n\n[channel]\nurl = "%s"\nkey = "%s"\n' "${2:-0.8.0}" "$IDRIS2X_CHANNEL_URL" "$(sed -n 2p "$1")" > idris2x.toml; }
 pin() { "$X" pin 0.8.0 >/dev/null 2>&1 || echo "  (pin failed)"; }
 with_urls() { jq --argjson u "$1" '.capsules[] .urls = $u' idris2x.lock > lock.tmp && mv lock.tmp idris2x.lock; }
 U="http://127.0.0.1:$PORT"
@@ -67,6 +71,7 @@ assert "dx-golden: every rendered message matches docs/dx/ERROR-CATALOGUE-RENDER
 fresh t0
 t "no lock file -> E-PIN-NOT-FOUND"  10 "$X" install --locked
 says "  exact text: no-lock"         E-PIN-NOT-FOUND no-lock lock=idris2x.lock dir="$(pwd)"
+channel "$W/key.pub" 9.9.9    # the project asks for it, so the Rust launcher's other-version check lets it through
 t "unknown version -> E-PIN-NOT-FOUND" 10 "$X" pin 9.9.9
 says "  exact text: no-version"      E-PIN-NOT-FOUND no-version lock=idris2x.lock version=9.9.9 available=0.8.0
 assert "  a failed pin wrote no lock" test ! -e idris2x.lock
