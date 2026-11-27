@@ -55,6 +55,7 @@ E-CHANNEL-SCHEMA|needs-newer-launcher|url=https://channel.example.org/v1.json|ne
 E-CHANNEL-SCHEMA|malformed-manifest|url=https://channel.example.org/v1.json|field=expires
 E-PIN-DRIFT|toml-vs-lock|toml=0.8.1|locked=0.8.0
 E-PIN-DRIFT|bad-toml|file=/home/ada/proofs/idris2x.toml|at=line 4|problem=it sets a key that idris2x does not read
+E-PIN-DRIFT|channel-changed|file=/home/ada/proofs/idris2x.toml|checked=https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE|now=https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE|version=0.8.0
 E-OFFLINE|capsule-missing|digest=sha256:$A|store=/home/ada/.cache/idris2x/store|mode=IDRIS2X_OFFLINE=1|lock=idris2x.lock
 E-OFFLINE|no-manifest|cache=/home/ada/.cache/idris2x/manifests/v1.json|mode=IDRIS2X_OFFLINE=1|version=0.8.0
 E-CAPSULE-INVALID|unsafe-path|digest=sha256:$A
@@ -82,10 +83,12 @@ show() { # show ID CASE key=value...: the five renderings of one case
     IDRIS2X_STYLE=$s "$X" __render tty   "$@" | block "Style ${s^^}, interactive terminal"
   done
   "$X" __render json "$@" | block "--json (both styles)"; }
-# One character from each hidden range (src/msg.rs `hidden`, scripts/proto/clean.jq), written as escapes so this file
-# holds none: ESC, CR, BEL, DEL, C1 CSI, no-break space, soft hyphen, zero-width space, right-to-left override, word
-# joiner, left-to-right isolate, byte order mark.
+# One character from each kind of hidden character (src/msg.rs `hidden`, scripts/proto/clean.jq), written as escapes so
+# this file holds none: ESC, CR, BEL, DEL, C1 CSI, no-break space, soft hyphen, zero-width space, right-to-left
+# override, word joiner, left-to-right isolate, byte order mark, Arabic letter mark, Mongolian vowel separator,
+# invisible separator, interlinear annotation anchor, and tag A (past U+FFFF).
 H=$'\e[2J\r\a\x7f\xc2\x9b\xc2\xa0\xc2\xad\xe2\x80\x8b\xe2\x80\xae\xe2\x81\xa0\xe2\x81\xa6\xef\xbb\xbf'
+H+=$'\xd8\x9c\xe1\xa0\x8e\xe2\x81\xa3\xef\xbf\xb9\xf3\xa0\x81\x81'
 new=$( cat <<H
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -115,10 +118,12 @@ H
 == Hidden characters in a value
 
 A value from a lock, a capsule or the host can hold characters that move the cursor, clear the screen or reorder the
-text around them. The path in this sample holds one character from each range that `src/msg.rs` (`hidden`) and
+text around them. The path in this sample holds one character of each kind that `src/msg.rs` (`hidden`) and
 `scripts/proto/clean.jq` name: escape, carriage return, bell, delete, the C1 control sequence introducer, no-break
-space, soft hyphen, zero-width space, right-to-left override, word joiner, left-to-right isolate and byte order mark.
-Text and terminal forms show each as `?`. `--json` keeps the value and writes each as `\uXXXX`.
+space, soft hyphen, zero-width space, right-to-left override, word joiner, left-to-right isolate, byte order mark,
+Arabic letter mark, Mongolian vowel separator, invisible separator, interlinear annotation anchor and the tag
+character A, which lies past U+FFFF. Text and terminal forms show each as `?`. `--json` keeps the value and writes
+each as `\uXXXX`, a character past U+FFFF as a pair of them (UTF-16).
 
 === E-USAGE, case `no-such-file`, with a hostile path
 

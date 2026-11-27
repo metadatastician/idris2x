@@ -687,6 +687,19 @@ fix_note = "Correct {file} at the place named above. examples/idris2x.toml in th
 auto = "none"
 
 [[case]]
+error = "E-PIN-DRIFT"
+case = "channel-changed"
+summary = "{file} named another channel while this pin was running"
+story = "{file} changed its channel while this pin was running, so I did not write the lock."
+facts = "checked=checked names-now=now"
+state = "The lock file was not changed. Nothing reached the cache."
+why = "The manifest was checked against the channel and key that idris2x.toml named when pin started. A lock written from it would record a channel the project no longer names, and the next pin would lose its check against older manifests."
+fix_lead = "Pin again from the channel idris2x.toml names now:"
+fix_cmd = "idris2x pin {version}"
+fix_note = "If you did not change idris2x.toml, find out what did before you pin."
+auto = "none"
+
+[[case]]
 error = "E-CAPSULE-INVALID"
 case = "unsafe-path"
 summary = "the capsule archive has a member that would be written outside the store"
@@ -780,9 +793,9 @@ story = "The lock cannot be read, so pin cannot tell which channel version this 
 facts = "lock=lock problem=problem"
 state = "The lock file was not changed."
 why = "pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again."
-fix_lead = "Restore the lock from version control:"
-fix_cmd = "git checkout -- {lock}"
-fix_note = "If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged."
+fix_lead = "Restore the last committed lock:"
+fix_cmd = "git checkout HEAD -- {lock}"
+fix_note = "Use the newest copy you trust. An older lock records an older channel version, and pin then accepts any manifest newer than that one. If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged."
 auto = "none"
 
 [[case]]
