@@ -7,7 +7,8 @@ name: Creusot proof
 # copies fail on the goal each one breaks. scripts/check-creusot.sh is the last step and it alone decides pass or fail;
 # the steps before it only install the tools and refuse to go on if a pin is not met.
 #
-# STATUS: this workflow has not run on GitHub yet. Nothing here is a claim that it passes.
+# STATUS: its first run on GitHub passed (run 45988074983 at 70e38ac, 2026-11-27, about 17 minutes). That is one run,
+# not a promise about the next one.
 #
 # It is NOT a required check: it is not in .machine_readable/required-contexts-allow.txt and no ruleset names it.
 # The paths filter is therefore fine: a pull request that touches none of the paths simply has no run.
@@ -51,9 +52,9 @@ jobs:
   creusot:
     name: "creusot"
     runs-on: ubuntu-24.04
-    # A guess, not a measurement: the first run builds OCaml 5.3 and Why3 from source and has no cache. Measure the
-    # first run, then set this to about twice what it took (as chaos.yml does).
-    timeout-minutes: 150
+    # Measured about 17 minutes on GitHub (run 45988074983): 12 to install the tools from nothing, 4 to prove and to
+    # fail the three broken copies. More than doubled for runner variance, as in chaos.yml.
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:

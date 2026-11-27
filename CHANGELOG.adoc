@@ -98,9 +98,10 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   `scripts/check-creusot.sh` (`just proof-check-creusot`) also checks that three broken copies fail. It was run by
   hand on 2026-11-27. Verus has not been run on this code.
 * `.github/workflows/creusot.yml` runs `scripts/check-creusot.sh` in CI, with Creusot installed at the pinned commit
-  and the tool versions checked first. It has not run on GitHub yet, and it is not a required check.
+  and the tool versions checked first. Its first run on GitHub passed (run 45988074983, about 17 minutes). It is
+  not a required check.
 
 ==== Not yet
 
-* The chaos ruleset applied on GitHub, the Creusot proof in CI (the job is written; no run has passed yet),
-  `cargo vendor` and `cargo deny`, the capsule factory CI and published capsules (Phase 1).
+* The chaos ruleset applied on GitHub, `cargo vendor` and `cargo deny`, the capsule factory CI and published
+  capsules (Phase 1).

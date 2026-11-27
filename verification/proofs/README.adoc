@@ -140,8 +140,8 @@ just proof-check-creusot   # Creusot: src/civil.rs, and three broken copies that
 ----
 
 `proof-check-all` does not include Creusot yet. `.github/workflows/creusot.yml`
-runs the Creusot check in CI with pinned tools. It is not a required check, and
-it has not run on GitHub yet.
+runs the Creusot check in CI with pinned tools. It is not a required check. Its
+first run on GitHub passed (run 45988074983, 2026-11-27).
 
 == Banned patterns
 

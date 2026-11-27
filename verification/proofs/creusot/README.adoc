@@ -60,9 +60,12 @@ versions and the commit, as a receipt.
 `.github/workflows/creusot.yml` installs Creusot at the commit below with
 Creusot's own `INSTALL` script, checks the tool versions, and runs
 `scripts/check-creusot.sh`. It runs on changes to `src/civil.rs`, this crate,
-the script and the workflow. It is not a required check. It has not run on
-GitHub yet, so there is no CI receipt. The first run also sets its timeout,
-which is a guess until then.
+the script and the workflow. It is not a required check. Its first run on
+GitHub passed on 2026-11-27 (run 45988074983, at commit 70e38ac): `Proved
+(7 files)`, and the three broken copies failed on their goals. The run took
+about 17 minutes, 12 of them installing the tools, because nothing is cached.
+GitHub keeps the log only for its retention period; this repository keeps no
+copy.
 
 == Install Creusot
 

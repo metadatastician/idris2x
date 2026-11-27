@@ -89,8 +89,9 @@ stop if a tool is not the pinned version. The workflow has no `uses:`, so `actio
 
 It runs on pull requests and pushes to `main` that touch `src/civil.rs`, the proof crate, the script or the
 workflow, and on `workflow_dispatch`. It is not in `.machine_readable/required-contexts-allow.txt` and no ruleset
-names it, so a red run does not block a merge. It has not run on GitHub yet. Its timeout is a guess until the
-first run is measured.
+names it, so a red run does not block a merge. Its first run on GitHub passed (run 45988074983, 2026-11-27) in
+about 17 minutes, 12 of them installing the tools, because nothing is cached. Its timeout, 40 minutes, comes from
+that run.
 
 == Deed and K9 conformance come from the canon, not from this tree
 
