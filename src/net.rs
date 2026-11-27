@@ -2,7 +2,7 @@
 // MPL-2.0 (code) and CC-BY-SA-4.0 (prose). Error wording is not here: it is in src/errors/errors.toml.
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (metadatastician) <j.d.a.jewell@open.ac.uk>
 //! Downloads. https only, or plain http to this machine. TLS is rustls on ring, with the system's trust store.
-//! Only digest-addressed files come through here, so a partial file resumes with a Range request.
+//! A digest-addressed file resumes with a Range request. The channel manifest, which can change, is never resumed.
 
 use crate::msg::note;
 use std::fs::{self, OpenOptions};
@@ -50,18 +50,17 @@ fn allowed(u: &str) -> bool {
     }
 }
 
-/// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds. An https
-/// address may redirect only to https; a local http one may not redirect at all, so every hop obeys `allowed`.
+/// A GET whose every hop obeys `allowed`: an https address may redirect only to https, and a local http one may not
+/// redirect at all.
+fn hop(agent: &ureq::Agent, u: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+    // The scheme as `allowed` reads it, so HTTPS://… is the same address as https://….
+    let https = u.parse::<ureq::http::Uri>().is_ok_and(|u| u.scheme_str() == Some("https"));
+    agent.get(u).config().https_only(https).max_redirects(if https { 10 } else { 0 }).build()
+}
+/// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds.
 fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
     let have = fs::metadata(out).map_or(0, |m| m.len());
-    let https = u.starts_with("https://");
-    let hops = if https { 10 } else { 0 };
-    let mut req = agent
-        .get(u)
-        .config()
-        .https_only(https)
-        .max_redirects(hops)
-        .build();
+    let mut req = hop(agent, u);
     if have > 0 {
         req = req.header("Range", format!("bytes={have}-"));
     }
@@ -71,22 +70,10 @@ fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
         return Err(Io::Read(io::Error::other(e)));
     }
     let more = r.status() == 206;
-    let open = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .append(more)
-        .truncate(!more)
-        .open(out);
+    let open = OpenOptions::new().create(true).write(true).append(more).truncate(!more).open(out);
     let mut f = open.map_err(Io::Write)?;
-    let left = if more {
-        size.saturating_sub(have)
-    } else {
-        size
-    };
-    pump(
-        &mut r.into_body().into_with_config().limit(left).reader(),
-        &mut f,
-    )?;
+    let left = if more { size.saturating_sub(have) } else { size };
+    pump(&mut r.into_body().into_with_config().limit(left).reader(), &mut f)?;
     f.sync_all().map_err(Io::Write)
 }
 
@@ -116,8 +103,7 @@ pub fn head(u: &str) -> Result<u128, String> {
         return Err(REFUSED.into());
     }
     let r = agent(5, true, Duration::from_secs(5)).head(u).call();
-    r.map(|_| t0.elapsed().as_millis())
-        .map_err(|e| e.to_string())
+    r.map(|_| t0.elapsed().as_millis()).map_err(|e| e.to_string())
 }
 
 /// Download to `out` from the first address that works; return that address. Each failure goes to `log`. A mirror
@@ -140,9 +126,9 @@ pub fn fetch(
         };
         // A resume or a transfer that broke off is tried once more from the start.
         let got = once().or_else(|e| match e {
-            Io::Read(_) if out.exists() => fs::remove_file(out)
-                .map_err(Io::Write)
-                .and_then(|()| once()),
+            Io::Read(_) if out.exists() => {
+                fs::remove_file(out).map_err(Io::Write).and_then(|()| once())
+            }
             e => Err(e),
         });
         match got {
@@ -150,11 +136,7 @@ pub fn fetch(
             Err(Io::Write(e)) => return Err(Lost::Disk(e)),
             Err(Io::Read(e)) => {
                 let line = format!("{u}: {e}");
-                _ = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(log)
-                    .and_then(|mut f| writeln!(f, "{line}"));
+                logged(log, &line);
                 note(&format!("fetch failed from {u} (trying next mirror)"));
                 tried.push(line);
                 // The next mirror starts clean: bytes from one that failed are never resumed from another.
@@ -165,4 +147,22 @@ pub fn fetch(
         }
     }
     Err(Lost::Net(tried.join("; ")))
+}
+/// Add a line to the fetch log. The log is a help for people, so a failure to write it is not reported.
+pub fn logged(log: &Path, line: &str) {
+    let f = OpenOptions::new().create(true).append(true).open(log);
+    _ = f.and_then(|mut f| writeln!(f, "{line}"));
+}
+/// One GET of a document that can change, such as the channel manifest: never resumed, at most 4 MiB, 30 seconds,
+/// and redirected only as `hop` allows.
+pub fn doc(u: &str) -> Result<Vec<u8>, String> {
+    let e = |e: ureq::Error| format!("{u}: {e}");
+    if !allowed(u) {
+        return Err(format!("{u}: {REFUSED}"));
+    }
+    let r = hop(&agent(30, true, Duration::from_secs(30)), u).call().map_err(e)?;
+    if r.status() != 200 {
+        return Err(format!("{u}: refused: answer {} is not the document", r.status()));
+    }
+    r.into_body().with_config().limit(1 << 22).read_to_vec().map_err(e)
 }

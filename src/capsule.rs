@@ -21,10 +21,8 @@ pub fn meta(root: &Path, key: &str) -> String {
 /// version too. The versions become a heap path and a probe's expected answer, so they must pass the version check.
 pub fn valid(root: &Path) -> bool {
     let j = json(root);
-    let version = |v: &serde_json::Value| {
-        v.as_str()
-            .is_some_and(|v| check_version(&lock(v)).is_some())
-    };
+    let version =
+        |v: &serde_json::Value| v.as_str().is_some_and(|v| check_version(&lock(v)).is_some());
     let named = j["name"].as_str().is_some_and(|n| !n.is_empty());
     named && version(&j["chez"]) && (j["idris2"].is_null() || version(&j["idris2"]))
 }
@@ -43,34 +41,18 @@ fn join(a: String, b: &str) -> String {
 }
 /// The variables the capsule runs with. Inherited library paths are kept only with `inherit`; PATH always is.
 pub fn vars(root: &Path, inherit: bool) -> Vec<(&'static str, String)> {
-    let (r, get) = (root.display(), |k| {
-        std::env::var(k)
-            .ok()
-            .filter(|_| inherit)
-            .unwrap_or_default()
-    });
+    let (r, get) =
+        (root.display(), |k| std::env::var(k).ok().filter(|_| inherit).unwrap_or_default());
     let lib = format!("{r}/bin/idris2_app");
     vec![
         ("IDRIS2X_CAPSULE", r.to_string()),
         ("IDRIS2_PREFIX", r.to_string()),
         ("CHEZ", format!("{r}/bin/scheme")),
-        (
-            "SCHEMEHEAPDIRS",
-            format!("{r}/lib/csv{}/%m", meta(root, "chez")),
-        ),
+        ("SCHEMEHEAPDIRS", format!("{r}/lib/csv{}/%m", meta(root, "chez"))),
         ("IDRIS2_INC_SRC", lib.clone()),
-        (
-            "LD_LIBRARY_PATH",
-            join(lib.clone(), &get("LD_LIBRARY_PATH")),
-        ),
+        ("LD_LIBRARY_PATH", join(lib.clone(), &get("LD_LIBRARY_PATH"))),
         ("DYLD_LIBRARY_PATH", join(lib, &get("DYLD_LIBRARY_PATH"))),
-        (
-            "PATH",
-            join(
-                format!("{r}/bin"),
-                &std::env::var("PATH").unwrap_or_default(),
-            ),
-        ),
+        ("PATH", join(format!("{r}/bin"), &std::env::var("PATH").unwrap_or_default())),
     ]
 }
 /// A variable that changes what code a process loads: Idris 2 and Chez read every IDRIS2_*, DYLD_*,
@@ -78,19 +60,11 @@ pub fn vars(root: &Path, inherit: bool) -> Vec<(&'static str, String)> {
 /// LD_AUDIT into every process (ADR 0005).
 pub fn code(k: &str) -> bool {
     ["IDRIS2_", "DYLD_"].iter().any(|p| k.starts_with(p))
-        || [
-            "LD_LIBRARY_PATH",
-            "LD_PRELOAD",
-            "LD_AUDIT",
-            "CHEZ",
-            "SCHEMEHEAPDIRS",
-        ]
-        .contains(&k)
+        || ["LD_LIBRARY_PATH", "LD_PRELOAD", "LD_AUDIT", "CHEZ", "SCHEMEHEAPDIRS"].contains(&k)
 }
 /// Apply the environment contract to `c`. It is a reset: no code variable is inherited unless `inherit`.
 pub fn reset(c: &mut Command, root: &Path, inherit: bool) {
-    c.env_clear()
-        .envs(std::env::vars_os().filter(|(k, _)| inherit || !code(&k.to_string_lossy())));
+    c.env_clear().envs(std::env::vars_os().filter(|(k, _)| inherit || !code(&k.to_string_lossy())));
     c.envs(vars(root, inherit));
 }
 /// The capsule's Chez with the environment contract applied.
@@ -103,12 +77,7 @@ pub fn command(root: &Path, inherit: bool) -> Command {
 /// Run the capsule's Chez with `args` and `input`: whether it succeeded, and what it printed, on one line.
 fn run(root: &Path, args: &[&str], input: &[u8]) -> (bool, String) {
     let (o, i, e) = (Stdio::piped(), Stdio::piped(), Stdio::piped());
-    let child = command(root, false)
-        .args(args)
-        .stdin(i)
-        .stdout(o)
-        .stderr(e)
-        .spawn();
+    let child = command(root, false).args(args).stdin(i).stdout(o).stderr(e).spawn();
     let done = child.and_then(|mut ch| {
         _ = ch.stdin.take().map(|mut s| s.write_all(input));
         ch.wait_with_output()
@@ -143,10 +112,7 @@ pub fn probe(root: &Path) -> R<()> {
             output: host(out).into(),
         }),
         (_, out) if !out.contains(&format!("version {iv}")) => {
-            Err(Fail::ProbeCodegenVersionMismatch {
-                want: lock(iv).into(),
-                got: host(out).into(),
-            })
+            Err(Fail::ProbeCodegenVersionMismatch { want: lock(iv).into(), got: host(out).into() })
         }
         _ => Ok(()),
     }

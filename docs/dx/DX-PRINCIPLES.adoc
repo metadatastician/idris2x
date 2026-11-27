@@ -232,6 +232,16 @@ pages, so check each one against its URL before quoting it outside this reposito
 | No prompt ever appears unless stdin is a terminal, and every prompt has a flag that answers it.
 | clig.dev: "If stdin is not an interactive terminal, skip prompting and just require those flags/args."
 | planned (the prototype has no prompts)
+
+| C9
+| A value from a lock, a capsule or the host cannot move the cursor, clear the screen or reorder the text around it.
+  Text and terminal forms show each control character (C0, DEL, C1), no-break or soft hyphen space, zero-width
+  character and bidirectional control in a value as `?`; so does every note. `--json` keeps the value and writes each
+  of these characters as `\uXXXX`.
+| CVE-2021-42574 (Trojan Source): bidirectional controls make displayed text read differently from its bytes. The set
+  is the one `scripts/check-invisible-characters.sh` refuses in this repository's files, plus tab, line feed, carriage
+  return, DEL and the C1 controls.
+| tested (golden sample "Hidden characters in a value", both launchers; `tests/install.rs`)
 |===
 
 === 5. Hints and noise

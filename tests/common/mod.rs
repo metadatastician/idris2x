@@ -94,7 +94,7 @@ pub fn capsule(scheme: &str, extra: &[(&str, &[u8])]) -> Vec<u8> {
 }
 pub fn capsule_tgz(scheme: &str, extra: &[(&str, &[u8])]) -> Tgz {
     described(
-        br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0"}"#,
+        br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0","exec":{"chez":["bin/scheme"],"idris2":["bin/scheme","--program","bin/idris2_app/idris2.so"]}}"#,
         scheme,
         extra,
     )

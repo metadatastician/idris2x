@@ -91,28 +91,24 @@ fn a_transfer_cut_short_is_retried_and_then_reported() {
 fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     let t = Tmp::new("mirrors");
     let (url, _) = serve(vec![], 404, None);
-    let d = sha(b"x");
+    let (d, bad) = (
+        sha(b"x"),
+        "http://example.org/\u{1b}[2J\u{9b}\u{202e}\u{61c}\u{e0041}c.tar.gz",
+    );
     // A user part does not make a host local, and a local mirror may not redirect anywhere.
     let (moved, hops) = serve(vec![], 302, None);
     let sneaky = "http://localhost:80@example.org/c.tar.gz".to_string();
-    write_lock(
-        &t,
-        &d,
-        1,
-        &[
-            "http://example.org/c.tar.gz".into(),
-            sneaky.clone(),
-            moved.clone(),
-            url.clone(),
-        ],
-    );
-    let json = failed(
-        &t,
-        &run(&t, &["install"], &[]),
-        "E-NETWORK",
-        "all-mirrors-failed",
-        14,
-    );
+    let plain = "http://example.org/c.tar.gz".to_string();
+    let mirrors = [
+        bad.into(),
+        plain,
+        sneaky.clone(),
+        moved.clone(),
+        url.clone(),
+    ];
+    write_lock(&t, &d, 1, &mirrors);
+    let o = run(&t, &["install"], &[]);
+    let json = failed(&t, &o, "E-NETWORK", "all-mirrors-failed", 14);
     assert!(
         json.contains(
             "http://example.org/c.tar.gz: refused: plain http is allowed only to this machine"
@@ -128,6 +124,22 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
         "{json}"
     );
     assert!(json.contains(&format!("{url}: ")), "{json}");
+    // A lock value reaches the terminal with each hidden character shown as `?`, and the JSON with each escaped.
+    let err = String::from_utf8(o.stderr).unwrap();
+    assert!(
+        err.contains("fetch failed from http://example.org/?[2J????c.tar.gz"),
+        "{err}"
+    );
+    assert!(
+        err.contains("http://example.org/?[2J????c.tar.gz: refused"),
+        "{err}"
+    );
+    assert!(
+        !err.contains(['\u{1b}', '\u{9b}', '\u{202e}', '\u{61c}', '\u{e0041}']),
+        "{err}"
+    );
+    let escaped = r"example.org/\u001b[2J\u009b\u202e\u061c\udb40\udc41c.tar.gz: refused";
+    assert!(json.contains(escaped), "{json}");
     assert_eq!(
         hops.lock().unwrap().len(),
         1,

@@ -36,7 +36,7 @@ fn installed(t: &Tmp, tgz: &[u8], env: &[(&str, &str)]) -> PathBuf {
 }
 /// A capsule with Chez and no Idris 2.
 fn chez_only() -> Vec<u8> {
-    let json = br#"{"name":"chez-only","chez":"10.0.0"}"#;
+    let json = br#"{"name":"chez-only","chez":"10.0.0","exec":{"chez":["bin/scheme"]}}"#;
     let sums = format!(
         "{}  capsule.json\n{}  bin/scheme\n",
         sha(json),
@@ -61,20 +61,66 @@ fn exec_and_run_reset_the_environment_and_pass_every_word() {
     let root = installed(&t, &capsule(CHEZ, &[]), &[]);
     let r = root.display();
     let leak = [("IDRIS2_PACKAGE_PATH", "/elsewhere")];
-    let out = ok(&run(&t, &["exec", "--", "--check", "Main.idr"], &leak));
+    let out = ok(&run(
+        &t,
+        &["exec", "--locked", "--", "idris2", "--check", "Main.idr"],
+        &leak,
+    ));
     assert_eq!(out, format!("idris2 --check Main.idr prefix={r} pkg=\n"));
-    let out = ok(&run(&t, &["exec", "--inherit-env", "--", "x"], &leak));
+    let out = ok(&run(
+        &t,
+        &["exec", "--inherit-env", "--", "idris2", "x"],
+        &leak,
+    ));
     assert_eq!(out, format!("idris2 x prefix={r} pkg=/elsewhere\n"));
+    let out = ok(&run(&t, &["exec", "idris2", "--", "-x"], &leak));
+    assert_eq!(
+        out,
+        format!("idris2 -- -x prefix={r} pkg=\n"),
+        "after the program, every word is its own"
+    );
     let out = ok(&run(&t, &["run", "--script", "a.ss"], &leak));
     assert_eq!(out, format!("chez --script a.ss prefix={r} pkg=\n"));
+    let out = ok(&run(&t, &["exec", "--", "chez", "--script", "a.ss"], &leak));
+    assert_eq!(
+        out,
+        format!("chez --script a.ss prefix={r} pkg=\n"),
+        "run is exec -- chez"
+    );
+    failed(
+        &t,
+        &run(&t, &["exec"], &[]),
+        "E-USAGE",
+        "missing-argument",
+        2,
+    );
+    failed(
+        &t,
+        &run(&t, &["exec", "--version"], &[]),
+        "E-USAGE",
+        "no-such-program",
+        2,
+    );
+    let j = failed(
+        &t,
+        &run(&t, &["exec", "--", "racket"], &[]),
+        "E-USAGE",
+        "no-such-program",
+        2,
+    );
+    assert!(j.contains(r#""programs":"chez, idris2""#), "{j}");
     // The loader's libraries are code too: dropped by default, passed on only by --inherit-env (ADR 0005).
     let lib = [
         ("LD_PRELOAD", "/nonexistent/p.so"),
         ("LD_AUDIT", "/nonexistent/a.so"),
     ];
-    let out = ok(&run(&t, &["exec", "--", "loader"], &lib));
+    let out = ok(&run(&t, &["exec", "--", "idris2", "loader"], &lib));
     assert_eq!(out, "loader unset unset\n");
-    let out = ok(&run(&t, &["exec", "--inherit-env", "--", "loader"], &lib));
+    let out = ok(&run(
+        &t,
+        &["exec", "--inherit-env", "--", "idris2", "loader"],
+        &lib,
+    ));
     assert_eq!(out, "loader /nonexistent/p.so /nonexistent/a.so\n");
     // A Chez that cannot be started is a typed failure, not a crash.
     let scheme = root.join("bin/scheme");
@@ -94,14 +140,80 @@ fn exec_and_run_reset_the_environment_and_pass_every_word() {
 fn exec_of_a_capsule_without_idris2_is_refused_and_run_still_works() {
     let t = Tmp::new("chez-only");
     installed(&t, &chez_only(), &[]);
+    let j = failed(
+        &t,
+        &run(&t, &["exec", "--", "idris2", "--version"], &[]),
+        "E-USAGE",
+        "no-such-program",
+        2,
+    );
+    assert!(j.contains(r#""programs":"chez""#), "{j}");
+    assert!(ok(&run(&t, &["run", "x"], &[])).starts_with("chez x "));
+    assert!(ok(&run(&t, &["exec", "chez", "x"], &[])).starts_with("chez x "));
+}
+
+/// A capsule whose exec map names `words` for the program `p`.
+fn mapped(p: &str, words: &str) -> Vec<u8> {
+    let json = format!(r#"{{"name":"odd","chez":"10.0.0","exec":{{"{p}":{words}}}}}"#);
+    let sums = format!(
+        "{}  capsule.json\n{}  bin/scheme\n",
+        sha(json.as_bytes()),
+        sha(CHEZ.as_bytes())
+    );
+    let t = Tgz::new().entry(tar::EntryType::Directory, "bin/", 0o755, "", b"");
+    let t = t.entry(
+        tar::EntryType::Regular,
+        "bin/scheme",
+        0o755,
+        "",
+        CHEZ.as_bytes(),
+    );
+    t.file("capsule.json", json.as_bytes())
+        .file("sha256sums.txt", sums.as_bytes())
+        .done()
+}
+
+#[test]
+fn an_exec_map_entry_that_leaves_the_capsule_is_refused() {
+    let bad = [
+        r#"["/bin/sh"]"#,
+        r#"["../../../../bin/sh"]"#,
+        r#"["bin/../../x"]"#,
+        r#"[""]"#,
+        r#"["bin/scheme", "/bin/sh"]"#,
+        r#"["bin/scheme", 7]"#,
+    ];
+    for words in bad {
+        let t = Tmp::new("bad-exec");
+        installed(&t, &mapped("x", words), &[]);
+        let j = failed(
+            &t,
+            &run(&t, &["exec", "x"], &[]),
+            "E-CAPSULE-INVALID",
+            "bad-exec",
+            21,
+        );
+        assert!(j.contains(r#""program":"x""#), "{words}: {j}");
+    }
+    // An empty list names no command at all.
+    let t = Tmp::new("empty-exec");
+    installed(&t, &mapped("x", "[]"), &[]);
     failed(
         &t,
-        &run(&t, &["exec", "--version"], &[]),
-        "E-PIN-NOT-FOUND",
-        "no-idris2",
-        10,
+        &run(&t, &["exec", "x"], &[]),
+        "E-USAGE",
+        "no-such-program",
+        2,
     );
-    assert!(ok(&run(&t, &["run", "x"], &[])).starts_with("chez x "));
+    // A later word that starts with a dash is an option, and a path word is joined to the capsule.
+    let t = Tmp::new("good-exec");
+    let root = installed(
+        &t,
+        &mapped("x", r#"["bin/scheme", "--program", "bin/x.so"]"#),
+        &[],
+    );
+    let out = ok(&run(&t, &["exec", "x", "y"], &[]));
+    assert_eq!(out, format!("idris2 y prefix={} pkg=\n", root.display()));
 }
 
 #[test]

@@ -19,6 +19,8 @@ E-USAGE|no-such-file|path=capsule.tar.gz|dir=/home/ada/proofs
 E-USAGE|no-such-id|word=E-HASH
 E-USAGE|prototype-setting|variable=IDRIS2X_CHANNEL_URL|what=the address of the channel manifest
 E-USAGE|bad-setting|variable=IDRIS2X_LOCK_TIMEOUT|what=a whole number of seconds|value=ten
+E-USAGE|no-channel|file=/home/ada/proofs/idris2x.toml
+E-USAGE|no-such-program|word=racket|programs=chez, idris2
 E-PIN-NOT-FOUND|no-lock|lock=idris2x.lock|dir=/home/ada/proofs
 E-PIN-NOT-FOUND|no-target|lock=idris2x.lock|target=aarch64-unknown-linux-gnu|covered=x86_64-apple-darwin, x86_64-unknown-linux-gnu|version=0.8.0
 E-PIN-NOT-FOUND|no-version|lock=idris2x.lock|version=0.9.0|available=0.7.0, 0.8.0
@@ -38,6 +40,7 @@ E-PLATFORM-UNSUPPORTED|unknown-os|os=FreeBSD|supported=Linux, macOS
 E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net|log=/home/ada/.cache/idris2x/staging/fetch.log
 E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/staging/fetch.log|version=0.8.0
 E-LOCK-TIMEOUT|held|digest=sha256:$A|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/sha256-$A.lock|holder=process 48213 (still running)
+E-LOCK-TIMEOUT|pin-held|lock=/home/ada/proofs/idris2x.lock|seconds=600|holder=process 48213 (still running)|version=0.8.0
 E-GLIBC-FLOOR|too-old|host=2.17|needs=2.28|digest=sha256:$A
 E-GLIBC-FLOOR|unknown|needs=2.28|digest=sha256:$A
 E-PROBE-CODEGEN|chez-failed|probe=pure_eval|output=error while loading shared libraries: libtinfo.so.6: cannot open shared object file
@@ -48,15 +51,22 @@ E-PROBE-CODEGEN|codegen-failed|probe=chez_codegen (compile)|store=/home/ada/.cac
 E-PROBE-CODEGEN|cannot-start|program=/home/ada/.cache/idris2x/store/sha256-$A/bin/scheme|detail=Permission denied (os error 13)
 E-CHANNEL-SCHEMA|lock-newer|file=idris2x.lock|found=2|supports=1|version=0.1.0
 E-CHANNEL-SCHEMA|channel-newer|url=https://channel.example.org/v1.json|found=2|supports=1|version=0.1.0
+E-CHANNEL-SCHEMA|needs-newer-launcher|url=https://channel.example.org/v1.json|needs=0.3.0|version=0.1.0
+E-CHANNEL-SCHEMA|malformed-manifest|url=https://channel.example.org/v1.json|field=expires
 E-PIN-DRIFT|toml-vs-lock|toml=0.8.1|locked=0.8.0
+E-PIN-DRIFT|bad-toml|file=/home/ada/proofs/idris2x.toml|at=line 4|problem=it sets a key that idris2x does not read
+E-PIN-DRIFT|channel-changed|file=/home/ada/proofs/idris2x.toml|checked=https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE|now=https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE|version=0.8.0
+E-PIN-DRIFT|other-version|toml=0.8.0|version=0.9.0
 E-OFFLINE|capsule-missing|digest=sha256:$A|store=/home/ada/.cache/idris2x/store|mode=IDRIS2X_OFFLINE=1|lock=idris2x.lock
 E-OFFLINE|no-manifest|cache=/home/ada/.cache/idris2x/manifests/v1.json|mode=IDRIS2X_OFFLINE=1|version=0.8.0
 E-CAPSULE-INVALID|unsafe-path|digest=sha256:$A
 E-CAPSULE-INVALID|no-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|tree-mismatch|digest=sha256:$A
 E-CAPSULE-INVALID|bad-metadata|digest=sha256:$A
+E-CAPSULE-INVALID|bad-exec|program=idris2|entry="../../../bin/sh"|store=/home/ada/.cache/idris2x/store/sha256-$A
 E-CAPSULE-INVALID|pin-mismatch|digest=sha256:$A|version=0.8.0|found=0.7.0
 E-CHANNEL-ROLLBACK|version-went-back|url=https://channel.example.org/v1.json|seen=7|offered=5|version=0.8.0
+E-CHANNEL-ROLLBACK|seen-version-unknown|lock=idris2x.lock|problem=EOF while parsing an object at line 1 column 20
 E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-10-01T00:00:00Z|now=2026-11-16T09:30:00Z|version=0.8.0
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x
 E-STORE-IO|write-failed|detail=downloading the capsule ((23) Failure writing output to destination)|path=/home/ada/.cache/idris2x
@@ -68,6 +78,18 @@ E-INTERNAL|missing-tool|tool=flock
 S
 }
 block() { printf '.%s\n[source,text]\n----\n' "$1"; sed 's/\x1b/<ESC>/g'; printf -- '----\n\n'; }
+show() { # show ID CASE key=value...: the five renderings of one case
+  local s; for s in a b; do
+    IDRIS2X_STYLE=$s "$X" __render plain "$@" | block "Style ${s^^}, plain (not a terminal, NO_COLOR set, or TERM=dumb)"
+    IDRIS2X_STYLE=$s "$X" __render tty   "$@" | block "Style ${s^^}, interactive terminal"
+  done
+  "$X" __render json "$@" | block "--json (both styles)"; }
+# One character from each kind of hidden character (src/msg.rs `hidden`, scripts/proto/clean.jq), written as escapes so
+# this file holds none: ESC, CR, BEL, DEL, C1 CSI, no-break space, soft hyphen, zero-width space, right-to-left
+# override, word joiner, left-to-right isolate, byte order mark, Arabic letter mark, Mongolian vowel separator,
+# invisible separator, interlinear annotation anchor, and tag A (past U+FFFF).
+H=$'\e[2J\r\a\x7f\xc2\x9b\xc2\xa0\xc2\xad\xe2\x80\x8b\xe2\x80\xae\xe2\x81\xa0\xe2\x81\xa6\xef\xbb\xbf'
+H+=$'\xd8\x9c\xe1\xa0\x8e\xe2\x81\xa3\xef\xbf\xb9\xf3\xa0\x81\x81'
 new=$( cat <<H
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -91,12 +113,33 @@ H
     IFS='|' read -r -a ctx <<< "$rest"
     [ "$id" = "$prev" ] || printf '== %s\n\n' "$id"; prev=$id
     printf '=== %s, case `%s`\n\n' "$id" "$case"
-    for s in a b; do
-      IDRIS2X_STYLE=$s "$X" __render plain "$id" "$case" "${ctx[@]}" | block "Style ${s^^}, plain (not a terminal, NO_COLOR set, or TERM=dumb)"
-      IDRIS2X_STYLE=$s "$X" __render tty   "$id" "$case" "${ctx[@]}" | block "Style ${s^^}, interactive terminal"
-    done
-    "$X" __render json "$id" "$case" "${ctx[@]}" | block "--json (both styles)"
-  done < <(samples) )
+    show "$id" "$case" "${ctx[@]}"
+  done < <(samples)
+  cat <<'T'
+== Hidden characters in a value
+
+A value from a lock, a capsule or the host can hold characters that move the cursor, clear the screen or reorder the
+text around them. The path in this sample holds one character of each kind that `src/msg.rs` (`hidden`) and
+`scripts/proto/clean.jq` name: escape, carriage return, bell, delete, the C1 control sequence introducer, no-break
+space, soft hyphen, zero-width space, right-to-left override, word joiner, left-to-right isolate, byte order mark,
+Arabic letter mark, Mongolian vowel separator, invisible separator, interlinear annotation anchor and the tag
+character A, which lies past U+FFFF. Text and terminal forms show each as `?`. `--json` keeps the value and writes
+each as `\uXXXX`, a character past U+FFFF as a pair of them (UTF-16).
+
+=== E-USAGE, case `no-such-file`, with a hostile path
+
+T
+  show E-USAGE no-such-file "path=capsule${H}.tar.gz" dir=/home/ada/proofs
+  cat <<'T'
+
+=== E-HASH-MISMATCH, case `store-modified`, with a hostile store path
+
+A fix command is shell text the user will paste. Shown with `?`, it would name another path, and no escaped form of the
+value means the same in every shell, so text and terminal forms do not show it and say so. `--json` writes the exact
+command, with the value in single quotes; its hidden characters are written as `\uXXXX`.
+
+T
+  show E-HASH-MISMATCH store-modified "digest=sha256:$A" "dir=/home/ada/.cache/idris2x/store/sha256-$A${H}'x\\y" )
 want=$("$R/scripts/lib/toml2json.sh" "$R/src/errors/errors.toml" | jq -r '.case[] | "\(.error)|\(.case)"' | sort)
 have=$(samples | cut -d'|' -f1,2 | sort)
 [ "$want" = "$have" ] || { echo "dx-golden: samples() and the [[case]] list in errors.toml differ:" >&2; diff <(echo "$want") <(echo "$have") >&2 || true; exit 1; }

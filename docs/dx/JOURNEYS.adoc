@@ -113,8 +113,10 @@ Idris 2, version 0.8.0
 ----
 
 What the design changes here. *PLANNED:* `pin` ends with the next step ("commit idris2x.lock; run with
-`idris2x exec -- idris2 …`"), `install` shows the progress lines above on a cold run, and `exec` takes the command
-name (`idris2x exec --locked -- idris2 --version`) as the wiki already documents.
+`idris2x exec -- idris2 …`"), and `install` shows the progress lines above on a cold run. `exec` takes the program
+name (`idris2x exec --locked -- idris2 --version`) as the wiki already documents: the Rust launcher does this from
+milestone 4 (not released), taking the program from the capsule's `exec` map. The prototype in these transcripts
+does not.
 
 .RAN: `idris2x doctor` today
 [source,text]

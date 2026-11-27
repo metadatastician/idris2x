@@ -10,12 +10,22 @@
 ====
 
 A channel is one signed, data-only JSON document: capsule URLs, digests, sizes, the Idris 2 ↔ Chez compat table and deprecations.
-No scripts, ever. A company can publish its own vetted channel with zero code changes:
+No scripts, ever. A company can publish its own vetted channel with zero code changes. The project names the channel
+and its public key in `idris2x.toml`, beside `idris2x.lock`, and that file is reviewed like the lock:
 
-[source,bash]
+[source,toml]
 ----
-IDRIS2X_CHANNEL_URL=https://capsules.example.org/v1.json idris2x pin 0.8.0
+[toolchain]
+idris2 = "0.8.0"
+
+[channel]
+url = "https://capsules.example.org/v1.json"
+key = "<the second line of the channel's signify .pub file>"
 ----
+
+Then `idris2x pin 0.8.0` reads that channel and records its key id in the lock. No environment variable can name a
+channel or a key: the Rust launcher does not read the bash prototype's `IDRIS2X_CHANNEL_URL` or
+`IDRIS2X_PUBKEY_FILE`.
 
 == Rules a channel must follow
 

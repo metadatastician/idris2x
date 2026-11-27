@@ -33,7 +33,7 @@ jq -n --arg name "$NAME" --arg iv "$IV" --arg cv "$CV" --arg t "$TARGET" --arg m
   min_glibc: (if $g=="" then null else $g end),
   env: { IDRIS2_PREFIX: "${CAPSULE}", CHEZ: "${CAPSULE}/bin/scheme", SCHEMEHEAPDIRS: ("${CAPSULE}/lib/csv"+$cv+"/%m"),
          IDRIS2_INC_SRC: "${CAPSULE}/bin/idris2_app", LD_LIBRARY_PATH: "${CAPSULE}/bin/idris2_app", PATH: "${CAPSULE}/bin" },
-  exec: { chez: ["bin/scheme"], idris2: ["bin/scheme","--program","bin/idris2_app/idris2.so"] },
+  exec: ({ chez: ["bin/scheme"] } + if $has_idris2=="yes" then { idris2: ["bin/scheme","--program","bin/idris2_app/idris2.so"] } else {} end),
   probes: ["pure_eval","version_match"],
   licenses: ["licenses/ChezScheme-LICENSE","licenses/Idris2-LICENSE"] }' > "$STAGE/capsule.json"
 (cd "$STAGE" && find . -type f ! -name sha256sums.txt -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) > "$STAGE/sha256sums.txt"
