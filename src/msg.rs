@@ -196,22 +196,19 @@ fn width() -> usize {
     c.unwrap_or(80).clamp(40, 80) as usize
 }
 
-/// The shell quoting of render.jq: safe words stay bare, anything else is single-quoted. A value with a hidden
-/// character is written as $'...' (POSIX 2024), each byte of a hidden character as a three-digit octal escape, so the
-/// command names the real value and the character itself never reaches the terminal.
+/// The shell quoting of render.jq: safe words stay bare, anything else is single-quoted, which keeps every byte as it is
+/// in every POSIX shell. A value with a hidden character is never shown this way on a terminal: see `HID`.
 pub fn shq(s: &str) -> String {
     let safe = |c: char| c.is_ascii_alphanumeric() || "_./:@%+=,-".contains(c);
-    let esc = |c: char| match c {
-        '\\' | '\'' => format!("\\{c}"),
-        c if hidden(c) => c.to_string().bytes().map(|b| format!("\\{b:03o}")).collect(),
-        c => c.into(),
-    };
     match !s.is_empty() && s.chars().all(safe) {
         true => s.into(),
-        false if s.chars().any(hidden) => format!("$'{}'", s.chars().map(esc).collect::<String>()),
         false => format!("'{}'", s.replace('\'', "'\\''")),
     }
 }
+/// Shown in a text form in place of a fix command that names a value with a hidden character. Such a command cannot be
+/// shown both safely and exactly: shown with `?` it names another path, and no escaped form means the same in every shell.
+const HID: &str =
+    "(not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)";
 fn is_key(k: &&str) -> bool {
     !k.is_empty() && k.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
 }
@@ -288,7 +285,9 @@ fn missing(k: usize, ctx: &[(&str, &str)]) -> Option<&'static str> {
 /// fact line: see `missing`.
 fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rendered {
     // The fix command quotes each value as it is, not as it is shown, so the command names the real path.
-    let (json, mut kept, cmd) = (form == Form::Json, vec![], fill(CASES[k].fix_cmd, ctx, true));
+    let (json, mut kept, t) = (form == Form::Json, vec![], CASES[k].fix_cmd);
+    let hid = !json && keys_in(t).any(|n| ctx.iter().any(|p| p.0 == n && p.1.chars().any(hidden)));
+    let cmd = if hid { HID.into() } else { fill(t, ctx, true) };
     for &(k, v) in ctx {
         kept.push((k, if json { v.into() } else { clean(v) }));
     }
@@ -329,7 +328,7 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
             c.facts.iter().map(|(l, k)| format!("    {l}{}{}", pad(l), get(k))).collect();
         let para = |s: &str| (!s.is_empty()).then(|| wrap(s, w));
         let fix = (!cmd.is_empty())
-            .then(|| [para(&lead), Some(format!("    {}", paint(tty, "1", &cmd)))]);
+            .then(|| [para(&lead), Some(format!("    {}", paint(tty && !hid, "1", &cmd)))]);
         let mut p =
             vec![Some(head), Some(wrap(&story, w)), (!facts.is_empty()).then(|| facts.join("\n"))];
         p.extend([para(&state), para(&why)].into_iter().chain(fix.into_iter().flatten()));
@@ -343,7 +342,9 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
         )];
         l.extend(c.facts.iter().map(|(lab, k)| format!("    {lab}: {}", get(k))));
         l.extend([format!("  {}: {state}", b("state")), format!("  {}: {why}", b("why"))]);
-        l.extend((!cmd.is_empty()).then(|| format!("  {}: {}", b("fix"), b(&cmd))));
+        l.extend(
+            (!cmd.is_empty()).then(|| format!("  {}: {}", b("fix"), paint(tty && !hid, "1", &cmd))),
+        );
         let nl = if cmd.is_empty() { "fix" } else { "note" };
         l.extend((!note.is_empty()).then(|| format!("  {}: {note}", b(nl))));
         l.extend([format!("  {}: {explain}", b("see")), format!("  {}: {docs}", b("see"))]);

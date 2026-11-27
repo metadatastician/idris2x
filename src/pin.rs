@@ -8,7 +8,7 @@
 use crate::lock::{flag, path, runs, setting, toml, toml_path};
 use crate::msg::{channel, embedded, host, is_digest, is_version, lock, note, Fail, R};
 use crate::net::{doc, logged};
-use crate::store::{cache, hex, hold, utc, write_failed};
+use crate::store::{cache, hex, hold, now, utc, write_failed};
 use serde_json::{json, Map, Value};
 use std::{fs, io::Write, path::Path};
 
@@ -41,12 +41,13 @@ fn signify(text: &str, n: usize) -> Option<(String, Vec<u8>)> {
 fn real(t: &str) -> bool {
     let n = |a: usize| t.get(a..a + 2).and_then(|d| d.parse::<i64>().ok());
     let f = || {
-        let (m, y) = (n(5)?, t.get(..4)?.parse::<i64>().ok()?);
+        // Four digits: a sign or a fifth digit would break the order of the text.
+        let (m, y) = (n(5)?, i64::from(t.get(..4)?.parse::<u16>().ok()?));
         let y = y - i64::from(m <= 2);
         let (era, yoe) = (y.div_euclid(400), y.rem_euclid(400));
         let doe = yoe * 365 + yoe / 4 - yoe / 100 + (153 * ((m + 9) % 12) + 2) / 5 + n(8)? - 1;
         let s = (era * 146097 + doe - 719468) * 86400 + n(11)? * 3600 + n(14)? * 60 + n(17)?;
-        u64::try_from(s).ok()
+        Some(s)
     };
     f().is_some_and(|s| utc(s) == t)
 }
@@ -127,23 +128,22 @@ pub fn pin(ver: &str) -> R<()> {
         let kept = [format!("{}\n{}\n", two[0], two[1]).as_bytes(), &body].concat();
         put(&m, &kept).map_err(|e| write_failed("keeping the channel manifest", &e, &m))?;
     }
-    // Pins of one lock file take turns, so the rollback check and the new lock are one step. The turn is named by the
-    // lock file's real directory and name, so two spellings of one path share it.
+    // Pins of one lock file take turns, so the rollback check and the new lock are one step. The turn is the lock file's
+    // real directory, locked as it is, so every spelling of the path and every cache share it. Only the holder's note is
+    // in this cache.
     let p = Path::new(&lf);
     let dir =
         fs::canonicalize(p.parent().filter(|d| *d != Path::new("")).unwrap_or(Path::new(".")));
-    let full = dir
-        .map_err(|e| write_failed("taking the lock", &e, p))?
-        .join(p.file_name().unwrap_or_default());
+    let dir = dir.map_err(|e| write_failed("taking the lock", &e, p))?;
     let turn =
-        hex(ring::digest::digest(&ring::digest::SHA256, full.as_os_str().as_encoded_bytes())
+        hex(ring::digest::digest(&ring::digest::SHA256, dir.as_os_str().as_encoded_bytes())
             .as_ref());
     _ = fs::create_dir_all(c.join("locks"));
     let (_held, holder) =
-        hold(&c.join(format!("locks/pin-{}.lock", &turn[..16])), wait, |at, who| {
+        hold(&dir, c.join(format!("locks/pin-{}.holder", &turn[..16])), wait, |_, who| {
             let (seconds, lock, version) =
                 (host(wait.to_string()).into(), host(&lf).into(), host(ver).into());
-            Fail::LockTimeoutPinHeld { lock, lockfile: at, holder: who, seconds, version }
+            Fail::LockTimeoutPinHeld { lock, holder: who, seconds, version }
         })?;
     let r = resolve(&body, ver, &lf, &url, &kid);
     _ = fs::remove_file(holder);
@@ -185,17 +185,22 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
     let unknown =
         |problem| Fail::ChannelRollbackSeenVersionUnknown { lock: host(lf).into(), problem };
     let old = match fs::read(lf) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Value::Null),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         r => r
             .map_err(|e| e.to_string())
-            .and_then(|b| serde_json::from_slice(&b).map_err(|e| e.to_string())),
+            .and_then(|b| serde_json::from_slice(&b).map(Some).map_err(|e| e.to_string())),
     }
     .map_err(|e| unknown(lock(e).into()))?;
-    let seen = match &old["channel"] {
-        c if c["url"] != url => 0,
-        c => c["version"]
-            .as_u64()
-            .ok_or_else(|| unknown(embedded("its channel version is not a whole number").into()))?,
+    let ch = old.as_ref().map(|o: &Value| &o["channel"]);
+    let (u, n) = (ch.and_then(|c| c["url"].as_str()), ch.and_then(|c| c["version"].as_u64()));
+    let seen = match (ch.is_none(), u, n) {
+        (true, ..) => 0,
+        (_, Some(u), Some(_)) if u != url => 0,
+        (_, Some(_), Some(n)) => n,
+        _ => {
+            let problem = "it does not record its channel's address and a whole-number version";
+            return Err(unknown(embedded(problem).into()));
+        }
     };
     if cv < seen {
         return Err(Fail::ChannelRollbackVersionWentBack {
@@ -210,8 +215,7 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
     if !real(exp) {
         return Err(bad("expires"));
     }
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
-    let now = utc(now.map_or(0, |d| d.as_secs()));
+    let now = utc(now());
     if exp < now.as_str() && !flag("IDRIS2X_ALLOW_EXPIRED")? {
         return Err(Fail::ChannelExpiredExpired {
             url: lock(url).into(),

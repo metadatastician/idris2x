@@ -2352,9 +2352,8 @@ idris2x: E-LOCK-TIMEOUT (exit 15)
 Another idris2x is pinning the same lock file. I waited 600 seconds and then
 gave up.
 
-    lock       /home/ada/proofs/idris2x.lock
-    lock-file  /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
-    held-by    process 48213 (still running)
+    lock     /home/ada/proofs/idris2x.lock
+    held-by  process 48213 (still running)
 
 The lock file was not changed. The other pin is not affected.
 
@@ -2365,8 +2364,8 @@ Wait for the other pin to finish, or allow more time:
 
     IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0
 
-Do not delete the lock file while its holder is running: two pins would then
-write at once. The lock is released by itself when the holder exits.
+The turn is held on the lock file's directory and ends by itself when the holder
+exits. There is nothing to delete.
 
 More: idris2x explain E-LOCK-TIMEOUT
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
@@ -2380,9 +2379,8 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOU
 Another idris2x is pinning the same lock file. I waited 600 seconds and then
 gave up.
 
-    lock       /home/ada/proofs/idris2x.lock
-    lock-file  /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
-    held-by    process 48213 (still running)
+    lock     /home/ada/proofs/idris2x.lock
+    held-by  process 48213 (still running)
 
 The lock file was not changed. The other pin is not affected.
 
@@ -2393,8 +2391,8 @@ Wait for the other pin to finish, or allow more time:
 
     <ESC>[1mIDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0<ESC>[0m
 
-Do not delete the lock file while its holder is running: two pins would then
-write at once. The lock is released by itself when the holder exits.
+The turn is held on the lock file's directory and ends by itself when the holder
+exits. There is nothing to delete.
 
 More: idris2x explain E-LOCK-TIMEOUT
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
@@ -2405,12 +2403,11 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOU
 ----
 idris2x: error[E-LOCK-TIMEOUT]: waited 600s for another pin of the same lock file
     lock: /home/ada/proofs/idris2x.lock
-    lock-file: /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
     held-by: process 48213 (still running)
   state: The lock file was not changed. The other pin is not affected.
   why: Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.
   fix: IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0
-  note: Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits.
+  note: The turn is held on the lock file's directory and ends by itself when the holder exits. There is nothing to delete.
   see: idris2x explain E-LOCK-TIMEOUT
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
 ----
@@ -2420,12 +2417,11 @@ idris2x: error[E-LOCK-TIMEOUT]: waited 600s for another pin of the same lock fil
 ----
 idris2x: <ESC>[1;31merror[E-LOCK-TIMEOUT]<ESC>[0m: waited 600s for another pin of the same lock file
     lock: /home/ada/proofs/idris2x.lock
-    lock-file: /home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock
     held-by: process 48213 (still running)
   <ESC>[1mstate<ESC>[0m: The lock file was not changed. The other pin is not affected.
   <ESC>[1mwhy<ESC>[0m: Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.
   <ESC>[1mfix<ESC>[0m: <ESC>[1mIDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0<ESC>[0m
-  <ESC>[1mnote<ESC>[0m: Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits.
+  <ESC>[1mnote<ESC>[0m: The turn is held on the lock file's directory and ends by itself when the holder exits. There is nothing to delete.
   <ESC>[1msee<ESC>[0m: idris2x explain E-LOCK-TIMEOUT
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
 ----
@@ -2433,7 +2429,7 @@ idris2x: <ESC>[1;31merror[E-LOCK-TIMEOUT]<ESC>[0m: waited 600s for another pin o
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-LOCK-TIMEOUT","case":"pin-held","exit":15,"title":"another idris2x is installing the same capsule","summary":"waited 600s for another pin of the same lock file","context":{"lock":"/home/ada/proofs/idris2x.lock","seconds":"600","lockfile":"/home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock","holder":"process 48213 (still running)","version":"0.8.0"},"state":"The lock file was not changed. The other pin is not affected.","why":"Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.","fix":{"command":"IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0","note":"Do not delete the lock file while its holder is running: two pins would then write at once. The lock is released by itself when the holder exits.","auto":"none"},"explain":"idris2x explain E-LOCK-TIMEOUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-LOCK-TIMEOUT","case":"pin-held","exit":15,"title":"another idris2x is installing the same capsule","summary":"waited 600s for another pin of the same lock file","context":{"lock":"/home/ada/proofs/idris2x.lock","seconds":"600","holder":"process 48213 (still running)","version":"0.8.0"},"state":"The lock file was not changed. The other pin is not affected.","why":"Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.","fix":{"command":"IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0","note":"The turn is held on the lock file's directory and ends by itself when the holder exits. There is nothing to delete.","auto":"none"},"explain":"idris2x explain E-LOCK-TIMEOUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc"}
 ----
 
 == E-GLIBC-FLOOR
@@ -5249,9 +5245,9 @@ idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: no such file: capsule?[2J???????????
 
 === E-HASH-MISMATCH, case `store-modified`, with a hostile store path
 
-A fix command is shell text the user will paste, so it names the real path, not the one shown with `?`. The value is
-written as `$'...'` (POSIX 2024): each byte of a hidden character as a three-digit octal escape, and `\` and `'` with a
-backslash. The hidden characters themselves never reach the terminal. `--json` writes the same command.
+A fix command is shell text the user will paste. Shown with `?`, it would name another path, and no escaped form of the
+value means the same in every shell, so text and terminal forms do not show it and say so. `--json` writes the exact
+command, with the value in single quotes; its hidden characters are written as `\uXXXX`.
 
 .Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
@@ -5270,7 +5266,7 @@ through disk corruption. The store is meant to be read-only.
 
 Remove this capsule and install it again:
 
-    rm -rf $'/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\033[2J\015\007\177\302\233\302\240\302\255\342\200\213\342\200\256\342\201\240\342\201\246\357\273\277\'x\\y' && idris2x install --locked
+    (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
 
 Programs compiled with this capsule keep working once it is reinstalled, because
 the store path stays the same.
@@ -5296,7 +5292,7 @@ through disk corruption. The store is meant to be read-only.
 
 Remove this capsule and install it again:
 
-    <ESC>[1mrm -rf $'/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\033[2J\015\007\177\302\233\302\240\302\255\342\200\213\342\200\256\342\201\240\342\201\246\357\273\277\'x\\y' && idris2x install --locked<ESC>[0m
+    (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
 
 Programs compiled with this capsule keep working once it is reinstalled, because
 the store path stays the same.
@@ -5313,7 +5309,7 @@ idris2x: error[E-HASH-MISMATCH]: an installed capsule was modified after install
     store-entry: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21?[2J???????????'x\y
   state: The capsule was left in place so that you can inspect it.
   why: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
-  fix: rm -rf $'/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\033[2J\015\007\177\302\233\302\240\302\255\342\200\213\342\200\256\342\201\240\342\201\246\357\273\277\'x\\y' && idris2x install --locked
+  fix: (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
   note: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
   see: idris2x explain E-HASH-MISMATCH
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
@@ -5327,7 +5323,7 @@ idris2x: <ESC>[1;31merror[E-HASH-MISMATCH]<ESC>[0m: an installed capsule was mod
     store-entry: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21?[2J???????????'x\y
   <ESC>[1mstate<ESC>[0m: The capsule was left in place so that you can inspect it.
   <ESC>[1mwhy<ESC>[0m: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
-  <ESC>[1mfix<ESC>[0m: <ESC>[1mrm -rf $'/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\033[2J\015\007\177\302\233\302\240\302\255\342\200\213\342\200\256\342\201\240\342\201\246\357\273\277\'x\\y' && idris2x install --locked<ESC>[0m
+  <ESC>[1mfix<ESC>[0m: (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
   <ESC>[1mnote<ESC>[0m: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
   <ESC>[1msee<ESC>[0m: idris2x explain E-HASH-MISMATCH
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
@@ -5336,5 +5332,5 @@ idris2x: <ESC>[1;31merror[E-HASH-MISMATCH]<ESC>[0m: an installed capsule was mod
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-HASH-MISMATCH","case":"store-modified","exit":11,"title":"capsule bytes do not match the lock","summary":"an installed capsule was modified after installation","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","dir":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff'x\\y"},"state":"The capsule was left in place so that you can inspect it.","why":"Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.","fix":{"command":"rm -rf $'/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\\033[2J\\015\\007\\177\\302\\233\\302\\240\\302\\255\\342\\200\\213\\342\\200\\256\\342\\201\\240\\342\\201\\246\\357\\273\\277\\'x\\\\y' && idris2x install --locked","note":"Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.","auto":"none"},"explain":"idris2x explain E-HASH-MISMATCH","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-HASH-MISMATCH","case":"store-modified","exit":11,"title":"capsule bytes do not match the lock","summary":"an installed capsule was modified after installation","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","dir":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff'x\\y"},"state":"The capsule was left in place so that you can inspect it.","why":"Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.","fix":{"command":"rm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff'\\''x\\y' && idris2x install --locked","note":"Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.","auto":"none"},"explain":"idris2x explain E-HASH-MISMATCH","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc"}
 ----

@@ -40,7 +40,7 @@ E-PLATFORM-UNSUPPORTED|unknown-os|os=FreeBSD|supported=Linux, macOS
 E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net|log=/home/ada/.cache/idris2x/staging/fetch.log
 E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/staging/fetch.log|version=0.8.0
 E-LOCK-TIMEOUT|held|digest=sha256:$A|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/sha256-$A.lock|holder=process 48213 (still running)
-E-LOCK-TIMEOUT|pin-held|lock=/home/ada/proofs/idris2x.lock|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/pin-0123456789abcdef.lock|holder=process 48213 (still running)|version=0.8.0
+E-LOCK-TIMEOUT|pin-held|lock=/home/ada/proofs/idris2x.lock|seconds=600|holder=process 48213 (still running)|version=0.8.0
 E-GLIBC-FLOOR|too-old|host=2.17|needs=2.28|digest=sha256:$A
 E-GLIBC-FLOOR|unknown|needs=2.28|digest=sha256:$A
 E-PROBE-CODEGEN|chez-failed|probe=pure_eval|output=error while loading shared libraries: libtinfo.so.6: cannot open shared object file
@@ -128,9 +128,9 @@ T
 
 === E-HASH-MISMATCH, case `store-modified`, with a hostile store path
 
-A fix command is shell text the user will paste, so it names the real path, not the one shown with `?`. The value is
-written as `$'...'` (POSIX 2024): each byte of a hidden character as a three-digit octal escape, and `\` and `'` with a
-backslash. The hidden characters themselves never reach the terminal. `--json` writes the same command.
+A fix command is shell text the user will paste. Shown with `?`, it would name another path, and no escaped form of the
+value means the same in every shell, so text and terminal forms do not show it and say so. `--json` writes the exact
+command, with the value in single quotes; its hidden characters are written as `\uXXXX`.
 
 T
   show E-HASH-MISMATCH store-modified "digest=sha256:$A" "dir=/home/ada/.cache/idris2x/store/sha256-$A${H}'x\\y" )

@@ -29,16 +29,18 @@ fn sha(d: &str) -> crate::msg::Fact {
     lock(format!("sha256:{d}")).into()
 }
 
-/// Hold `lockfile` for this process, waiting up to `wait` seconds, and record this process beside it as the holder.
-/// The lock is released when the returned File is dropped or the process ends. On a timeout the failure is
-/// `held(lockfile, holder)`, which names a holder only if it can be seen running, and never advises deleting the lock.
+/// Hold `lockfile` for this process, waiting up to `wait` seconds, and record this process in `holder`. A directory is
+/// locked as it is; a missing lock file is made. The lock is released when the returned File is dropped or the process
+/// ends. On a timeout the failure is `held(lockfile, holder)`, which names a holder only if it can be seen running, and
+/// never advises deleting the lock.
 pub fn hold(
     lockfile: &Path,
+    holder: PathBuf,
     wait: u64,
     held: impl Fn(crate::msg::Fact, crate::msg::Fact) -> Fail,
 ) -> R<(File, PathBuf)> {
-    let holder = lockfile.with_extension("holder");
-    let f = File::create(lockfile).map_err(|e| write_failed("taking the lock", &e, lockfile))?;
+    let f = if lockfile.is_dir() { File::open(lockfile) } else { File::create(lockfile) };
+    let f = f.map_err(|e| write_failed("taking the lock", &e, lockfile))?;
     let t0 = std::time::Instant::now();
     loop {
         match f.try_lock() {
@@ -88,8 +90,13 @@ pub fn sha_file(p: &Path) -> io::Result<String> {
     }
 }
 /// A date as RFC 3339 UTC, from seconds since 1970 (the civil-from-days algorithm).
-pub fn utc(t: u64) -> String {
-    let (z, sec) = ((t / 86400) as i64 + 719468, t % 86400);
+/// Seconds since 1970 by this machine's clock; a clock before 1970 reads as 0.
+pub fn now() -> i64 {
+    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
+    t.map_or(0, |t| t.as_secs().try_into().unwrap_or(i64::MAX))
+}
+pub fn utc(t: i64) -> String {
+    let (z, sec) = (t.div_euclid(86400) + 719468, t.rem_euclid(86400));
     let doe = z.rem_euclid(146097);
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
@@ -170,13 +177,17 @@ pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
         fs::create_dir_all(c.join(sub))
             .map_err(|_| Fail::StoreIoCannotCreate { path: host(s(&c)).into() })?;
     }
-    let (_held, holder) =
-        hold(&c.join(format!("locks/sha256-{d}.lock")), wait, |at, who| Fail::LockTimeoutHeld {
+    let (_held, holder) = hold(
+        &c.join(format!("locks/sha256-{d}.lock")),
+        c.join(format!("locks/sha256-{d}.holder")),
+        wait,
+        |at, who| Fail::LockTimeoutHeld {
             digest: sha(d),
             seconds: host(wait.to_string()).into(),
             lockfile: at,
             holder: who,
-        })?;
+        },
+    )?;
     // Another process may have finished while this one waited.
     let done = dir.join(".complete").is_file();
     let r = if done { cached(pin, dir) } else { fill(pin, from, offline, &c, dir) };
@@ -248,11 +259,8 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
         _ = fs::remove_dir_all(&stage);
         return Err(f);
     }
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |t| t.as_secs());
     let done = dir.join(".complete");
-    let wrote = fs::write(&done, format!("sha256:{d} {}\n", utc(now)))
+    let wrote = fs::write(&done, format!("sha256:{d} {}\n", utc(now())))
         .and_then(|()| File::open(&done)?.sync_all());
     wrote.map_err(|e| write_failed("marking the capsule complete", &e, &dir))?;
     _ = File::open(&dir).and_then(|f| f.sync_all());

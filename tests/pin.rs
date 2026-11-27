@@ -324,9 +324,16 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
     ok(&c.pin("0.8.0", &[]));
     // A lock that cannot be read, or does not say what it saw, never starts the count again.
     let lf = c.t.p("idris2x.lock");
+    // A missing or malformed address is not another channel, and another channel still records a version.
     let damaged = [
         old.replace(r#""version":5"#, r#""version":"5""#),
         old[..20].to_owned(),
+        old.replace(&format!(r#","url":"{}""#, c.url), ""),
+        old.replace(&format!(r#""{}""#, c.url), "7"),
+        old.replace(r#""version":5,"#, "")
+            .replace("v1.json", "elsewhere.json"),
+        r#"{"schema":1}"#.into(),
+        "null".into(),
     ];
     for text in damaged {
         fs::write(&lf, &text).unwrap();
@@ -360,6 +367,20 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
     assert!(
         stderr(&o).contains("IDRIS2X_ALLOW_EXPIRED=1: using a channel manifest that has expired")
     );
+    // A time before 1970 is a real time: it has expired, and the override still applies.
+    for t in ["1969-12-31T23:59:59Z", "0000-01-01T00:00:00Z"] {
+        m["expires"] = json!(t);
+        c.publish(&m);
+        let j = failed(
+            &c.t,
+            &c.pin("0.8.0", &[]),
+            "E-CHANNEL-EXPIRED",
+            "expired",
+            23,
+        );
+        assert!(j.contains(&format!(r#""expires":"{t}""#)), "{j}");
+        ok(&c.pin("0.8.0", &[("IDRIS2X_ALLOW_EXPIRED", "1")]));
+    }
     failed(
         &c.t,
         &c.pin("0.8.0", &[("IDRIS2X_ALLOW_EXPIRED", "yes")]),
@@ -412,12 +433,13 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
 #[test]
 fn a_malformed_manifest_is_refused_by_field() {
     let c = Chan::new("pin-malformed");
-    let cases: [(&str, Value, &str); 13] = [
+    let cases: [(&str, Value, &str); 14] = [
         ("/expires", json!("2099-01-01"), "expires"),
         // Not a real time: refused, never read as the far future.
         ("/expires", json!("2099-99-99T99:99:99Z"), "expires"),
         ("/expires", json!("2099-02-29T00:00:00Z"), "expires"),
         ("/expires", json!("+099-01-01T00:00:00Z"), "expires"),
+        ("/expires", json!("-001-01-01T00:00:00Z"), "expires"),
         ("/channel_version", json!(-1), "channel_version"),
         ("/min_launcher", json!(5), "min_launcher"),
         // A version too large to compare is refused, never read as 0.
@@ -632,24 +654,48 @@ fn an_unreachable_or_plain_http_channel_is_e_network() {
 fn pins_of_one_lock_take_turns_and_a_held_turn_times_out() {
     let c = Chan::new("pin-turn");
     c.publish(&manifest());
-    // The turn is named by the lock file's real path, so another spelling of the path waits for the same one.
-    let real = fs::canonicalize(c.t.p("")).unwrap().join("idris2x.lock");
-    let turn = sha(real.as_os_str().as_encoded_bytes());
-    fs::create_dir_all(c.t.p("cache/locks")).unwrap();
-    let f = fs::File::create(c.t.p(&format!("cache/locks/pin-{}.lock", &turn[..16]))).unwrap();
+    // The turn is the lock file's real directory, held as another pin holds it, so a pin waits for it whichever cache
+    // it uses and however the path is spelled.
+    let f = fs::File::open(fs::canonicalize(c.t.p("")).unwrap()).unwrap();
     f.lock().unwrap();
-    let j = failed(
-        &c.t,
-        &c.pin("0.8.0", &[("IDRIS2X_LOCK_TIMEOUT", "1")]),
-        "E-LOCK-TIMEOUT",
-        "pin-held",
-        15,
-    );
-    assert!(
-        j.contains(r#""holder":"unknown (the holder left no record)""#),
-        "{j}"
-    );
-    assert!(!c.t.p("idris2x.lock").exists());
+    fs::create_dir(c.t.p("sub")).unwrap();
+    let other = c.t.p("other-cache");
+    let spelled = c.t.p("sub/../idris2x.lock");
+    for env in [
+        vec![],
+        vec![("IDRIS2X_CACHE", other.to_str().unwrap())],
+        vec![("IDRIS2X_LOCK", spelled.to_str().unwrap())],
+    ] {
+        let o = c.pin(
+            "0.8.0",
+            &[env, vec![("IDRIS2X_LOCK_TIMEOUT", "1")]].concat(),
+        );
+        let j = failed(&c.t, &o, "E-LOCK-TIMEOUT", "pin-held", 15);
+        assert!(
+            j.contains(r#""holder":"unknown (the holder left no record)""#),
+            "{j}"
+        );
+        assert!(!c.t.p("idris2x.lock").exists());
+    }
     drop(f);
+    ok(&c.pin("0.8.0", &[("IDRIS2X_CACHE", other.to_str().unwrap())]));
     ok(&c.pin("0.8.0", &[]));
+    // Nothing is left in the project but the lock itself.
+    let mut left: Vec<_> = fs::read_dir(c.t.p(""))
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    left.sort();
+    assert!(
+        left.iter().all(|n| [
+            "cache",
+            "other-cache",
+            "sub",
+            "idris2x.lock",
+            "idris2x.toml",
+            "error.json"
+        ]
+        .contains(&n.to_str().unwrap())),
+        "{left:?}"
+    );
 }

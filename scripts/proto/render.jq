@@ -9,15 +9,10 @@
 include "clean";
 # One pass over the template: an inserted value is never scanned again, so it cannot pull in another key's value.
 def fill($c): gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | if $c | has($k) then $c[$k] else "{" + $k + "}" end);
-# A value placed in a fix command is shell text the user will paste: leave plain words bare, single-quote everything else.
-# A value with a hidden character is written as $'...' (POSIX 2024), each byte of a hidden character as a three-digit
-# octal escape, so the command names the real value and the character never reaches the terminal. src/msg.rs `shq`.
-def oct3: . as $n | [64, 8, 1] | map(($n / . | floor) % 8 | tostring) | add;
-def byte: ascii_downcase | explode | map(if . >= 97 then . - 87 else . - 48 end) | .[0] * 16 + .[1];
-def esc: if hidden then [.] | implode | @uri | ltrimstr("%") | split("%") | map("\\" + (byte | oct3)) | add
-  elif . == 92 or . == 39 then "\\" + ([.] | implode) else [.] | implode end;
+# A value placed in a fix command is shell text the user will paste: leave plain words bare, single-quote everything else,
+# which keeps every byte in every POSIX shell. A text or terminal form does not show a command that names a value with a
+# hidden character, and says so instead: shown with "?" it would name another path. src/msg.rs `shq` and `HID`.
 def shq: if test("^[A-Za-z0-9_./:@%+=,-]+$") then .
-  elif explode | any(hidden) then "$'" + (explode | map(esc) | add) + "'"
   else "'" + gsub("'"; "'\\''") + "'" end;
 def wrap($w): reduce (split(" ")[] | select(. != "")) as $word ([""];
     if (.[-1] | length) == 0 then .[-1] = $word
@@ -29,7 +24,9 @@ def paint($on; $code): if $on then "\u001b[" + $code + "m" + . + "\u001b[0m" els
 | $ctx as $raw | ($ctx | if $form == "json" then . else map_values(clean) end) as $ctx
 | (.error[] | select(.id == $id)) as $e
 | ((.case // [])[] | select(.error == $id and .case == $case)) as $k
-| ($k | with_entries(select(.value | type == "string") | if .key == "fix_cmd" then .value |= fill($raw | map_values(shq)) else .value |= fill($ctx) end)) as $t
+| ($form != "json" and ($k.fix_cmd | [scan("\\{([a-z_]+)\\}") | .[0]] | any(. as $n | $raw[$n] // "" | explode | any(hidden)))) as $hid
+| ($k | with_entries(select(.value | type == "string") | if .key == "fix_cmd" and $hid then .value = "(not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)"
+    elif .key == "fix_cmd" then .value |= fill($raw | map_values(shq)) else .value |= fill($ctx) end)) as $t
 | ($t.facts | split(" ") | map(select(. != "") | split("=") | {label: .[0], value: ($ctx[.[1]] // error("missing context value: " + .[1]))})) as $facts
 | if any($k | to_entries[] | select(.value | type == "string") | .value | scan("\\{([a-z_]+)\\}") | .[0]; . as $p | $ctx | has($p) | not) then error("unfilled {placeholder} in " + $id + "/" + $case) else . end
 | ($runbook + "/" + $id + ".adoc") as $docs
@@ -46,7 +43,7 @@ def paint($on; $code): if $on then "\u001b[" + $code + "m" + . + "\u001b[0m" els
          | map("    " + .label + (" " * ($m - (.label | length) + 2)) + .value) | join("\n") | select(. != "")),
       ($t.state | para($w)),
       ($t.why | para($w)),
-      (if $t.fix_cmd != "" then (($t.fix_lead | para($w)), "    " + ($t.fix_cmd | paint($tty; "1"))) else empty end),
+      (if $t.fix_cmd != "" then (($t.fix_lead | para($w)), "    " + ($t.fix_cmd | paint($tty and ($hid | not); "1"))) else empty end),
       ($t.fix_note | para($w)),
       "More: idris2x explain " + $id + "\n" + $docs
     ] | join("\n\n")
@@ -55,7 +52,7 @@ def paint($on; $code): if $on then "\u001b[" + $code + "m" + . + "\u001b[0m" els
       ($facts[] | "    " + .label + ": " + .value),
       "  " + ("state" | paint($tty; "1")) + ": " + $t.state,
       "  " + ("why" | paint($tty; "1")) + ": " + $t.why,
-      (if $t.fix_cmd != "" then "  " + ("fix" | paint($tty; "1")) + ": " + ($t.fix_cmd | paint($tty; "1")) else empty end),
+      (if $t.fix_cmd != "" then "  " + ("fix" | paint($tty; "1")) + ": " + ($t.fix_cmd | paint($tty and ($hid | not); "1")) else empty end),
       (if $t.fix_note != "" then "  " + ((if $t.fix_cmd != "" then "note" else "fix" end) | paint($tty; "1")) + ": " + $t.fix_note else empty end),
       "  " + ("see" | paint($tty; "1")) + ": idris2x explain " + $id,
       "  " + ("see" | paint($tty; "1")) + ": " + $docs
