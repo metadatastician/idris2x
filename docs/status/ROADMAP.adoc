@@ -37,6 +37,26 @@ Nothing is released, and no capsule is published.
 * [ ] Mirrors, hedged fetch, nightly canaries, churn drill, status page
 * [ ] SLSA provenance, SBOM, immutable releases, two-tier keys
 * [ ] Overlays, air-gap bundles, runbooks with triage notes
+* [ ] Points from the Phase 1 design review, moved here by the owner on 2026-11-27, each with the reason it waits:
+** `E-NETWORK` quotes the transport library's error words labelled as lock text (`src/store.rs`, `download`). They
+   come from the host, not the lock, so the label is wrong (ADR 0012); no slot misuses them today.
+** Temporary files are named by process id: `pin` writes `idris2x.<pid>.tmp` beside the lock and `doctor` writes
+   `.doctor-<pid>` in the store. A crash leaves one behind, and a later `pin` that gets the same id fails on it, loudly.
+   A held lock names the last pid recorded there, which may have ended; the message now says so.
+** `gc` keeps every name it did not write and says nothing about it (I3). It should list them.
+** The refusal of an https mirror that redirects to plain http rests on the transport library's `https_only` and has
+   no test of its own.
+** The prototype lacks seven checks the Rust `pin` has (`seen-version-unknown`, `pin-held`, `channel-changed`,
+   `other-version`, `needs-newer-launcher`, `malformed-manifest`, `bad-toml`), so the chaos suite cannot compare the
+   two launchers on them.
+** `E-PIN-DRIFT/channel-changed` was the agent's design call, not the owner's: when `idris2x.toml` changes channel
+   while `pin` waits its turn, `pin` stops with a typed error instead of starting again on the new channel.
+** `pin` keeps the verified manifest before it writes the lock, so a failed lock write leaves a checked copy that an
+   offline `pin` checks again. Also the agent's call, for the owner to confirm or reverse.
+** Prototype parity for the two Phase 1 holes: the prototype's `exec` takes no capsule lock, and it accepts a cache
+   path with a control or hidden character. The chaos suite does not test either.
+** `exec` waits for its shared capsule lock with no time limit, so it waits as long as an install or `gc` holds the
+   capsule.
 
 === Phase 3 — Autonomy
 * [ ] Bounded maintenance agent (human-only first month), Windows Tier 2, proofs per the proof plan

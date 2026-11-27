@@ -5,7 +5,8 @@
 //!
 //! The library half of the crate, so the behaviour is testable without spawning
 //! the binary. Keep `main.rs` a thin shell around this.
-#![forbid(unsafe_code)]
+// One unsafe call is allowed, in `run::held`: it keeps the capsule lock open through execve (see PROOF-STATUS.adoc).
+#![deny(unsafe_code)]
 
 pub mod capsule;
 pub mod civil;

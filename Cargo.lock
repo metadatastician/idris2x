@@ -145,6 +145,7 @@ name = "idris2x"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "libc",
  "ring",
  "rustls",
  "serde_json",

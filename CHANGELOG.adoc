@@ -100,6 +100,21 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * `.github/workflows/creusot.yml` runs `scripts/check-creusot.sh` in CI, with Creusot installed at the pinned commit
   and the tool versions checked first. Its first run on GitHub passed (run 45988074983, about 17 minutes). It is
   not a required check.
+* Two holes from the Phase 1 design review are fixed (owner ruling, 2026-11-27). `exec` and `run` hold a shared lock
+  on the capsule that stays open through `execve`, so `gc` keeps a capsule while a program started from it, or a
+  child that keeps the inherited descriptor, runs, and says `in use (its lock is held)`. This needs one `unsafe` call
+  (`fcntl`) and the `libc` crate; `src/lib.rs` now denies `unsafe_code` instead of forbidding it, and only `run::held`
+  allows it (EXEC-2 in `docs/status/PROOF-STATUS.adoc`). The store's path, from `IDRIS2X_CACHE`, `XDG_CACHE_HOME` or
+  `HOME`, must hold no control or hidden character, since no message could show it as it is: such a path is
+  `E-USAGE/bad-setting` (exit 2). Only the variable that names the store is read. A change in behaviour: an
+  `XDG_CACHE_HOME` or `HOME` that is not Unicode text is now refused too, where before it was used.
+* A held capsule lock names the last process recorded in it and says that process may have ended. The launcher and
+  the prototype no longer ask the system whether it still runs, since `exec` and `gc` hold the lock without recording
+  themselves. The launcher is at 1,999 of 2,000 lines.
+* Tests now cover a mirror's scheme in capitals: `HTTP://` to another host is refused as plain http, a local
+  `HTTP://` mirror may not redirect, and `HTTPS://` is tried as https.
+* The review's other points, and two that these fixes leave, wait for Phase 2, each with its reason, in
+  `docs/status/ROADMAP.adoc`.
 
 ==== Not yet
 

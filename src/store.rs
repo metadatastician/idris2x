@@ -7,20 +7,24 @@
 
 use crate::capsule;
 use crate::lock::{setting, Pin};
-use crate::msg::{embedded, host, lock, note, Fail, R};
+use crate::msg::{embedded, hidden, host, lock, note, Fail, R};
 use crate::net::{self, Io, Lost};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 
 /// The store's directory: IDRIS2X_CACHE, else $XDG_CACHE_HOME/idris2x, else $HOME/.cache/idris2x. With none of them
-/// set there is no store, and the working directory is never taken in its place.
+/// set there is no store, and the working directory is never taken in its place. The one used must have no control
+/// or hidden character, since no message could show the store's path as it is.
 pub fn cache() -> R<PathBuf> {
-    let v = |k| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
-    let own = setting("IDRIS2X_CACHE", "a directory", None, |p| Some(Some(p.into())))?;
-    own.or_else(|| v("XDG_CACHE_HOME").map(|x| x.join("idris2x")))
-        .or_else(|| v("HOME").map(|h| h.join(".cache/idris2x")))
-        .ok_or(Fail::StoreIoNoCacheDir {})
+    let ok = |p: &str| (!p.chars().any(hidden)).then(|| Some(PathBuf::from(p)));
+    let all = [("IDRIS2X_CACHE", ""), ("XDG_CACHE_HOME", "idris2x"), ("HOME", ".cache/idris2x")];
+    for (k, sub) in all {
+        if let Some(p) = setting(k, "a path with no control or hidden characters", None, ok)? {
+            return Ok(if sub.is_empty() { p } else { p.join(sub) });
+        }
+    }
+    Err(Fail::StoreIoNoCacheDir {})
 }
 fn s(p: &Path) -> String {
     p.display().to_string()
@@ -31,8 +35,8 @@ fn sha(d: &str) -> crate::msg::Fact {
 
 /// Hold `lockfile` for this process, waiting up to `wait` seconds, and record this process in `holder`. A directory is
 /// locked as it is; a missing lock file is made. The lock is released when the returned File is dropped or the process
-/// ends. On a timeout the failure is `held(lockfile, holder)`, which names a holder only if it can be seen running, and
-/// never advises deleting the lock.
+/// ends. On a timeout the failure is `held(lockfile, holder)`, which names the last process recorded in `holder`, says
+/// that it may have ended (gc and exec hold the lock without recording themselves), and never advises deleting the lock.
 pub fn hold(
     lockfile: &Path,
     holder: PathBuf,
@@ -53,19 +57,9 @@ pub fn hold(
             }
             Err(fs::TryLockError::WouldBlock) => {
                 let pid = fs::read_to_string(&holder).unwrap_or_default().trim().to_owned();
-                let running = || {
-                    std::process::Command::new("kill")
-                        .args(["-0", &pid])
-                        .stderr(std::process::Stdio::null())
-                        .status()
-                };
-                let seen = !pid.is_empty()
-                    && pid.bytes().all(|b| b.is_ascii_digit())
-                    && running().is_ok_and(|st| st.success());
-                let who = if seen {
-                    format!("process {pid} (still running)")
-                } else {
-                    "unknown (the holder left no record)".into()
+                let who = match !pid.is_empty() && pid.bytes().all(|b| b.is_ascii_digit()) {
+                    true => format!("process {pid} (last recorded; it may have ended)"),
+                    false => "unknown (the holder left no record)".into(),
                 };
                 return Err(held(host(s(lockfile)).into(), host(who).into()));
             }

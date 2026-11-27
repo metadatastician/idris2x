@@ -99,9 +99,19 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     let (moved, hops) = serve(vec![], 302, None);
     let sneaky = "http://localhost:80@example.org/c.tar.gz".to_string();
     let plain = "http://example.org/c.tar.gz".to_string();
+    // A scheme is read without regard to case (RFC 3986), the same way for the check and for the redirect policy.
+    let (loud, moved_up) = (
+        "HTTP://example.org/u.tar.gz",
+        moved.replacen("http://", "HTTP://", 1),
+    );
+    // An https address in capitals is still https: it is tried (nothing listens on port 9), not refused.
+    let tls = "HTTPS://127.0.0.1:9/u.tar.gz";
     let mirrors = [
         bad.into(),
         plain,
+        loud.into(),
+        moved_up.clone(),
+        tls.into(),
         sneaky.clone(),
         moved.clone(),
         url.clone(),
@@ -117,6 +127,13 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     );
     let refused = format!("{sneaky}: refused: plain http is allowed only to this machine");
     assert!(json.contains(&refused), "{json}");
+    let refused = format!("{loud}: refused: plain http is allowed only to this machine");
+    assert!(json.contains(&refused), "{json}");
+    let up = format!("{moved_up}: refused: answer 302 Found is not the file");
+    assert!(
+        json.contains(&up),
+        "a local mirror in capitals is still plain http: {json}"
+    );
     assert!(
         json.contains(&format!(
             "{moved}: refused: answer 302 Found is not the file"
@@ -124,6 +141,8 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
         "{json}"
     );
     assert!(json.contains(&format!("{url}: ")), "{json}");
+    assert!(json.contains(&format!("{tls}: ")), "{json}");
+    assert!(!json.contains(&format!("{tls}: refused")), "{json}");
     // A lock value reaches the terminal with each hidden character shown as `?`, and the JSON with each escaped.
     let err = String::from_utf8(o.stderr).unwrap();
     assert!(
@@ -142,8 +161,8 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     assert!(json.contains(escaped), "{json}");
     assert_eq!(
         hops.lock().unwrap().len(),
-        1,
-        "the redirect was not followed"
+        2,
+        "each local mirror was asked once, and neither redirect was followed"
     );
 }
 
@@ -417,7 +436,10 @@ fn a_held_lock_times_out_naming_its_holder() {
         15,
     );
     assert!(
-        json.contains(&format!("process {} (still running)", std::process::id())),
+        json.contains(&format!(
+            "process {} (last recorded; it may have ended)",
+            std::process::id()
+        )),
         "{json}"
     );
     fs::write(t.p(&format!("cache/locks/sha256-{d}.holder")), "").unwrap();
@@ -586,6 +608,31 @@ fn settings_that_are_unset_or_not_text_are_refused_not_guessed() {
     let o = run(&t, &["install"], &[("IDRIS2X_CACHE", "")]);
     failed(&t, &o, "E-STORE-IO", "no-cache-dir", 24);
     assert!(!t.p(".cache").exists());
+    // The variable that names the store must hold no control or hidden character; one that is not used is not read.
+    // Every path is inside the test's own directory, so a regression writes nothing elsewhere.
+    let p = |rel: &str| t.p(rel).display().to_string();
+    let (own, xdg, home) = (p("c\u{1b}[2J"), p("x\u{200b}y"), p("home\u{202e}"));
+    for env in [
+        vec![("IDRIS2X_CACHE", own.as_str())],
+        vec![("IDRIS2X_CACHE", ""), ("XDG_CACHE_HOME", xdg.as_str())],
+        vec![("IDRIS2X_CACHE", ""), ("HOME", home.as_str())],
+    ] {
+        let o = run(&t, &["install"], &env);
+        let json = failed(&t, &o, "E-USAGE", "bad-setting", 2);
+        assert!(json.contains(env[env.len() - 1].0), "{json}");
+        assert!(
+            json.contains("a path with no control or hidden characters"),
+            "{json}"
+        );
+    }
+    for refused in [&own, &xdg, &home] {
+        assert!(
+            !std::path::Path::new(refused).exists(),
+            "nothing was written under {refused}"
+        );
+    }
+    let o = run(&t, &["install"], &[("HOME", home.as_str())]);
+    failed(&t, &o, "E-NETWORK", "all-mirrors-failed", 14);
     let not_text = std::ffi::OsStr::from_bytes(b"idris2x\xff.lock");
     for name in [
         "IDRIS2X_LOCK",

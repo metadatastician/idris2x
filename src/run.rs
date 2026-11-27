@@ -7,7 +7,7 @@
 use crate::capsule::{self, meta};
 use crate::msg::{clean, embedded, host, lock, out, shq, Fail, R};
 use crate::store::{self, cache, write_failed};
-use std::os::unix::process::CommandExt;
+use std::os::{fd::AsRawFd, unix::process::CommandExt};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -22,6 +22,23 @@ fn idris2(root: &Path) -> R<PathBuf> {
     }
     Ok(root.join("bin/idris2_app/idris2.so"))
 }
+/// The installed capsule, with a shared hold on its lock that stays open through execve, so `gc` keeps the capsule
+/// while the program and its children run. If gc removed it before the hold was taken, it is installed again.
+#[allow(unsafe_code)]
+fn held() -> R<(PathBuf, std::fs::File)> {
+    let (root, locks) = (root()?, cache()?.join("locks"));
+    let l = locks.join(root.file_name().unwrap_or_default()).with_extension("lock");
+    let f = std::fs::create_dir_all(&locks).and_then(|()| std::fs::File::create(&l));
+    let f = f.and_then(|f| f.lock_shared().map(|()| f));
+    let f = f.map_err(|e| write_failed("taking the lock", &e, &l))?;
+    // SAFETY: F_SETFD on a descriptor that `f` owns sets its flags to none, which clears FD_CLOEXEC. No memory is
+    // read or written, and `f` stays open and owned. This is the launcher's only unsafe call.
+    if unsafe { libc::fcntl(f.as_raw_fd(), libc::F_SETFD, 0) } == -1 {
+        return Err(write_failed("keeping the lock open", &std::io::Error::last_os_error(), &l));
+    }
+    // If the capsule was removed, the hold is dropped here, before the retry, so install can take its exclusive lock.
+    root.join(".complete").is_file().then_some((root, f)).map_or_else(held, Ok)
+}
 /// A program on PATH.
 pub fn on_path(name: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH").unwrap_or_default();
@@ -32,7 +49,7 @@ pub fn on_path(name: &str) -> Option<PathBuf> {
 /// that starts with "-" is passed as it is, and every other word is a path that must stay inside the capsule; the
 /// first word is always such a path. `inherit` keeps the code variables.
 pub fn exec(name: &str, args: &[String], inherit: bool) -> R<()> {
-    let root = root()?;
+    let (root, _held) = held()?;
     let map = capsule::json(&root)["exec"].take();
     let Some(words) = map[name].as_array().filter(|w| !w.is_empty()) else {
         let have = map.as_object().into_iter().flat_map(|m| m.keys());
