@@ -82,9 +82,10 @@ pub fn pin(ver: &str) -> R<()> {
     let (m, log) = (c.join(format!("manifests/{}.sig", &id[..16])), c.join("staging/fetch.log"));
     let at = |p: &Path| p.display().to_string();
     _ = fs::create_dir_all(c.join("staging")).and(fs::create_dir_all(c.join("manifests")));
-    // Offline, the manifest is the copy that last made a lock, kept as one signify file with the body embedded (the
-    // signature's two lines, then the body), so the pair is replaced whole or not at all (I2). Online each is fetched
-    // whole, never resumed, and nothing reaches the cache before every check below has passed.
+    // Offline, the manifest is the last copy that passed every check below, kept as one signify file with the body
+    // embedded (the signature's two lines, then the body), so the pair is replaced whole or not at all (I2). The copy is
+    // written before the lock, so a lock write that fails leaves a checked copy, and an offline pin checks it again.
+    // Online each is fetched whole, never resumed, and nothing reaches the cache before every check below has passed.
     let get = |u: &str| {
         doc(u).map_err(|e| {
             logged(&log, &e);
