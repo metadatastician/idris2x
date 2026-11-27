@@ -40,9 +40,43 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   mirror may not redirect; an https mirror may redirect only to https. A hard link that cannot be written is a disk
   failure, not an unsafe archive. `getconf` runs with `PATH` only.
 * The launcher line cap is 2,000 lines of our own code, raised from 1,000 by the owner on 2026-11-26. Milestone 2
-  has 1,326 lines with its review fixes; all of Phase 1 is projected at about 1,700 to 1,800.
+  has 1,326 lines with its review fixes.
+* Rust launcher, milestone 3 (not released): `exec`, `run`, `env [--json]`, `doctor [--json] [--offline]`, `selftest`
+  and `gc [--keep-last <n>] [--dry-run] [--yes]`. Each installs the pinned capsule first if it is missing, and reads
+  only `idris2x.lock` and the capsule. `exec` and `run` apply the environment reset (ADR 0005); `--inherit-env` keeps
+  the code variables. `gc` lists before it removes, asks at a terminal, and takes each capsule's lock first.
+* `E-PROBE-CODEGEN/cannot-start` (exit 17): a capsule Chez Scheme that the system refuses to start is a typed error.
+  New advice `gc-compiled-programs` warns that programs compiled with `--cg chez` name their capsule.
+* Milestone 3 brings the launcher to 1,825 of 2,000 lines. The projection made at milestone 2 (1,700 to 1,800 for
+  all of Phase 1) was too low: milestone 4, pin and channel trust, is estimated at 200 to 250 lines more.
+* Every value in a text or terminal message, and every note, shows each control character, no-break or soft hyphen
+  space, zero-width character and bidirectional control as `?`, in the Rust launcher and the prototype alike. `--json`
+  keeps the value and writes these characters as `\uXXXX`. Before, a lock, a capsule or a host path could put escape
+  sequences on the user's terminal.
+* Rust launcher, milestone 4 (not released): `pin <version>` takes the channel's URL and signify key from the
+  `[channel]` table of `idris2x.toml`. The built-in channel stays empty until the first signed release, and no
+  environment variable can name a key. `pin` fetches the manifest and its signature whole and checks the key id and
+  the Ed25519 signature before it reads any field. It refuses a manifest format it does not read, a `min_launcher`
+  above its own version, a `channel_version` below the one the lock records for the same channel, and an expired
+  manifest (`IDRIS2X_ALLOW_EXPIRED=1` overrides, with a note). It checks every value it copies, then writes
+  `idris2x.lock` by one rename. A verified manifest is kept per channel for `IDRIS2X_OFFLINE=1`; nothing unverified
+  is kept. A deprecated version still pins, with a note.
+* `exec [--locked] [--inherit-env] [--] <program> <args>` runs a program that the capsule's `capsule.json` lists in
+  its `exec` map (owner ruling, 2026-11-26), and each path in the entry must stay inside the capsule. `run` is
+  `exec -- chez`. `exec` of a program the capsule lacks is `E-USAGE/no-such-program` (exit 2); before, a capsule
+  without Idris 2 gave `E-PIN-NOT-FOUND/no-idris2` (exit 10), which only `selftest` now uses. The factory writes
+  the `idris2` entry only for a capsule that has Idris 2.
+* New cases `E-USAGE/no-channel` and `E-USAGE/no-such-program` (exit 2), `E-CHANNEL-SCHEMA/needs-newer-launcher` and
+  `E-CHANNEL-SCHEMA/malformed-manifest` (exit 18), `E-PIN-DRIFT/bad-toml` (exit 19) and
+  `E-CAPSULE-INVALID/bad-exec` (exit 21). `wrong-key` and `prototype-setting` now speak of a key in `idris2x.toml`.
+* Channel text has its own label, `Channel`, which fills fact lines only (ADR 0012). Two more `compile_fail`
+  doctests show it refused in prose and fix slots. `scripts/check-msg-negatives.sh` now also checks that only
+  `src/pin.rs` labels channel text, and that both channel negatives compile once the policy table allows it.
+* The launcher's source is laid out with `use_small_heuristics = "Max"` (`src/rustfmt.toml`, owner ruling,
+  2026-11-26), which puts a short item on one line up to the 100-column width. Milestone 4 brings the launcher to
+  1,812 of 2,000 lines; with the default layout the same code is 2,164.
 
 ==== Not yet
 
-* The rest of the Rust launcher (install, exec, pin and channel trust), the capsule factory CI and published
-  capsules (Phase 1).
+* The chaos suite as the Rust launcher's CI gate, `cargo vendor` and `cargo deny`, the capsule factory CI and
+  published capsules (Phase 1).

@@ -34,7 +34,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ERRORS_TOML="${IDRIS2X_ERRORS_TOML:-$HERE/../../src/errors/errors.toml}"
 render() { # render FORM ID CASE key=value... -> the message on stdout (FORM: tty | plain | json)
   local form=$1 id=$2 case=$3 w=${COLUMNS:-80}; shift 3; [ "$w" -gt 80 ] && w=80; [ "$w" -lt 40 ] && w=40
-  "$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -er -f "$HERE/render.jq" --arg id "$id" --arg case "$case" \
+  "$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -er -L "$HERE" -f "$HERE/render.jq" --arg id "$id" --arg case "$case" \
     --arg style "${IDRIS2X_STYLE:-b}" --arg form "$form" --arg width "$w" --arg runbook "$RUNBOOK" \
     --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")"
 }
@@ -51,7 +51,7 @@ fail() { # fail ID CASE key=value... — print the message, leave the machine-re
   exit "${EXIT[$id]:-70}"
 }
 hexid() { od -An -tx1 | tr -d ' \n'; }     # 8-byte signify key id as hex
-note() { [ "${IDRIS2X_QUIET:-0}" = 1 ] || echo "idris2x: $*" >&2; }
+note() { [ "${IDRIS2X_QUIET:-0}" = 1 ] || printf "idris2x: %s\n" "$(printf %s "$*" | jq -Rrsj -L "$HERE" 'include "clean"; clean')" >&2; }
 need() { command -v "$1" >/dev/null 2>&1 || fail E-INTERNAL missing-tool tool="$1"; }
 for t in curl jq sha256sum tar flock openssl; do need $t; done
 
@@ -222,9 +222,13 @@ cmd_pin() { # pin VERSION: fetch + verify channel, write lock for all targets of
   if [ -n "$exp" ] && [ "$(date -u +%s)" -gt "$(date -u -d "$exp" +%s)" ] && [ "${IDRIS2X_ALLOW_EXPIRED:-0}" != 1 ]; then
     fail E-CHANNEL-EXPIRED expired url="$CHANNEL_URL" expires="$exp" now="$(date -u +%Y-%m-%dT%H:%M:%SZ)" version="$ver"; fi
   jq -e --arg k "idris2@$ver" '.bundles[$k]' "$m" >/dev/null || fail E-PIN-NOT-FOUND no-version lock="$LOCK" version="$ver" available="$(jq -r '.bundles|keys|map(ltrimstr("idris2@"))|join(", ")' "$m")"
+  # The temporary file is new (mktemp, O_EXCL): a file or link a project commits at a fixed name is never followed.
+  local tmp; tmp=$(mktemp "$LOCK.XXXXXX" 2>/dev/null) || fail E-STORE-IO write-failed detail="writing the lock" path="$LOCK"
   jq --arg k "idris2@$ver" --arg v "$ver" --arg url "$CHANNEL_URL" --argjson cv "$cv" '
     {schema:1, toolchain:{idris2:$v, chez:(.compat[$k].chez)}, channel:{version:$cv, url:$url},
-     capsules: (.bundles[$k] | with_entries(.value |= {sha256, size, urls, min_glibc}))}' "$m" > "$LOCK.tmp" && mv -f "$LOCK.tmp" "$LOCK"
+     capsules: (.bundles[$k] | with_entries(.value |= {sha256, size, urls, min_glibc}))}' "$m" > "$tmp" &&
+    chmod "$(printf %o $((0666 & ~0$(umask))))" "$tmp" && mv -f "$tmp" "$LOCK" ||
+    { rm -f "$tmp"; fail E-STORE-IO write-failed detail="writing the lock" path="$LOCK"; }
   note "pinned idris2 $ver (channel v$cv) into $LOCK for: $(lock_get '.capsules|keys|join(", ")')"
 }
 cmd_install() { local from=; while [ $# -gt 0 ]; do case "$1" in --locked) ;; --from) from=${2:-}; shift || true;; *) fail E-USAGE unknown-flag command=install word="$1" usage="idris2x install [--locked] [--from <bundle>]";; esac; shift || true; done
@@ -275,8 +279,8 @@ advice() { # advice ID key=value... — a note that is not an error; text, silen
   local id=$1 j; shift; [ "${IDRIS2X_ADVICE:-1}" = 0 ] && return 0
   j=$("$HERE/../lib/toml2json.sh" "$ERRORS_TOML" | jq -c --arg id "$id" '.advice[] | select(.id == $id)'); [ -n "$j" ] || fail E-INTERNAL bug detail="no advice called $id" version="$PROTO_VERSION"
   local var; var=$(jq -r .silence <<< "$j"); [ "${!var:-1}" = 0 ] && return 0
-  jq -r --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")" \
-    '"note: " + (.text | gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | $ctx[$k] // "{" + $k + "}")),
+  jq -r -L "$HERE" --argjson ctx "$(jq -n '[$ARGS.positional[] | capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")] | from_entries' --args "$@")" \
+    'include "clean"; ($ctx | map_values(clean)) as $ctx | "note: " + (.text | gsub("\\{(?<k>[a-z_]+)\\}"; .k as $k | $ctx[$k] // "{" + $k + "}")),
      ((.facts // "") | split(" ")[] | select(. != "") | split("=") | "    " + .[0] + ": " + ($ctx[.[1]] // error("advice fact has no value: " + .[1]))),
      "note: silence this note with " + .silence + "=0"' <<< "$j"; }
 cmd_selftest() { local root; root=$(cmd_install --locked); compose_env "$root"
@@ -299,7 +303,7 @@ cmd_explain() { # explain [ID]: the long form of an error, offline, from the sam
   local id=${1:-} j; j=$("$HERE/../lib/toml2json.sh" "$ERRORS_TOML")
   if [ -z "$id" ]; then jq -r '.error[] | .id + (" " * (24 - (.id | length))) + "exit " + (.exit | tostring | (" " * (2 - length)) + .) + "  " + (.title // .meaning)' <<< "$j"; return 0; fi
   jq -e --arg id "$id" '.error[] | select(.id == $id)' <<< "$j" >/dev/null || fail E-USAGE no-such-id word="$id"
-  jq -r --arg id "$id" --arg r "$RUNBOOK" '(.error[] | select(.id == $id)) as $e | [(.case // [])[] | select(.error == $id)] as $c
+  jq -r -L "$HERE" --arg id "$id" --arg r "$RUNBOOK" 'include "clean"; ($r | clean) as $r | (.error[] | select(.id == $id)) as $e | [(.case // [])[] | select(.error == $id)] as $c
     | "\($id) (exit \($e.exit)): \($e.title // $e.meaning)", "", "Meaning: \($e.meaning)", "Usual fix: \($e.fix)",
       (if ($c | length) > 0 then "", "It takes \($c | length) shape(s). Words in {braces} are filled in when it happens.",
          ($c[] | "", "  \(.case): \(.summary)", "    why: \(.why)", "    now: \(.state)",

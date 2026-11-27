@@ -16,14 +16,8 @@ use std::path::{Component, Path, PathBuf};
 /// The store's directory: IDRIS2X_CACHE, else $XDG_CACHE_HOME/idris2x, else $HOME/.cache/idris2x. With none of them
 /// set there is no store, and the working directory is never taken in its place.
 pub fn cache() -> R<PathBuf> {
-    let v = |k| {
-        std::env::var_os(k)
-            .filter(|v| !v.is_empty())
-            .map(PathBuf::from)
-    };
-    let own = setting("IDRIS2X_CACHE", "a directory", None, |p| {
-        Some(Some(p.into()))
-    })?;
+    let v = |k| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    let own = setting("IDRIS2X_CACHE", "a directory", None, |p| Some(Some(p.into())))?;
     own.or_else(|| v("XDG_CACHE_HOME").map(|x| x.join("idris2x")))
         .or_else(|| v("HOME").map(|h| h.join(".cache/idris2x")))
         .ok_or(Fail::StoreIoNoCacheDir {})
@@ -34,42 +28,84 @@ fn s(p: &Path) -> String {
 fn sha(d: &str) -> crate::msg::Fact {
     lock(format!("sha256:{d}")).into()
 }
+
+/// Hold `lockfile` for this process, waiting up to `wait` seconds, and record this process in `holder`. A directory is
+/// locked as it is; a missing lock file is made. The lock is released when the returned File is dropped or the process
+/// ends. On a timeout the failure is `held(lockfile, holder)`, which names a holder only if it can be seen running, and
+/// never advises deleting the lock.
+pub fn hold(
+    lockfile: &Path,
+    holder: PathBuf,
+    wait: u64,
+    held: impl Fn(crate::msg::Fact, crate::msg::Fact) -> Fail,
+) -> R<(File, PathBuf)> {
+    let f = if lockfile.is_dir() { File::open(lockfile) } else { File::create(lockfile) };
+    let f = f.map_err(|e| write_failed("taking the lock", &e, lockfile))?;
+    let t0 = std::time::Instant::now();
+    loop {
+        match f.try_lock() {
+            Ok(()) => break,
+            Err(fs::TryLockError::WouldBlock) if t0.elapsed().as_secs() < wait => {
+                std::thread::sleep(std::time::Duration::from_millis(100))
+            }
+            Err(fs::TryLockError::Error(e)) => {
+                return Err(write_failed("taking the lock", &e, lockfile))
+            }
+            Err(fs::TryLockError::WouldBlock) => {
+                let pid = fs::read_to_string(&holder).unwrap_or_default().trim().to_owned();
+                let running = || {
+                    std::process::Command::new("kill")
+                        .args(["-0", &pid])
+                        .stderr(std::process::Stdio::null())
+                        .status()
+                };
+                let seen = !pid.is_empty()
+                    && pid.bytes().all(|b| b.is_ascii_digit())
+                    && running().is_ok_and(|st| st.success());
+                let who = if seen {
+                    format!("process {pid} (still running)")
+                } else {
+                    "unknown (the holder left no record)".into()
+                };
+                return Err(held(host(s(lockfile)).into(), host(who).into()));
+            }
+        }
+    }
+    fs::write(&holder, format!("{}\n", std::process::id()))
+        .map_err(|e| write_failed("recording the lock holder", &e, &holder))?;
+    Ok((f, holder))
+}
+/// Bytes as lowercase hexadecimal.
+pub fn hex(b: &[u8]) -> String {
+    b.iter().map(|b| format!("{b:02x}")).collect()
+}
 pub fn sha_file(p: &Path) -> io::Result<String> {
     let (mut f, mut b) = (File::open(p)?, vec![0; 1 << 16]);
     let mut c = ring::digest::Context::new(&ring::digest::SHA256);
     loop {
         match f.read(&mut b)? {
-            0 => {
-                return Ok(c
-                    .finish()
-                    .as_ref()
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect())
-            }
+            0 => return Ok(hex(c.finish().as_ref())),
             n => c.update(&b[..n]),
         }
     }
 }
+/// Seconds since 1970 by this machine's clock; a clock before 1970 reads as 0.
+pub fn now() -> i64 {
+    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
+    t.map_or(0, |t| t.as_secs().try_into().unwrap_or(i64::MAX))
+}
 /// A date as RFC 3339 UTC, from seconds since 1970 (the civil-from-days algorithm).
-pub fn utc(t: u64) -> String {
-    let (z, sec) = ((t / 86400) as i64 + 719468, t % 86400);
+pub fn utc(t: i64) -> String {
+    let (z, sec) = (t.div_euclid(86400) + 719468, t.rem_euclid(86400));
     let doe = z.rem_euclid(146097);
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let (mp, y) = ((5 * doy + 2) / 153, yoe + z.div_euclid(146097) * 400);
-    let (d, m) = (
-        doy - (153 * mp + 2) / 5 + 1,
-        if mp < 10 { mp + 3 } else { mp - 9 },
-    );
+    let (d, m) = (doy - (153 * mp + 2) / 5 + 1, if mp < 10 { mp + 3 } else { mp - 9 });
     let (y, h) = (y + i64::from(m <= 2), sec / 3600);
-    format!(
-        "{y:04}-{m:02}-{d:02}T{h:02}:{:02}:{:02}Z",
-        sec / 60 % 60,
-        sec % 60
-    )
+    format!("{y:04}-{m:02}-{d:02}T{h:02}:{:02}:{:02}Z", sec / 60 % 60, sec % 60)
 }
-fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
+pub fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
     let why = if e.kind() == io::ErrorKind::FileTooLarge {
         "the file size limit was reached".into()
     } else {
@@ -83,24 +119,14 @@ fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
 
 /// Download this machine's capsule to `out` and check its digest. `what` and `at` name the place on a disk failure.
 fn download(pin: &Pin, out: &Path, what: &str, at: &Path) -> R<()> {
-    let stall = setting(
-        "IDRIS2X_NET_TIMEOUT",
-        "a whole number of seconds, at least 1",
-        30,
-        |v| v.parse().ok().filter(|&n| n > 0),
-    )?;
+    let stall = setting("IDRIS2X_NET_TIMEOUT", "a whole number of seconds, at least 1", 30, |v| {
+        v.parse().ok().filter(|&n| n > 0)
+    })?;
     let log = cache()?.join("staging/fetch.log");
     if pin.urls.is_empty() {
-        let (digest, lock, version) = (
-            sha(&pin.digest),
-            host(&pin.lock).into(),
-            pin.version.clone().into(),
-        );
-        return Err(Fail::PinNotFoundNoUrls {
-            digest,
-            lock,
-            version,
-        });
+        let (digest, lock, version) =
+            (sha(&pin.digest), host(&pin.lock).into(), pin.version.clone().into());
+        return Err(Fail::PinNotFoundNoUrls { digest, lock, version });
     }
     let stall = std::time::Duration::from_secs(stall);
     let url = net::fetch(out, &pin.urls, pin.size, &log, stall).map_err(|e| {
@@ -124,107 +150,47 @@ fn checked(pin: &Pin, p: &Path, url: Option<String>) -> R<()> {
     }
     let n = fs::metadata(p).map_or(0, |m| m.len());
     let (want, got) = (sha(&pin.digest), host(format!("sha256:{got}")).into());
-    let (bytes, lock_) = (
-        lock(format!("{n} bytes (the lock says {})", pin.size)).into(),
-        host(&pin.lock).into(),
-    );
+    let (bytes, lock_) =
+        (lock(format!("{n} bytes (the lock says {})", pin.size)).into(), host(&pin.lock).into());
     Err(match url {
-        None => Fail::HashMismatchBundle {
-            want,
-            got,
-            bytes,
-            source: host(s(p)).into(),
-            lock: lock_,
-        },
+        None => {
+            Fail::HashMismatchBundle { want, got, bytes, source: host(s(p)).into(), lock: lock_ }
+        }
         Some(u) => {
             _ = fs::remove_file(p);
-            Fail::HashMismatchDownload {
-                want,
-                got,
-                bytes,
-                source: lock(u).into(),
-                lock: lock_,
-            }
+            Fail::HashMismatchDownload { want, got, bytes, source: lock(u).into(), lock: lock_ }
         }
     })
 }
 
 /// Install this machine's capsule unless it is there already, and return its store path.
 pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
-    let wait = setting(
-        "IDRIS2X_LOCK_TIMEOUT",
-        "a whole number of seconds",
-        600,
-        |v| v.parse().ok(),
-    )?;
-    let offline = setting("IDRIS2X_OFFLINE", "0 or 1", false, |v| {
-        ["0", "1"].contains(&v).then(|| v == "1")
-    })?;
+    let wait =
+        setting("IDRIS2X_LOCK_TIMEOUT", "a whole number of seconds", 600, |v| v.parse().ok())?;
+    let offline = crate::lock::flag("IDRIS2X_OFFLINE")?;
     let (c, d) = (cache()?, &pin.digest);
     let dir = c.join(format!("store/sha256-{d}"));
     if dir.join(".complete").is_file() {
         return cached(pin, dir);
     }
     for sub in ["locks", "staging", "store"] {
-        fs::create_dir_all(c.join(sub)).map_err(|_| Fail::StoreIoCannotCreate {
-            path: host(s(&c)).into(),
-        })?;
+        fs::create_dir_all(c.join(sub))
+            .map_err(|_| Fail::StoreIoCannotCreate { path: host(s(&c)).into() })?;
     }
-    let (lockfile, holder) = (
-        c.join(format!("locks/sha256-{d}.lock")),
+    let (_held, holder) = hold(
+        &c.join(format!("locks/sha256-{d}.lock")),
         c.join(format!("locks/sha256-{d}.holder")),
-    );
-    let held =
-        File::create(&lockfile).map_err(|e| write_failed("taking the lock", &e, &lockfile))?;
-    let t0 = std::time::Instant::now();
-    loop {
-        match held.try_lock() {
-            Ok(()) => break,
-            Err(fs::TryLockError::WouldBlock) if t0.elapsed().as_secs() < wait => {
-                std::thread::sleep(std::time::Duration::from_millis(100))
-            }
-            Err(fs::TryLockError::Error(e)) => {
-                return Err(write_failed("taking the lock", &e, &lockfile))
-            }
-            Err(fs::TryLockError::WouldBlock) => {
-                // Name a holder only if it can be seen running. Never advise deleting a held lock.
-                let pid = fs::read_to_string(&holder)
-                    .unwrap_or_default()
-                    .trim()
-                    .to_owned();
-                let running = || {
-                    std::process::Command::new("kill")
-                        .args(["-0", &pid])
-                        .stderr(std::process::Stdio::null())
-                        .status()
-                };
-                let seen = !pid.is_empty()
-                    && pid.bytes().all(|b| b.is_ascii_digit())
-                    && running().is_ok_and(|st| st.success());
-                let who = if seen {
-                    format!("process {pid} (still running)")
-                } else {
-                    "unknown (the holder left no record)".into()
-                };
-                let (lockfile, holder) = (host(s(&lockfile)).into(), host(who).into());
-                return Err(Fail::LockTimeoutHeld {
-                    digest: sha(d),
-                    seconds: host(wait.to_string()).into(),
-                    lockfile,
-                    holder,
-                });
-            }
-        }
-    }
-    fs::write(&holder, format!("{}\n", std::process::id()))
-        .map_err(|e| write_failed("recording the lock holder", &e, &holder))?;
+        wait,
+        |at, who| Fail::LockTimeoutHeld {
+            digest: sha(d),
+            seconds: host(wait.to_string()).into(),
+            lockfile: at,
+            holder: who,
+        },
+    )?;
     // Another process may have finished while this one waited.
     let done = dir.join(".complete").is_file();
-    let r = if done {
-        cached(pin, dir)
-    } else {
-        fill(pin, from, offline, &c, dir)
-    };
+    let r = if done { cached(pin, dir) } else { fill(pin, from, offline, &c, dir) };
     _ = fs::remove_file(&holder);
     r
 }
@@ -242,10 +208,7 @@ fn cached(pin: &Pin, dir: PathBuf) -> R<PathBuf> {
 /// The work under the lock: get the archive, unpack and check it in staging, then rename it into the store.
 fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -> R<PathBuf> {
     let d = &pin.digest;
-    let tgz = from.map_or_else(
-        || c.join(format!("staging/sha256-{d}.part")),
-        Path::to_path_buf,
-    );
+    let tgz = from.map_or_else(|| c.join(format!("staging/sha256-{d}.part")), Path::to_path_buf);
     if from.is_some() {
         checked(pin, &tgz, None)?;
     } else if offline {
@@ -254,12 +217,7 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
             embedded("IDRIS2X_OFFLINE=1").into(),
             host(&pin.lock).into(),
         );
-        return Err(Fail::OfflineCapsuleMissing {
-            digest: sha(d),
-            store,
-            mode,
-            lock,
-        });
+        return Err(Fail::OfflineCapsuleMissing { digest: sha(d), store, mode, lock });
     } else {
         if fs::metadata(&tgz).is_ok_and(|m| m.len() >= pin.size) {
             _ = fs::remove_file(&tgz); // a part that is not shorter than the capsule cannot be resumed
@@ -268,9 +226,8 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
     }
     let stage = c.join(format!("staging/stage-sha256-{d}"));
     _ = fs::remove_dir_all(&stage);
-    fs::create_dir(&stage).map_err(|_| Fail::StoreIoCannotCreate {
-        path: host(s(&stage)).into(),
-    })?;
+    fs::create_dir(&stage)
+        .map_err(|_| Fail::StoreIoCannotCreate { path: host(s(&stage)).into() })?;
     let unpacked = match unpack(&tgz, &stage) {
         Ok(()) if !stage.join("capsule.json").is_file() => {
             Err(Fail::CapsuleInvalidNoMetadata { digest: sha(d) })
@@ -295,19 +252,15 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
     }
     let moved = unpacked.and_then(|()| {
         _ = fs::remove_dir_all(&dir); // a store entry without .complete is garbage by definition
-        fs::rename(&stage, &dir).map_err(|_| Fail::StoreIoRenameFailed {
-            path: host(s(&dir)).into(),
-        })
+        fs::rename(&stage, &dir)
+            .map_err(|_| Fail::StoreIoRenameFailed { path: host(s(&dir)).into() })
     });
     if let Err(f) = moved {
         _ = fs::remove_dir_all(&stage);
         return Err(f);
     }
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |t| t.as_secs());
     let done = dir.join(".complete");
-    let wrote = fs::write(&done, format!("sha256:{d} {}\n", utc(now)))
+    let wrote = fs::write(&done, format!("sha256:{d} {}\n", utc(now())))
         .and_then(|()| File::open(&done)?.sync_all());
     wrote.map_err(|e| write_failed("marking the capsule complete", &e, &dir))?;
     _ = File::open(&dir).and_then(|f| f.sync_all());
@@ -318,9 +271,7 @@ fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -
 pub fn verify(pin: &Pin) -> R<()> {
     let dir = cache()?.join(format!("store/sha256-{}", pin.digest));
     if !dir.join(".complete").is_file() {
-        return Err(Fail::PinNotFoundNotInstalled {
-            digest: sha(&pin.digest),
-        });
+        return Err(Fail::PinNotFoundNotInstalled { digest: sha(&pin.digest) });
     }
     // capsule.json is read again: the entry must still describe what the lock pins, whichever launcher installed it.
     if !sums(&dir) || !capsule::valid(&dir) || !capsule::holds(&dir, &pin.version) {
@@ -330,26 +281,16 @@ pub fn verify(pin: &Pin) -> R<()> {
         });
     }
     capsule::probe(&dir)?;
-    note(&format!(
-        "OK sha256:{} verified ({})",
-        pin.digest,
-        capsule::meta(&dir, "name")
-    ));
+    note(&format!("OK sha256:{} verified ({})", pin.digest, capsule::meta(&dir, "name")));
     Ok(())
 }
 /// `idris2x fetch -o FILE`: download the capsule for an air-gapped host, which installs it with --from.
 pub fn bundle(pin: &Pin, out: &Path) -> R<()> {
     let c = cache()?;
-    fs::create_dir_all(c.join("staging")).map_err(|_| Fail::StoreIoCannotCreate {
-        path: host(s(&c)).into(),
-    })?;
+    fs::create_dir_all(c.join("staging"))
+        .map_err(|_| Fail::StoreIoCannotCreate { path: host(s(&c)).into() })?;
     let part = PathBuf::from(format!("{}.part", s(out)));
-    download(
-        pin,
-        &part,
-        "writing the bundle",
-        out.parent().unwrap_or(Path::new(".")),
-    )?;
+    download(pin, &part, "writing the bundle", out.parent().unwrap_or(Path::new(".")))?;
     fs::rename(&part, out).map_err(|e| write_failed("writing the bundle", &e, out))?;
     let (d, n, l) = (&pin.digest, pin.size, &pin.lock);
     note(&format!(
@@ -369,8 +310,7 @@ pub fn sums(dir: &Path) -> bool {
     };
     // capsule.json says what the capsule is, so the list must cover it, as the factory's list does.
     let meta = |l: &str| {
-        l.split_once("  ")
-            .is_some_and(|(_, p)| p.trim_start_matches("./") == "capsule.json")
+        l.split_once("  ").is_some_and(|(_, p)| p.trim_start_matches("./") == "capsule.json")
     };
     list.lines().any(meta) && list.lines().all(ok)
 }
@@ -381,9 +321,8 @@ enum Bad {
     Disk(io::Error),
 }
 /// A member name made only of plain components: not absolute, no `..`.
-fn plain(p: &Path) -> bool {
-    p.components()
-        .all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
+pub fn plain(p: &Path) -> bool {
+    p.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
 }
 /// Walking `p` from the archive root never climbs above it.
 fn inside(p: &Path) -> bool {
@@ -417,22 +356,15 @@ fn parents(stage: &Path, name: &Path) -> Result<(), Bad> {
 /// but a file in the tree, and a symbolic link that resolves outside the tree, even through another link.
 fn unpack(tgz: &Path, stage: &Path) -> Result<(), Bad> {
     use std::os::unix::fs::{symlink, OpenOptionsExt};
-    let mut a = tar::Archive::new(flate2::read::GzDecoder::new(
-        File::open(tgz).map_err(Bad::Disk)?,
-    ));
+    let mut a =
+        tar::Archive::new(flate2::read::GzDecoder::new(File::open(tgz).map_err(Bad::Disk)?));
     let (root, mut links) = (fs::canonicalize(stage).map_err(Bad::Disk)?, vec![]);
     let within = |p: &Path| fs::canonicalize(p).is_ok_and(|p| p.starts_with(&root));
     for e in a.entries().map_err(|_| Bad::Archive)? {
         let mut e = e.map_err(|_| Bad::Archive)?;
-        let (kind, mode) = (
-            e.header().entry_type(),
-            e.header().mode().map_err(|_| Bad::Archive)?,
-        );
+        let (kind, mode) = (e.header().entry_type(), e.header().mode().map_err(|_| Bad::Archive)?);
         let name = e.path().map_err(|_| Bad::Archive)?.into_owned();
-        let link = e
-            .link_name()
-            .map_err(|_| Bad::Archive)?
-            .map(|l| l.into_owned());
+        let link = e.link_name().map_err(|_| Bad::Archive)?.map(|l| l.into_owned());
         let to = stage.join(&name);
         let there = fs::symlink_metadata(&to);
         let clash = there.as_ref().is_ok_and(|m| !(kind.is_dir() && m.is_dir()));
@@ -478,9 +410,5 @@ fn unpack(tgz: &Path, stage: &Path) -> Result<(), Bad> {
         .then_some(())
         .ok_or(Bad::Unsafe)?;
     }
-    links
-        .iter()
-        .all(|l| within(l))
-        .then_some(())
-        .ok_or(Bad::Unsafe)
+    links.iter().all(|l| within(l)).then_some(()).ok_or(Bad::Unsafe)
 }

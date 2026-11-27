@@ -403,7 +403,8 @@ The prototype needs IDRIS2X_CHANNEL_URL to be set.
 Nothing was run.
 
 The bash prototype reads its channel address and trusted key from the
-environment. The real launcher will have both built in.
+environment. The Rust launcher reads both from idris2x.toml, or uses its
+built-in channel.
 
 Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh
 for a working example.
@@ -425,7 +426,8 @@ The prototype needs IDRIS2X_CHANNEL_URL to be set.
 Nothing was run.
 
 The bash prototype reads its channel address and trusted key from the
-environment. The real launcher will have both built in.
+environment. The Rust launcher reads both from idris2x.toml, or uses its
+built-in channel.
 
 Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh
 for a working example.
@@ -441,7 +443,7 @@ idris2x: error[E-USAGE]: IDRIS2X_CHANNEL_URL is not set
     missing: IDRIS2X_CHANNEL_URL
     holds: the address of the channel manifest
   state: Nothing was run.
-  why: The bash prototype reads its channel address and trusted key from the environment. The real launcher will have both built in.
+  why: The bash prototype reads its channel address and trusted key from the environment. The Rust launcher reads both from idris2x.toml, or uses its built-in channel.
   fix: Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh for a working example.
   see: idris2x explain E-USAGE
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
@@ -454,7 +456,7 @@ idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_CHANNEL_URL is not set
     missing: IDRIS2X_CHANNEL_URL
     holds: the address of the channel manifest
   <ESC>[1mstate<ESC>[0m: Nothing was run.
-  <ESC>[1mwhy<ESC>[0m: The bash prototype reads its channel address and trusted key from the environment. The real launcher will have both built in.
+  <ESC>[1mwhy<ESC>[0m: The bash prototype reads its channel address and trusted key from the environment. The Rust launcher reads both from idris2x.toml, or uses its built-in channel.
   <ESC>[1mfix<ESC>[0m: Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh for a working example.
   <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
@@ -463,7 +465,7 @@ idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_CHANNEL_URL is not set
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"prototype-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_CHANNEL_URL is not set","context":{"variable":"IDRIS2X_CHANNEL_URL","what":"the address of the channel manifest"},"state":"Nothing was run.","why":"The bash prototype reads its channel address and trusted key from the environment. The real launcher will have both built in.","fix":{"command":"","note":"Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh for a working example.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"prototype-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_CHANNEL_URL is not set","context":{"variable":"IDRIS2X_CHANNEL_URL","what":"the address of the channel manifest"},"state":"Nothing was run.","why":"The bash prototype reads its channel address and trusted key from the environment. The Rust launcher reads both from idris2x.toml, or uses its built-in channel.","fix":{"command":"","note":"Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh for a working example.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
 ----
 
 === E-USAGE, case `bad-setting`
@@ -544,6 +546,164 @@ idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_LOCK_TIMEOUT is not a whole 
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"bad-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds","context":{"variable":"IDRIS2X_LOCK_TIMEOUT","what":"a whole number of seconds","value":"ten"},"state":"Nothing was run.","why":"idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.","fix":{"command":"","note":"Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+----
+
+=== E-USAGE, case `no-channel`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-USAGE (exit 2)
+
+There is no channel to pin from: /home/ada/proofs/idris2x.toml has no [channel]
+table, and this idris2x has no built-in channel.
+
+    looked-in  /home/ada/proofs/idris2x.toml
+
+Nothing was downloaded or changed.
+
+No idris2x release is signed yet, so no channel address or key is built in.
+Until then, a project names its channel and the channel's public key in
+idris2x.toml, where a change to either shows up in code review.
+
+Add a [channel] table to /home/ada/proofs/idris2x.toml with url = "<manifest
+address>" and key = "<signify public key>", as the channel's owner publishes
+them. examples/idris2x.toml shows the form.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-USAGE (exit 2) ---------------------------------------------------- idris2x<ESC>[0m
+
+There is no channel to pin from: /home/ada/proofs/idris2x.toml has no [channel]
+table, and this idris2x has no built-in channel.
+
+    looked-in  /home/ada/proofs/idris2x.toml
+
+Nothing was downloaded or changed.
+
+No idris2x release is signed yet, so no channel address or key is built in.
+Until then, a project names its channel and the channel's public key in
+idris2x.toml, where a change to either shows up in code review.
+
+Add a [channel] table to /home/ada/proofs/idris2x.toml with url = "<manifest
+address>" and key = "<signify public key>", as the channel's owner publishes
+them. examples/idris2x.toml shows the form.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-USAGE]: /home/ada/proofs/idris2x.toml names no channel to pin from
+    looked-in: /home/ada/proofs/idris2x.toml
+  state: Nothing was downloaded or changed.
+  why: No idris2x release is signed yet, so no channel address or key is built in. Until then, a project names its channel and the channel's public key in idris2x.toml, where a change to either shows up in code review.
+  fix: Add a [channel] table to /home/ada/proofs/idris2x.toml with url = "<manifest address>" and key = "<signify public key>", as the channel's owner publishes them. examples/idris2x.toml shows the form.
+  see: idris2x explain E-USAGE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: /home/ada/proofs/idris2x.toml names no channel to pin from
+    looked-in: /home/ada/proofs/idris2x.toml
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: No idris2x release is signed yet, so no channel address or key is built in. Until then, a project names its channel and the channel's public key in idris2x.toml, where a change to either shows up in code review.
+  <ESC>[1mfix<ESC>[0m: Add a [channel] table to /home/ada/proofs/idris2x.toml with url = "<manifest address>" and key = "<signify public key>", as the channel's owner publishes them. examples/idris2x.toml shows the form.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"no-channel","exit":2,"title":"the command line was not understood","summary":"/home/ada/proofs/idris2x.toml names no channel to pin from","context":{"file":"/home/ada/proofs/idris2x.toml"},"state":"Nothing was downloaded or changed.","why":"No idris2x release is signed yet, so no channel address or key is built in. Until then, a project names its channel and the channel's public key in idris2x.toml, where a change to either shows up in code review.","fix":{"command":"","note":"Add a [channel] table to /home/ada/proofs/idris2x.toml with url = \"<manifest address>\" and key = \"<signify public key>\", as the channel's owner publishes them. examples/idris2x.toml shows the form.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+----
+
+=== E-USAGE, case `no-such-program`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-USAGE (exit 2)
+
+The pinned capsule has no program called racket, so I ran nothing.
+
+    you-typed  racket
+    programs   chez, idris2
+
+Nothing was run.
+
+idris2x exec runs a program that the capsule lists in its capsule.json, such as
+idris2 or chez. A capsule that holds only Chez Scheme has no idris2.
+
+Name one of the programs listed above, after --. To run Idris 2 from a capsule
+that has none, pin a version of Idris 2 with idris2x pin.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-USAGE (exit 2) ---------------------------------------------------- idris2x<ESC>[0m
+
+The pinned capsule has no program called racket, so I ran nothing.
+
+    you-typed  racket
+    programs   chez, idris2
+
+Nothing was run.
+
+idris2x exec runs a program that the capsule lists in its capsule.json, such as
+idris2 or chez. A capsule that holds only Chez Scheme has no idris2.
+
+Name one of the programs listed above, after --. To run Idris 2 from a capsule
+that has none, pin a version of Idris 2 with idris2x pin.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-USAGE]: the pinned capsule has no program called racket
+    you-typed: racket
+    programs: chez, idris2
+  state: Nothing was run.
+  why: idris2x exec runs a program that the capsule lists in its capsule.json, such as idris2 or chez. A capsule that holds only Chez Scheme has no idris2.
+  fix: Name one of the programs listed above, after --. To run Idris 2 from a capsule that has none, pin a version of Idris 2 with idris2x pin.
+  see: idris2x explain E-USAGE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: the pinned capsule has no program called racket
+    you-typed: racket
+    programs: chez, idris2
+  <ESC>[1mstate<ESC>[0m: Nothing was run.
+  <ESC>[1mwhy<ESC>[0m: idris2x exec runs a program that the capsule lists in its capsule.json, such as idris2 or chez. A capsule that holds only Chez Scheme has no idris2.
+  <ESC>[1mfix<ESC>[0m: Name one of the programs listed above, after --. To run Idris 2 from a capsule that has none, pin a version of Idris 2 with idris2x pin.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"no-such-program","exit":2,"title":"the command line was not understood","summary":"the pinned capsule has no program called racket","context":{"word":"racket","programs":"chez, idris2"},"state":"Nothing was run.","why":"idris2x exec runs a program that the capsule lists in its capsule.json, such as idris2 or chez. A capsule that holds only Chez Scheme has no idris2.","fix":{"command":"","note":"Name one of the programs listed above, after --. To run Idris 2 from a capsule that has none, pin a version of Idris 2 with idris2x pin.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
 ----
 
 == E-PIN-NOT-FOUND
@@ -891,7 +1051,8 @@ The pinned capsule holds Chez Scheme only, so there is no Idris 2 to run.
 
 Nothing was changed.
 
-Some capsules carry only Chez Scheme. They serve idris2x run, not idris2x exec.
+Some capsules carry only Chez Scheme. They serve idris2x run and idris2x exec --
+chez, not Idris 2.
 
 Pin a version of Idris 2 with idris2x pin, or use idris2x run to start Chez
 Scheme.
@@ -911,7 +1072,8 @@ The pinned capsule holds Chez Scheme only, so there is no Idris 2 to run.
 
 Nothing was changed.
 
-Some capsules carry only Chez Scheme. They serve idris2x run, not idris2x exec.
+Some capsules carry only Chez Scheme. They serve idris2x run and idris2x exec --
+chez, not Idris 2.
 
 Pin a version of Idris 2 with idris2x pin, or use idris2x run to start Chez
 Scheme.
@@ -926,7 +1088,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOU
 idris2x: error[E-PIN-NOT-FOUND]: the pinned capsule holds Chez Scheme only, not Idris 2
     capsule: chez-10.4.1-x86_64-unknown-linux-gnu
   state: Nothing was changed.
-  why: Some capsules carry only Chez Scheme. They serve idris2x run, not idris2x exec.
+  why: Some capsules carry only Chez Scheme. They serve idris2x run and idris2x exec -- chez, not Idris 2.
   fix: Pin a version of Idris 2 with idris2x pin, or use idris2x run to start Chez Scheme.
   see: idris2x explain E-PIN-NOT-FOUND
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
@@ -938,7 +1100,7 @@ idris2x: error[E-PIN-NOT-FOUND]: the pinned capsule holds Chez Scheme only, not 
 idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: the pinned capsule holds Chez Scheme only, not Idris 2
     capsule: chez-10.4.1-x86_64-unknown-linux-gnu
   <ESC>[1mstate<ESC>[0m: Nothing was changed.
-  <ESC>[1mwhy<ESC>[0m: Some capsules carry only Chez Scheme. They serve idris2x run, not idris2x exec.
+  <ESC>[1mwhy<ESC>[0m: Some capsules carry only Chez Scheme. They serve idris2x run and idris2x exec -- chez, not Idris 2.
   <ESC>[1mfix<ESC>[0m: Pin a version of Idris 2 with idris2x pin, or use idris2x run to start Chez Scheme.
   <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-NOT-FOUND
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
@@ -947,7 +1109,7 @@ idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: the pinned capsule holds Che
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"no-idris2","exit":10,"title":"nothing is pinned for this version and target","summary":"the pinned capsule holds Chez Scheme only, not Idris 2","context":{"name":"chez-10.4.1-x86_64-unknown-linux-gnu"},"state":"Nothing was changed.","why":"Some capsules carry only Chez Scheme. They serve idris2x run, not idris2x exec.","fix":{"command":"","note":"Pin a version of Idris 2 with idris2x pin, or use idris2x run to start Chez Scheme.","auto":"none"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"no-idris2","exit":10,"title":"nothing is pinned for this version and target","summary":"the pinned capsule holds Chez Scheme only, not Idris 2","context":{"name":"chez-10.4.1-x86_64-unknown-linux-gnu"},"state":"Nothing was changed.","why":"Some capsules carry only Chez Scheme. They serve idris2x run and idris2x exec -- chez, not Idris 2.","fix":{"command":"","note":"Pin a version of Idris 2 with idris2x pin, or use idris2x run to start Chez Scheme.","auto":"none"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
 ----
 
 === E-PIN-NOT-FOUND, case `no-urls`
@@ -1588,12 +1750,13 @@ The channel manifest was signed by a key I do not trust.
 The manifest was discarded. Your lock file and store are unchanged, and
 everything already pinned still runs.
 
-This URL is not the channel this idris2x trusts, or the channel changed its key
-after this idris2x was released, or someone is impersonating the channel.
+This URL is not the channel you meant, or the channel changed its key, or
+someone is impersonating the channel.
 
-Check that the manifest URL is the channel you meant. If it is, update idris2x,
-because key changes ship in launcher releases. Never swap the trusted key by
-hand.
+Check that the manifest URL is the channel you meant. For the built-in channel,
+update idris2x, because its key changes ship in launcher releases. For a channel
+named in idris2x.toml, get the new key from the channel's owner and change it in
+a reviewed commit. Never take a key from the place that serves the manifest.
 
 More: idris2x explain E-SIG-INVALID
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc
@@ -1613,12 +1776,13 @@ The channel manifest was signed by a key I do not trust.
 The manifest was discarded. Your lock file and store are unchanged, and
 everything already pinned still runs.
 
-This URL is not the channel this idris2x trusts, or the channel changed its key
-after this idris2x was released, or someone is impersonating the channel.
+This URL is not the channel you meant, or the channel changed its key, or
+someone is impersonating the channel.
 
-Check that the manifest URL is the channel you meant. If it is, update idris2x,
-because key changes ship in launcher releases. Never swap the trusted key by
-hand.
+Check that the manifest URL is the channel you meant. For the built-in channel,
+update idris2x, because its key changes ship in launcher releases. For a channel
+named in idris2x.toml, get the new key from the channel's owner and change it in
+a reviewed commit. Never take a key from the place that serves the manifest.
 
 More: idris2x explain E-SIG-INVALID
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc
@@ -1632,8 +1796,8 @@ idris2x: error[E-SIG-INVALID]: channel manifest was signed by an untrusted key
     signed-by: key id 5be07a11c3d9f248
     trusted-key: key id 9c41d07be2a5f316
   state: The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs.
-  why: This URL is not the channel this idris2x trusts, or the channel changed its key after this idris2x was released, or someone is impersonating the channel.
-  fix: Check that the manifest URL is the channel you meant. If it is, update idris2x, because key changes ship in launcher releases. Never swap the trusted key by hand.
+  why: This URL is not the channel you meant, or the channel changed its key, or someone is impersonating the channel.
+  fix: Check that the manifest URL is the channel you meant. For the built-in channel, update idris2x, because its key changes ship in launcher releases. For a channel named in idris2x.toml, get the new key from the channel's owner and change it in a reviewed commit. Never take a key from the place that serves the manifest.
   see: idris2x explain E-SIG-INVALID
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc
 ----
@@ -1646,8 +1810,8 @@ idris2x: <ESC>[1;31merror[E-SIG-INVALID]<ESC>[0m: channel manifest was signed by
     signed-by: key id 5be07a11c3d9f248
     trusted-key: key id 9c41d07be2a5f316
   <ESC>[1mstate<ESC>[0m: The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs.
-  <ESC>[1mwhy<ESC>[0m: This URL is not the channel this idris2x trusts, or the channel changed its key after this idris2x was released, or someone is impersonating the channel.
-  <ESC>[1mfix<ESC>[0m: Check that the manifest URL is the channel you meant. If it is, update idris2x, because key changes ship in launcher releases. Never swap the trusted key by hand.
+  <ESC>[1mwhy<ESC>[0m: This URL is not the channel you meant, or the channel changed its key, or someone is impersonating the channel.
+  <ESC>[1mfix<ESC>[0m: Check that the manifest URL is the channel you meant. For the built-in channel, update idris2x, because its key changes ship in launcher releases. For a channel named in idris2x.toml, get the new key from the channel's owner and change it in a reviewed commit. Never take a key from the place that serves the manifest.
   <ESC>[1msee<ESC>[0m: idris2x explain E-SIG-INVALID
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc
 ----
@@ -1655,7 +1819,7 @@ idris2x: <ESC>[1;31merror[E-SIG-INVALID]<ESC>[0m: channel manifest was signed by
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-SIG-INVALID","case":"wrong-key","exit":12,"title":"channel manifest signature or key does not verify","summary":"channel manifest was signed by an untrusted key","context":{"url":"https://channel.example.org/v1.json","signer":"key id 5be07a11c3d9f248","key":"key id 9c41d07be2a5f316"},"state":"The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs.","why":"This URL is not the channel this idris2x trusts, or the channel changed its key after this idris2x was released, or someone is impersonating the channel.","fix":{"command":"","note":"Check that the manifest URL is the channel you meant. If it is, update idris2x, because key changes ship in launcher releases. Never swap the trusted key by hand.","auto":"none"},"explain":"idris2x explain E-SIG-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-SIG-INVALID","case":"wrong-key","exit":12,"title":"channel manifest signature or key does not verify","summary":"channel manifest was signed by an untrusted key","context":{"url":"https://channel.example.org/v1.json","signer":"key id 5be07a11c3d9f248","key":"key id 9c41d07be2a5f316"},"state":"The manifest was discarded. Your lock file and store are unchanged, and everything already pinned still runs.","why":"This URL is not the channel you meant, or the channel changed its key, or someone is impersonating the channel.","fix":{"command":"","note":"Check that the manifest URL is the channel you meant. For the built-in channel, update idris2x, because its key changes ship in launcher releases. For a channel named in idris2x.toml, get the new key from the channel's owner and change it in a reviewed commit. Never take a key from the place that serves the manifest.","auto":"none"},"explain":"idris2x explain E-SIG-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-SIG-INVALID.adoc"}
 ----
 
 === E-SIG-INVALID, case `malformed`
@@ -2176,6 +2340,96 @@ idris2x: <ESC>[1;31merror[E-LOCK-TIMEOUT]<ESC>[0m: waited 600s for another insta
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-LOCK-TIMEOUT","case":"held","exit":15,"title":"another idris2x is installing the same capsule","summary":"waited 600s for another install of the same capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","seconds":"600","lockfile":"/home/ada/.cache/idris2x/locks/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21.lock","holder":"process 48213 (still running)"},"state":"This run installed nothing. The other install is not affected.","why":"Installs of one capsule take turns, so two processes never write the same store entry. A slow download in the other process is the usual cause.","fix":{"command":"IDRIS2X_LOCK_TIMEOUT=1800 idris2x install --locked","note":"Do not delete the lock file while its holder is running: two installs would then write at once. The lock is released by itself when the holder exits.","auto":"safe"},"explain":"idris2x explain E-LOCK-TIMEOUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc"}
+----
+
+=== E-LOCK-TIMEOUT, case `pin-held`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-LOCK-TIMEOUT (exit 15)
+
+Another idris2x is pinning the same lock file. I waited 600 seconds and then
+gave up.
+
+    lock     /home/ada/proofs/idris2x.lock
+    held-by  process 48213 (still running)
+
+The lock file was not changed. The other pin is not affected.
+
+Pins of one lock file take turns, so the check against the channel version it
+last saw and the new lock are one step.
+
+Wait for the other pin to finish, or allow more time:
+
+    IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0
+
+The turn is held on the lock file's directory and ends by itself when the holder
+exits. There is nothing to delete.
+
+More: idris2x explain E-LOCK-TIMEOUT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-LOCK-TIMEOUT (exit 15) -------------------------------------------- idris2x<ESC>[0m
+
+Another idris2x is pinning the same lock file. I waited 600 seconds and then
+gave up.
+
+    lock     /home/ada/proofs/idris2x.lock
+    held-by  process 48213 (still running)
+
+The lock file was not changed. The other pin is not affected.
+
+Pins of one lock file take turns, so the check against the channel version it
+last saw and the new lock are one step.
+
+Wait for the other pin to finish, or allow more time:
+
+    <ESC>[1mIDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0<ESC>[0m
+
+The turn is held on the lock file's directory and ends by itself when the holder
+exits. There is nothing to delete.
+
+More: idris2x explain E-LOCK-TIMEOUT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-LOCK-TIMEOUT]: waited 600s for another pin of the same lock file
+    lock: /home/ada/proofs/idris2x.lock
+    held-by: process 48213 (still running)
+  state: The lock file was not changed. The other pin is not affected.
+  why: Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.
+  fix: IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0
+  note: The turn is held on the lock file's directory and ends by itself when the holder exits. There is nothing to delete.
+  see: idris2x explain E-LOCK-TIMEOUT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-LOCK-TIMEOUT]<ESC>[0m: waited 600s for another pin of the same lock file
+    lock: /home/ada/proofs/idris2x.lock
+    held-by: process 48213 (still running)
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. The other pin is not affected.
+  <ESC>[1mwhy<ESC>[0m: Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mIDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: The turn is held on the lock file's directory and ends by itself when the holder exits. There is nothing to delete.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-LOCK-TIMEOUT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-LOCK-TIMEOUT","case":"pin-held","exit":15,"title":"another idris2x is installing the same capsule","summary":"waited 600s for another pin of the same lock file","context":{"lock":"/home/ada/proofs/idris2x.lock","seconds":"600","holder":"process 48213 (still running)","version":"0.8.0"},"state":"The lock file was not changed. The other pin is not affected.","why":"Pins of one lock file take turns, so the check against the channel version it last saw and the new lock are one step.","fix":{"command":"IDRIS2X_LOCK_TIMEOUT=1800 idris2x pin 0.8.0","note":"The turn is held on the lock file's directory and ends by itself when the holder exits. There is nothing to delete.","auto":"none"},"explain":"idris2x explain E-LOCK-TIMEOUT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-LOCK-TIMEOUT.adoc"}
 ----
 
 == E-GLIBC-FLOOR
@@ -2788,6 +3042,96 @@ idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: a test program did not compi
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"codegen-failed","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"a test program did not compile and run: chez_codegen (compile)","context":{"probe":"chez_codegen (compile)","store":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"The capsule is installed. Nothing else was changed.","why":"The compiler starts, and building or running a program with it fails on this machine.","fix":{"command":"idris2x doctor","note":"Send the doctor output using the runbook below.","auto":"safe"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
 ----
 
+=== E-PROBE-CODEGEN, case `cannot-start`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PROBE-CODEGEN (exit 17)
+
+idris2x could not start the capsule's Chez Scheme on this machine.
+
+    program      /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said  Permission denied (os error 13)
+
+Nothing was run. The capsule is still installed.
+
+The operating system refused to start the program. Usually files were removed
+from the store, or the store is on a file system that does not allow programs to
+run.
+
+Check the installed capsule:
+
+    idris2x verify
+
+If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows
+programs to run, then install again.
+
+More: idris2x explain E-PROBE-CODEGEN
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PROBE-CODEGEN (exit 17) ------------------------------------------- idris2x<ESC>[0m
+
+idris2x could not start the capsule's Chez Scheme on this machine.
+
+    program      /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said  Permission denied (os error 13)
+
+Nothing was run. The capsule is still installed.
+
+The operating system refused to start the program. Usually files were removed
+from the store, or the store is on a file system that does not allow programs to
+run.
+
+Check the installed capsule:
+
+    <ESC>[1midris2x verify<ESC>[0m
+
+If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows
+programs to run, then install again.
+
+More: idris2x explain E-PROBE-CODEGEN
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PROBE-CODEGEN]: the capsule's Chez Scheme could not be started
+    program: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said: Permission denied (os error 13)
+  state: Nothing was run. The capsule is still installed.
+  why: The operating system refused to start the program. Usually files were removed from the store, or the store is on a file system that does not allow programs to run.
+  fix: idris2x verify
+  note: If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows programs to run, then install again.
+  see: idris2x explain E-PROBE-CODEGEN
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the capsule's Chez Scheme could not be started
+    program: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme
+    system-said: Permission denied (os error 13)
+  <ESC>[1mstate<ESC>[0m: Nothing was run. The capsule is still installed.
+  <ESC>[1mwhy<ESC>[0m: The operating system refused to start the program. Usually files were removed from the store, or the store is on a file system that does not allow programs to run.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x verify<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows programs to run, then install again.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PROBE-CODEGEN
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"cannot-start","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"the capsule's Chez Scheme could not be started","context":{"program":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21/bin/scheme","detail":"Permission denied (os error 13)"},"state":"Nothing was run. The capsule is still installed.","why":"The operating system refused to start the program. Usually files were removed from the store, or the store is on a file system that does not allow programs to run.","fix":{"command":"idris2x verify","note":"If verify passes, set IDRIS2X_CACHE to a directory on a file system that allows programs to run, then install again.","auto":"safe"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
+----
+
 == E-CHANNEL-SCHEMA
 
 === E-CHANNEL-SCHEMA, case `lock-newer`
@@ -2958,6 +3302,166 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses a newer ma
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"channel-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel uses a newer manifest format; this idris2x reads up to 1","context":{"url":"https://channel.example.org/v1.json","found":"2","supports":"1","version":"0.1.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel moved to a new format after this idris2x was released.","fix":{"command":"","note":"Update idris2x, then pin again. Until then, existing pins keep working.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
 ----
 
+=== E-CHANNEL-SCHEMA, case `needs-newer-launcher`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CHANNEL-SCHEMA (exit 18)
+
+The channel's manifest says it needs a newer idris2x than this one, 0.1.0.
+
+    manifest      https://channel.example.org/v1.json
+    needs         0.3.0
+    this-idris2x  0.1.0
+
+The lock file was not changed. Everything already pinned still runs.
+
+The channel uses something that this idris2x does not understand. It asks for a
+newer idris2x rather than be read wrongly.
+
+Update idris2x, then pin again. Until then, existing pins keep working.
+
+More: idris2x explain E-CHANNEL-SCHEMA
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CHANNEL-SCHEMA (exit 18) ------------------------------------------ idris2x<ESC>[0m
+
+The channel's manifest says it needs a newer idris2x than this one, 0.1.0.
+
+    manifest      https://channel.example.org/v1.json
+    needs         0.3.0
+    this-idris2x  0.1.0
+
+The lock file was not changed. Everything already pinned still runs.
+
+The channel uses something that this idris2x does not understand. It asks for a
+newer idris2x rather than be read wrongly.
+
+Update idris2x, then pin again. Until then, existing pins keep working.
+
+More: idris2x explain E-CHANNEL-SCHEMA
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CHANNEL-SCHEMA]: the channel manifest needs a newer idris2x than 0.1.0
+    manifest: https://channel.example.org/v1.json
+    needs: 0.3.0
+    this-idris2x: 0.1.0
+  state: The lock file was not changed. Everything already pinned still runs.
+  why: The channel uses something that this idris2x does not understand. It asks for a newer idris2x rather than be read wrongly.
+  fix: Update idris2x, then pin again. Until then, existing pins keep working.
+  see: idris2x explain E-CHANNEL-SCHEMA
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel manifest needs a newer idris2x than 0.1.0
+    manifest: https://channel.example.org/v1.json
+    needs: 0.3.0
+    this-idris2x: 0.1.0
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. Everything already pinned still runs.
+  <ESC>[1mwhy<ESC>[0m: The channel uses something that this idris2x does not understand. It asks for a newer idris2x rather than be read wrongly.
+  <ESC>[1mfix<ESC>[0m: Update idris2x, then pin again. Until then, existing pins keep working.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CHANNEL-SCHEMA
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"needs-newer-launcher","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel manifest needs a newer idris2x than 0.1.0","context":{"url":"https://channel.example.org/v1.json","needs":"0.3.0","version":"0.1.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel uses something that this idris2x does not understand. It asks for a newer idris2x rather than be read wrongly.","fix":{"command":"","note":"Update idris2x, then pin again. Until then, existing pins keep working.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
+----
+
+=== E-CHANNEL-SCHEMA, case `malformed-manifest`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CHANNEL-SCHEMA (exit 18)
+
+The channel manifest is signed with the trusted key, but one of its values is
+not well formed: expires.
+
+    manifest  https://channel.example.org/v1.json
+
+The lock file was not changed. Everything already pinned still runs.
+
+The channel was published by a faulty tool. idris2x checks every value it copies
+into a lock, and refuses the whole manifest rather than write a lock it cannot
+read back. A time such as expires must be UTC to the second, written like
+2027-02-24T00:00:00Z.
+
+Report it to the channel's owner, with the manifest address above. Pin again
+once a fixed manifest is published.
+
+More: idris2x explain E-CHANNEL-SCHEMA
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CHANNEL-SCHEMA (exit 18) ------------------------------------------ idris2x<ESC>[0m
+
+The channel manifest is signed with the trusted key, but one of its values is
+not well formed: expires.
+
+    manifest  https://channel.example.org/v1.json
+
+The lock file was not changed. Everything already pinned still runs.
+
+The channel was published by a faulty tool. idris2x checks every value it copies
+into a lock, and refuses the whole manifest rather than write a lock it cannot
+read back. A time such as expires must be UTC to the second, written like
+2027-02-24T00:00:00Z.
+
+Report it to the channel's owner, with the manifest address above. Pin again
+once a fixed manifest is published.
+
+More: idris2x explain E-CHANNEL-SCHEMA
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CHANNEL-SCHEMA]: the channel manifest has a malformed expires
+    manifest: https://channel.example.org/v1.json
+  state: The lock file was not changed. Everything already pinned still runs.
+  why: The channel was published by a faulty tool. idris2x checks every value it copies into a lock, and refuses the whole manifest rather than write a lock it cannot read back. A time such as expires must be UTC to the second, written like 2027-02-24T00:00:00Z.
+  fix: Report it to the channel's owner, with the manifest address above. Pin again once a fixed manifest is published.
+  see: idris2x explain E-CHANNEL-SCHEMA
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel manifest has a malformed expires
+    manifest: https://channel.example.org/v1.json
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. Everything already pinned still runs.
+  <ESC>[1mwhy<ESC>[0m: The channel was published by a faulty tool. idris2x checks every value it copies into a lock, and refuses the whole manifest rather than write a lock it cannot read back. A time such as expires must be UTC to the second, written like 2027-02-24T00:00:00Z.
+  <ESC>[1mfix<ESC>[0m: Report it to the channel's owner, with the manifest address above. Pin again once a fixed manifest is published.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CHANNEL-SCHEMA
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"malformed-manifest","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel manifest has a malformed expires","context":{"url":"https://channel.example.org/v1.json","field":"expires"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel was published by a faulty tool. idris2x checks every value it copies into a lock, and refuses the whole manifest rather than write a lock it cannot read back. A time such as expires must be UTC to the second, written like 2027-02-24T00:00:00Z.","fix":{"command":"","note":"Report it to the channel's owner, with the manifest address above. Pin again once a fixed manifest is published.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
+----
+
 == E-PIN-DRIFT
 
 === E-PIN-DRIFT, case `toml-vs-lock`
@@ -3046,6 +3550,266 @@ idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for a differen
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"toml-vs-lock","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for a different idris2 version than idris2x.lock pins","context":{"toml":"0.8.1","locked":"0.8.0"},"state":"Nothing was downloaded or changed.","why":"One of the two files was edited without the other. With --locked the lock is never rewritten to match.","fix":{"command":"idris2x pin 0.8.1","note":"If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
+----
+
+=== E-PIN-DRIFT, case `bad-toml`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-DRIFT (exit 19)
+
+I cannot use /home/ada/proofs/idris2x.toml: it sets a key that idris2x does not
+read.
+
+    file  /home/ada/proofs/idris2x.toml
+    at    line 4
+
+Nothing was downloaded or changed.
+
+idris2x reads a small, strict part of TOML: [table] headers, key = "string"
+lines, comments and blank lines, and only the keys toolchain.idris2, channel.url
+and channel.key. It refuses anything else rather than guess, so a typo never
+changes which toolchain runs or which key is trusted.
+
+Correct /home/ada/proofs/idris2x.toml at the place named above.
+examples/idris2x.toml in the idris2x repository shows every key.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-DRIFT (exit 19) ----------------------------------------------- idris2x<ESC>[0m
+
+I cannot use /home/ada/proofs/idris2x.toml: it sets a key that idris2x does not
+read.
+
+    file  /home/ada/proofs/idris2x.toml
+    at    line 4
+
+Nothing was downloaded or changed.
+
+idris2x reads a small, strict part of TOML: [table] headers, key = "string"
+lines, comments and blank lines, and only the keys toolchain.idris2, channel.url
+and channel.key. It refuses anything else rather than guess, so a typo never
+changes which toolchain runs or which key is trusted.
+
+Correct /home/ada/proofs/idris2x.toml at the place named above.
+examples/idris2x.toml in the idris2x repository shows every key.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-DRIFT]: cannot use /home/ada/proofs/idris2x.toml: it sets a key that idris2x does not read
+    file: /home/ada/proofs/idris2x.toml
+    at: line 4
+  state: Nothing was downloaded or changed.
+  why: idris2x reads a small, strict part of TOML: [table] headers, key = "string" lines, comments and blank lines, and only the keys toolchain.idris2, channel.url and channel.key. It refuses anything else rather than guess, so a typo never changes which toolchain runs or which key is trusted.
+  fix: Correct /home/ada/proofs/idris2x.toml at the place named above. examples/idris2x.toml in the idris2x repository shows every key.
+  see: idris2x explain E-PIN-DRIFT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: cannot use /home/ada/proofs/idris2x.toml: it sets a key that idris2x does not read
+    file: /home/ada/proofs/idris2x.toml
+    at: line 4
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: idris2x reads a small, strict part of TOML: [table] headers, key = "string" lines, comments and blank lines, and only the keys toolchain.idris2, channel.url and channel.key. It refuses anything else rather than guess, so a typo never changes which toolchain runs or which key is trusted.
+  <ESC>[1mfix<ESC>[0m: Correct /home/ada/proofs/idris2x.toml at the place named above. examples/idris2x.toml in the idris2x repository shows every key.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-DRIFT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"bad-toml","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"cannot use /home/ada/proofs/idris2x.toml: it sets a key that idris2x does not read","context":{"file":"/home/ada/proofs/idris2x.toml","at":"line 4","problem":"it sets a key that idris2x does not read"},"state":"Nothing was downloaded or changed.","why":"idris2x reads a small, strict part of TOML: [table] headers, key = \"string\" lines, comments and blank lines, and only the keys toolchain.idris2, channel.url and channel.key. It refuses anything else rather than guess, so a typo never changes which toolchain runs or which key is trusted.","fix":{"command":"","note":"Correct /home/ada/proofs/idris2x.toml at the place named above. examples/idris2x.toml in the idris2x repository shows every key.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
+----
+
+=== E-PIN-DRIFT, case `channel-changed`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-DRIFT (exit 19)
+
+/home/ada/proofs/idris2x.toml changed its channel while this pin was running, so
+I did not write the lock.
+
+    checked    https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+    names-now  https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+
+The lock file was not changed. Nothing reached the cache.
+
+The manifest was checked against the channel and key that idris2x.toml named
+when pin started. A lock written from it would record a channel the project no
+longer names, and the next pin would lose its check against older manifests.
+
+Pin again from the channel idris2x.toml names now:
+
+    idris2x pin 0.8.0
+
+If you did not change idris2x.toml, find out what did before you pin.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-DRIFT (exit 19) ----------------------------------------------- idris2x<ESC>[0m
+
+/home/ada/proofs/idris2x.toml changed its channel while this pin was running, so
+I did not write the lock.
+
+    checked    https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+    names-now  https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+
+The lock file was not changed. Nothing reached the cache.
+
+The manifest was checked against the channel and key that idris2x.toml named
+when pin started. A lock written from it would record a channel the project no
+longer names, and the next pin would lose its check against older manifests.
+
+Pin again from the channel idris2x.toml names now:
+
+    <ESC>[1midris2x pin 0.8.0<ESC>[0m
+
+If you did not change idris2x.toml, find out what did before you pin.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-DRIFT]: /home/ada/proofs/idris2x.toml named another channel while this pin was running
+    checked: https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+    names-now: https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+  state: The lock file was not changed. Nothing reached the cache.
+  why: The manifest was checked against the channel and key that idris2x.toml named when pin started. A lock written from it would record a channel the project no longer names, and the next pin would lose its check against older manifests.
+  fix: idris2x pin 0.8.0
+  note: If you did not change idris2x.toml, find out what did before you pin.
+  see: idris2x explain E-PIN-DRIFT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: /home/ada/proofs/idris2x.toml named another channel while this pin was running
+    checked: https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+    names-now: https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. Nothing reached the cache.
+  <ESC>[1mwhy<ESC>[0m: The manifest was checked against the channel and key that idris2x.toml named when pin started. A lock written from it would record a channel the project no longer names, and the next pin would lose its check against older manifests.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If you did not change idris2x.toml, find out what did before you pin.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-DRIFT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"channel-changed","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"/home/ada/proofs/idris2x.toml named another channel while this pin was running","context":{"file":"/home/ada/proofs/idris2x.toml","checked":"https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE","now":"https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE","version":"0.8.0"},"state":"The lock file was not changed. Nothing reached the cache.","why":"The manifest was checked against the channel and key that idris2x.toml named when pin started. A lock written from it would record a channel the project no longer names, and the next pin would lose its check against older manifests.","fix":{"command":"idris2x pin 0.8.0","note":"If you did not change idris2x.toml, find out what did before you pin.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
+----
+
+=== E-PIN-DRIFT, case `other-version`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-DRIFT (exit 19)
+
+idris2x.toml asks for a different version of Idris 2, so I did not pin 0.9.0.
+
+    idris2x.toml  0.8.0
+    asked         0.9.0
+
+The lock file was not changed. Nothing reached the cache.
+
+install refuses a lock whose version differs from idris2x.toml, so that lock
+could not be used.
+
+Pin the version idris2x.toml asks for:
+
+    idris2x pin 0.8.0
+
+To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-DRIFT (exit 19) ----------------------------------------------- idris2x<ESC>[0m
+
+idris2x.toml asks for a different version of Idris 2, so I did not pin 0.9.0.
+
+    idris2x.toml  0.8.0
+    asked         0.9.0
+
+The lock file was not changed. Nothing reached the cache.
+
+install refuses a lock whose version differs from idris2x.toml, so that lock
+could not be used.
+
+Pin the version idris2x.toml asks for:
+
+    <ESC>[1midris2x pin 0.8.0<ESC>[0m
+
+To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for a different idris2 version than 0.9.0
+    idris2x.toml: 0.8.0
+    asked: 0.9.0
+  state: The lock file was not changed. Nothing reached the cache.
+  why: install refuses a lock whose version differs from idris2x.toml, so that lock could not be used.
+  fix: idris2x pin 0.8.0
+  note: To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+  see: idris2x explain E-PIN-DRIFT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for a different idris2 version than 0.9.0
+    idris2x.toml: 0.8.0
+    asked: 0.9.0
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. Nothing reached the cache.
+  <ESC>[1mwhy<ESC>[0m: install refuses a lock whose version differs from idris2x.toml, so that lock could not be used.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-DRIFT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"other-version","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for a different idris2 version than 0.9.0","context":{"toml":"0.8.0","version":"0.9.0"},"state":"The lock file was not changed. Nothing reached the cache.","why":"install refuses a lock whose version differs from idris2x.toml, so that lock could not be used.","fix":{"command":"idris2x pin 0.8.0","note":"To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
 ----
 
 == E-OFFLINE
@@ -3538,6 +4302,90 @@ idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's capsule.json
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"bad-metadata","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's capsule.json does not describe it","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were deleted.","why":"capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.","fix":{"command":"","note":"Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
 ----
 
+=== E-CAPSULE-INVALID, case `bad-exec`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CAPSULE-INVALID (exit 21)
+
+The capsule's capsule.json gives a command for idris2 that is not a path inside
+the capsule, so I did not run it.
+
+    entry  "../../../bin/sh"
+    store  /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was run. The capsule is still installed.
+
+In capsule.json, each program is a list of words. The first is a path inside the
+capsule, and each other word is such a path or an option that starts with a
+dash. A path that leaves the capsule could start any program on this machine, so
+the capsule is faulty or hostile.
+
+Do not run its programs by hand. Report the store path above to idris2x using
+the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CAPSULE-INVALID (exit 21) ----------------------------------------- idris2x<ESC>[0m
+
+The capsule's capsule.json gives a command for idris2 that is not a path inside
+the capsule, so I did not run it.
+
+    entry  "../../../bin/sh"
+    store  /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was run. The capsule is still installed.
+
+In capsule.json, each program is a list of words. The first is a path inside the
+capsule, and each other word is such a path or an option that starts with a
+dash. A path that leaves the capsule could start any program on this machine, so
+the capsule is faulty or hostile.
+
+Do not run its programs by hand. Report the store path above to idris2x using
+the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CAPSULE-INVALID]: the capsule's command for idris2 is not a path inside the capsule
+    entry: "../../../bin/sh"
+    store: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  state: Nothing was run. The capsule is still installed.
+  why: In capsule.json, each program is a list of words. The first is a path inside the capsule, and each other word is such a path or an option that starts with a dash. A path that leaves the capsule could start any program on this machine, so the capsule is faulty or hostile.
+  fix: Do not run its programs by hand. Report the store path above to idris2x using the runbook below.
+  see: idris2x explain E-CAPSULE-INVALID
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's command for idris2 is not a path inside the capsule
+    entry: "../../../bin/sh"
+    store: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  <ESC>[1mstate<ESC>[0m: Nothing was run. The capsule is still installed.
+  <ESC>[1mwhy<ESC>[0m: In capsule.json, each program is a list of words. The first is a path inside the capsule, and each other word is such a path or an option that starts with a dash. A path that leaves the capsule could start any program on this machine, so the capsule is faulty or hostile.
+  <ESC>[1mfix<ESC>[0m: Do not run its programs by hand. Report the store path above to idris2x using the runbook below.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"bad-exec","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's command for idris2 is not a path inside the capsule","context":{"program":"idris2","entry":"\"../../../bin/sh\"","store":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was run. The capsule is still installed.","why":"In capsule.json, each program is a list of words. The first is a path inside the capsule, and each other word is such a path or an option that starts with a dash. A path that leaves the capsule could start any program on this machine, so the capsule is faulty or hostile.","fix":{"command":"","note":"Do not run its programs by hand. Report the store path above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+----
+
 === E-CAPSULE-INVALID, case `pin-mismatch`
 
 .Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
@@ -3726,6 +4574,102 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered an ol
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"version-went-back","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the channel offered an older manifest version than this project has already seen","context":{"url":"https://channel.example.org/v1.json","seen":"7","offered":"5","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifest versions only go up. An older one usually means a mirror that has not caught up. It can also be an attempt to hide a newer release.","fix":{"command":"idris2x pin 0.8.0","note":"If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
+----
+
+=== E-CHANNEL-ROLLBACK, case `seen-version-unknown`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CHANNEL-ROLLBACK (exit 22)
+
+The lock cannot be read, so pin cannot tell which channel version this project
+has already seen.
+
+    lock     idris2x.lock
+    problem  EOF while parsing an object at line 1 column 20
+
+The lock file was not changed.
+
+pin refuses a manifest older than the one the lock records. Without that record
+a replayed old manifest would be accepted, so pin stops rather than start
+counting again.
+
+Restore the last committed lock:
+
+    git checkout HEAD -- idris2x.lock
+
+Use the newest copy you trust. An older lock records an older channel version,
+and pin then accepts any manifest newer than that one. If the lock is not in
+version control, move it away and pin again. That trusts the channel afresh, so
+do it only when you know why the lock was damaged.
+
+More: idris2x explain E-CHANNEL-ROLLBACK
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CHANNEL-ROLLBACK (exit 22) ---------------------------------------- idris2x<ESC>[0m
+
+The lock cannot be read, so pin cannot tell which channel version this project
+has already seen.
+
+    lock     idris2x.lock
+    problem  EOF while parsing an object at line 1 column 20
+
+The lock file was not changed.
+
+pin refuses a manifest older than the one the lock records. Without that record
+a replayed old manifest would be accepted, so pin stops rather than start
+counting again.
+
+Restore the last committed lock:
+
+    <ESC>[1mgit checkout HEAD -- idris2x.lock<ESC>[0m
+
+Use the newest copy you trust. An older lock records an older channel version,
+and pin then accepts any manifest newer than that one. If the lock is not in
+version control, move it away and pin again. That trusts the channel afresh, so
+do it only when you know why the lock was damaged.
+
+More: idris2x explain E-CHANNEL-ROLLBACK
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CHANNEL-ROLLBACK]: the lock cannot say which channel version this project has already seen
+    lock: idris2x.lock
+    problem: EOF while parsing an object at line 1 column 20
+  state: The lock file was not changed.
+  why: pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again.
+  fix: git checkout HEAD -- idris2x.lock
+  note: Use the newest copy you trust. An older lock records an older channel version, and pin then accepts any manifest newer than that one. If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged.
+  see: idris2x explain E-CHANNEL-ROLLBACK
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the lock cannot say which channel version this project has already seen
+    lock: idris2x.lock
+    problem: EOF while parsing an object at line 1 column 20
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed.
+  <ESC>[1mwhy<ESC>[0m: pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mgit checkout HEAD -- idris2x.lock<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: Use the newest copy you trust. An older lock records an older channel version, and pin then accepts any manifest newer than that one. If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CHANNEL-ROLLBACK
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"seen-version-unknown","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the lock cannot say which channel version this project has already seen","context":{"lock":"idris2x.lock","problem":"EOF while parsing an object at line 1 column 20"},"state":"The lock file was not changed.","why":"pin refuses a manifest older than the one the lock records. Without that record a replayed old manifest would be accepted, so pin stops rather than start counting again.","fix":{"command":"git checkout HEAD -- idris2x.lock","note":"Use the newest copy you trust. An older lock records an older channel version, and pin then accepts any manifest newer than that one. If the lock is not in version control, move it away and pin again. That trusts the channel afresh, so do it only when you know why the lock was damaged.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
 ----
 
 == E-CHANNEL-EXPIRED
@@ -4394,4 +5338,181 @@ idris2x: <ESC>[1;31merror[E-INTERNAL]<ESC>[0m: the prototype needs flock and can
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-INTERNAL","case":"missing-tool","exit":70,"title":"idris2x has a bug","summary":"the prototype needs flock and cannot find it","context":{"tool":"flock"},"state":"Nothing was run.","why":"The prototype is a shell script that calls ordinary system tools. The real launcher will not need them.","fix":{"command":"","note":"Install flock with your system's package manager, then run the same command again.","auto":"none"},"explain":"idris2x explain E-INTERNAL","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-INTERNAL.adoc"}
+----
+
+== Hidden characters in a value
+
+A value from a lock, a capsule or the host can hold characters that move the cursor, clear the screen or reorder the
+text around them. The path in this sample holds one character of each kind that `src/msg.rs` (`hidden`) and
+`scripts/proto/clean.jq` name: escape, carriage return, bell, delete, the C1 control sequence introducer, no-break
+space, soft hyphen, zero-width space, right-to-left override, word joiner, left-to-right isolate, byte order mark,
+Arabic letter mark, Mongolian vowel separator, invisible separator, interlinear annotation anchor and the tag
+character A, which lies past U+FFFF. Text and terminal forms show each as `?`. `--json` keeps the value and writes
+each as `\uXXXX`, a character past U+FFFF as a pair of them (UTF-16).
+
+=== E-USAGE, case `no-such-file`, with a hostile path
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-USAGE (exit 2)
+
+I cannot find the file capsule?[2J????????????????.tar.gz.
+
+    you-gave     capsule?[2J????????????????.tar.gz
+    looked-from  /home/ada/proofs
+
+Nothing was installed or changed.
+
+A relative path is read from the current directory.
+
+Check the spelling, or give the full path.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-USAGE (exit 2) ---------------------------------------------------- idris2x<ESC>[0m
+
+I cannot find the file capsule?[2J????????????????.tar.gz.
+
+    you-gave     capsule?[2J????????????????.tar.gz
+    looked-from  /home/ada/proofs
+
+Nothing was installed or changed.
+
+A relative path is read from the current directory.
+
+Check the spelling, or give the full path.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-USAGE]: no such file: capsule?[2J????????????????.tar.gz
+    you-gave: capsule?[2J????????????????.tar.gz
+    looked-from: /home/ada/proofs
+  state: Nothing was installed or changed.
+  why: A relative path is read from the current directory.
+  fix: Check the spelling, or give the full path.
+  see: idris2x explain E-USAGE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: no such file: capsule?[2J????????????????.tar.gz
+    you-gave: capsule?[2J????????????????.tar.gz
+    looked-from: /home/ada/proofs
+  <ESC>[1mstate<ESC>[0m: Nothing was installed or changed.
+  <ESC>[1mwhy<ESC>[0m: A relative path is read from the current directory.
+  <ESC>[1mfix<ESC>[0m: Check the spelling, or give the full path.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"no-such-file","exit":2,"title":"the command line was not understood","summary":"no such file: capsule\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff\u061c\u180e\u2063\ufff9\udb40\udc41.tar.gz","context":{"path":"capsule\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff\u061c\u180e\u2063\ufff9\udb40\udc41.tar.gz","dir":"/home/ada/proofs"},"state":"Nothing was installed or changed.","why":"A relative path is read from the current directory.","fix":{"command":"","note":"Check the spelling, or give the full path.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+----
+
+
+=== E-HASH-MISMATCH, case `store-modified`, with a hostile store path
+
+A fix command is shell text the user will paste. Shown with `?`, it would name another path, and no escaped form of the
+value means the same in every shell, so text and terminal forms do not show it and say so. `--json` writes the exact
+command, with the value in single quotes; its hidden characters are written as `\uXXXX`.
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-HASH-MISMATCH (exit 11)
+
+An installed capsule no longer matches its own checksums.
+
+    capsule      sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    store-entry  /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21?[2J????????????????'x\y
+
+The capsule was left in place so that you can inspect it.
+
+Files in the store changed after installation: by hand, by another tool, or
+through disk corruption. The store is meant to be read-only.
+
+Remove this capsule and install it again:
+
+    (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
+
+Programs compiled with this capsule keep working once it is reinstalled, because
+the store path stays the same.
+
+More: idris2x explain E-HASH-MISMATCH
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-HASH-MISMATCH (exit 11) ------------------------------------------- idris2x<ESC>[0m
+
+An installed capsule no longer matches its own checksums.
+
+    capsule      sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    store-entry  /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21?[2J????????????????'x\y
+
+The capsule was left in place so that you can inspect it.
+
+Files in the store changed after installation: by hand, by another tool, or
+through disk corruption. The store is meant to be read-only.
+
+Remove this capsule and install it again:
+
+    (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
+
+Programs compiled with this capsule keep working once it is reinstalled, because
+the store path stays the same.
+
+More: idris2x explain E-HASH-MISMATCH
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-HASH-MISMATCH]: an installed capsule was modified after installation
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    store-entry: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21?[2J????????????????'x\y
+  state: The capsule was left in place so that you can inspect it.
+  why: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
+  fix: (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
+  note: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
+  see: idris2x explain E-HASH-MISMATCH
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-HASH-MISMATCH]<ESC>[0m: an installed capsule was modified after installation
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    store-entry: /home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21?[2J????????????????'x\y
+  <ESC>[1mstate<ESC>[0m: The capsule was left in place so that you can inspect it.
+  <ESC>[1mwhy<ESC>[0m: Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.
+  <ESC>[1mfix<ESC>[0m: (not shown: a value in it holds a hidden character; IDRIS2X_JSON=1 writes the exact command)
+  <ESC>[1mnote<ESC>[0m: Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-HASH-MISMATCH
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-HASH-MISMATCH","case":"store-modified","exit":11,"title":"capsule bytes do not match the lock","summary":"an installed capsule was modified after installation","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","dir":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff\u061c\u180e\u2063\ufff9\udb40\udc41'x\\y"},"state":"The capsule was left in place so that you can inspect it.","why":"Files in the store changed after installation: by hand, by another tool, or through disk corruption. The store is meant to be read-only.","fix":{"command":"rm -rf '/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21\u001b[2J\r\u0007\u007f\u009b\u00a0\u00ad\u200b\u202e\u2060\u2066\ufeff\u061c\u180e\u2063\ufff9\udb40\udc41'\\''x\\y' && idris2x install --locked","note":"Programs compiled with this capsule keep working once it is reinstalled, because the store path stays the same.","auto":"none"},"explain":"idris2x explain E-HASH-MISMATCH","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-HASH-MISMATCH.adoc"}
 ----

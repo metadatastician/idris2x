@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+# MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (metadatastician) <j.d.a.jewell@open.ac.uk>
+# The launcher's layout (owner ruling, 2026-11-26): pack short items onto one line up to the 100-column width, so the
+# 2,000-line cap in scripts/check-launcher-loc.sh measures code, not one line per field. It applies to src/ only.
+use_small_heuristics = "Max"

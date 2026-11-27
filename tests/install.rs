@@ -4,227 +4,12 @@
 //! install, verify and fetch, run as a user runs them, against a local HTTP server and a fake capsule whose Chez is a
 //! shell script. Every failure is checked by the id and case in the error file, never by matching prose.
 
+mod common;
+use common::*;
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
-use std::net::TcpListener;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
-use std::sync::{Arc, Mutex};
-
-const SCHEME: &str = "#!/bin/sh
-# A stand-in for Chez: the reset environment must hold, or the probe sees a wrong answer.
-[ \"$IDRIS2_PREFIX\" = \"$IDRIS2X_CAPSULE\" ] || { echo prefix leaked; exit 1; }
-[ -z \"$IDRIS2_PACKAGE_PATH\" ] || { echo package path leaked; exit 1; }
-[ -z \"$LD_PRELOAD$LD_AUDIT\" ] || { echo loader library leaked; exit 1; }
-case \"$1\" in
-  -q) cat >/dev/null; printf 42 ;;
-  --program) echo 'Idris 2, version 0.8.0' ;;
-  *) exit 1 ;;
-esac
-";
-
-fn sha(b: &[u8]) -> String {
-    ring::digest::digest(&ring::digest::SHA256, b)
-        .as_ref()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
-}
-
-/// A scratch directory per test, removed when the test passes.
-struct Tmp(PathBuf);
-impl Tmp {
-    fn new(name: &str) -> Tmp {
-        let d = std::env::temp_dir().join(format!("idris2x-install-{name}-{}", std::process::id()));
-        _ = fs::remove_dir_all(&d);
-        fs::create_dir_all(&d).unwrap();
-        Tmp(d)
-    }
-    fn p(&self, rel: &str) -> PathBuf {
-        self.0.join(rel)
-    }
-}
-impl Drop for Tmp {
-    fn drop(&mut self) {
-        if !std::thread::panicking() {
-            _ = fs::remove_dir_all(&self.0);
-        }
-    }
-}
-
-/// A tar.gz built from raw headers, so a test can write names and modes that tar::Builder would refuse.
-struct Tgz(tar::Builder<flate2::write::GzEncoder<Vec<u8>>>);
-impl Tgz {
-    fn new() -> Tgz {
-        Tgz(tar::Builder::new(flate2::write::GzEncoder::new(
-            vec![],
-            flate2::Compression::fast(),
-        )))
-    }
-    fn entry(
-        mut self,
-        kind: tar::EntryType,
-        name: &str,
-        mode: u32,
-        link: &str,
-        data: &[u8],
-    ) -> Tgz {
-        let mut h = tar::Header::new_gnu();
-        h.as_gnu_mut().unwrap().name[..name.len()].copy_from_slice(name.as_bytes());
-        h.as_gnu_mut().unwrap().linkname[..link.len()].copy_from_slice(link.as_bytes());
-        h.set_entry_type(kind);
-        h.set_mode(mode);
-        h.set_size(data.len() as u64);
-        h.set_cksum();
-        self.0.append(&h, data).unwrap();
-        self
-    }
-    fn file(self, name: &str, data: &[u8]) -> Tgz {
-        self.entry(tar::EntryType::Regular, name, 0o644, "", data)
-    }
-    fn done(self) -> Vec<u8> {
-        self.0.into_inner().unwrap().finish().unwrap()
-    }
-}
-
-/// A capsule whose probes pass, with `extra` files listed in sha256sums.txt.
-fn capsule(scheme: &str, extra: &[(&str, &[u8])]) -> Vec<u8> {
-    capsule_tgz(scheme, extra).done()
-}
-fn capsule_tgz(scheme: &str, extra: &[(&str, &[u8])]) -> Tgz {
-    described(
-        br#"{"name":"idris2-test","idris2":"0.8.0","chez":"10.0.0"}"#,
-        scheme,
-        extra,
-    )
-}
-/// The same capsule with another capsule.json, listed in sha256sums.txt like every file.
-fn described(json: &[u8], scheme: &str, extra: &[(&str, &[u8])]) -> Tgz {
-    let mut files: Vec<(&str, &[u8])> =
-        vec![("capsule.json", json), ("bin/idris2_app/idris2.so", b"so")];
-    files.extend_from_slice(extra);
-    let sums: String = files
-        .iter()
-        .map(|(n, b)| format!("{}  {n}\n", sha(b)))
-        .collect();
-    let sums = format!("{sums}{}  bin/scheme\n", sha(scheme.as_bytes()));
-    let mut t = Tgz::new().entry(tar::EntryType::Directory, "bin/", 0o755, "", b"");
-    t = t.entry(
-        tar::EntryType::Regular,
-        "bin/scheme",
-        0o755,
-        "",
-        scheme.as_bytes(),
-    );
-    for (n, b) in files {
-        t = t.file(n, b);
-    }
-    t.file("sha256sums.txt", sums.as_bytes())
-}
-
-fn target() -> String {
-    idris2x::lock::target()
-        .ok()
-        .expect("this test runs on a supported target")
-}
-fn write_lock(t: &Tmp, digest: &str, size: usize, urls: &[String]) {
-    let urls = serde_json::to_string(urls).unwrap();
-    let c = format!(r#"{{"sha256":"{digest}","size":{size},"urls":{urls}}}"#);
-    let lock = format!(
-        r#"{{"schema":1,"toolchain":{{"idris2":"0.8.0"}},"capsules":{{"{}":{c}}}}}"#,
-        target()
-    );
-    fs::write(t.p("idris2x.lock"), lock).unwrap();
-}
-
-/// An HTTP/1.1 server on 127.0.0.1 that serves `body` at every path, honours Range, and logs "<status> <range>".
-/// With `cut`, it sends only that many bytes of a full response and then closes the connection.
-fn serve(body: Vec<u8>, status: u16, cut: Option<usize>) -> (String, Arc<Mutex<Vec<String>>>) {
-    let l = TcpListener::bind("127.0.0.1:0").unwrap();
-    let (url, log) = (
-        format!(
-            "http://127.0.0.1:{}/capsule.tar.gz",
-            l.local_addr().unwrap().port()
-        ),
-        Arc::default(),
-    );
-    let seen: Arc<Mutex<Vec<String>>> = Arc::clone(&log);
-    std::thread::spawn(move || {
-        for s in l.incoming().flatten() {
-            let mut r = BufReader::new(s.try_clone().unwrap());
-            let mut from = None;
-            loop {
-                let mut line = String::new();
-                if r.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
-                    break;
-                }
-                if let Some(v) = line.to_ascii_lowercase().strip_prefix("range: bytes=") {
-                    from = v.trim().trim_end_matches('-').parse::<usize>().ok();
-                }
-            }
-            let mut s = s;
-            let (code, part) = match from {
-                _ if status != 200 => (status, &b"no"[..]),
-                Some(f) => (206, &body[f.min(body.len())..]),
-                None => (200, &body[..cut.unwrap_or(body.len())]),
-            };
-            seen.lock().unwrap().push(format!("{code} {from:?}"));
-            let len = if cut.is_some() && from.is_none() {
-                body.len()
-            } else {
-                part.len()
-            };
-            // A redirect points back here, so a hop that was followed shows in the log.
-            let to = if (300..400).contains(&code) {
-                "Location: /moved\r\n"
-            } else {
-                ""
-            };
-            _ = write!(
-                s,
-                "HTTP/1.1 {code} X\r\n{to}Content-Length: {len}\r\nConnection: close\r\n\r\n"
-            );
-            _ = s.write_all(part);
-        }
-    });
-    (url, log)
-}
-
-fn run(t: &Tmp, args: &[&str], env: &[(&str, &str)]) -> Output {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_idris2x"));
-    c.env_clear().current_dir(&t.0).args(args);
-    c.env("PATH", "/usr/bin:/bin")
-        .env("IDRIS2X_CACHE", t.p("cache"))
-        .env("IDRIS2X_ERROR_FILE", t.p("error.json"));
-    c.envs(env.iter().copied()).output().unwrap()
-}
-/// The launcher failed with this error id and case, and its exit code.
-fn failed(t: &Tmp, o: &Output, id: &str, case: &str, exit: i32) -> String {
-    let json = fs::read_to_string(t.p("error.json")).unwrap_or_default();
-    let err = String::from_utf8_lossy(&o.stderr);
-    assert!(
-        json.contains(&format!(r#""id":"{id}","case":"{case}""#)),
-        "want {id} {case}, got {json}\n{err}"
-    );
-    assert_eq!(o.status.code(), Some(exit), "{err}");
-    fs::remove_file(t.p("error.json")).unwrap();
-    json
-}
-fn ok(o: &Output) -> String {
-    assert_eq!(
-        o.status.code(),
-        Some(0),
-        "{}",
-        String::from_utf8_lossy(&o.stderr)
-    );
-    String::from_utf8(o.stdout.clone()).unwrap()
-}
-fn store(t: &Tmp) -> Vec<String> {
-    let d = fs::read_dir(t.p("cache/store"))
-        .map(|d| d.flatten().map(|e| e.file_name().into_string().unwrap()));
-    d.map(Iterator::collect).unwrap_or_default()
-}
+use std::process::Command;
 
 #[test]
 fn install_downloads_checks_stores_once_and_verify_passes() {
@@ -306,28 +91,24 @@ fn a_transfer_cut_short_is_retried_and_then_reported() {
 fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
     let t = Tmp::new("mirrors");
     let (url, _) = serve(vec![], 404, None);
-    let d = sha(b"x");
+    let (d, bad) = (
+        sha(b"x"),
+        "http://example.org/\u{1b}[2J\u{9b}\u{202e}\u{61c}\u{e0041}c.tar.gz",
+    );
     // A user part does not make a host local, and a local mirror may not redirect anywhere.
     let (moved, hops) = serve(vec![], 302, None);
     let sneaky = "http://localhost:80@example.org/c.tar.gz".to_string();
-    write_lock(
-        &t,
-        &d,
-        1,
-        &[
-            "http://example.org/c.tar.gz".into(),
-            sneaky.clone(),
-            moved.clone(),
-            url.clone(),
-        ],
-    );
-    let json = failed(
-        &t,
-        &run(&t, &["install"], &[]),
-        "E-NETWORK",
-        "all-mirrors-failed",
-        14,
-    );
+    let plain = "http://example.org/c.tar.gz".to_string();
+    let mirrors = [
+        bad.into(),
+        plain,
+        sneaky.clone(),
+        moved.clone(),
+        url.clone(),
+    ];
+    write_lock(&t, &d, 1, &mirrors);
+    let o = run(&t, &["install"], &[]);
+    let json = failed(&t, &o, "E-NETWORK", "all-mirrors-failed", 14);
     assert!(
         json.contains(
             "http://example.org/c.tar.gz: refused: plain http is allowed only to this machine"
@@ -343,6 +124,22 @@ fn every_mirror_failing_names_each_one_and_plain_http_elsewhere_is_refused() {
         "{json}"
     );
     assert!(json.contains(&format!("{url}: ")), "{json}");
+    // A lock value reaches the terminal with each hidden character shown as `?`, and the JSON with each escaped.
+    let err = String::from_utf8(o.stderr).unwrap();
+    assert!(
+        err.contains("fetch failed from http://example.org/?[2J????c.tar.gz"),
+        "{err}"
+    );
+    assert!(
+        err.contains("http://example.org/?[2J????c.tar.gz: refused"),
+        "{err}"
+    );
+    assert!(
+        !err.contains(['\u{1b}', '\u{9b}', '\u{202e}', '\u{61c}', '\u{e0041}']),
+        "{err}"
+    );
+    let escaped = r"example.org/\u001b[2J\u009b\u202e\u061c\udb40\udc41c.tar.gz: refused";
+    assert!(json.contains(escaped), "{json}");
     assert_eq!(
         hops.lock().unwrap().len(),
         1,
@@ -849,37 +646,6 @@ fn archive_modes_keep_only_the_permission_bits() {
         .permissions()
         .mode();
     assert!(mode & 0o7000 == 0 && mode & 0o100 != 0, "{mode:o}");
-}
-
-/// An HTTP server on 127.0.0.1 that answers nothing (`head` false) or sends headers and 10 bytes of a longer file
-/// (`head` true), then holds the connection open without sending more.
-fn stall(head: bool) -> String {
-    let l = TcpListener::bind("127.0.0.1:0").unwrap();
-    let url = format!(
-        "http://127.0.0.1:{}/c.tar.gz",
-        l.local_addr().unwrap().port()
-    );
-    std::thread::spawn(move || {
-        for s in l.incoming().flatten() {
-            std::thread::spawn(move || {
-                let mut r = BufReader::new(s.try_clone().unwrap());
-                let mut line = String::new();
-                while r.read_line(&mut line).unwrap_or(0) > 0 && line != "\r\n" {
-                    line.clear();
-                }
-                let mut s = s;
-                if head {
-                    _ = write!(
-                        s,
-                        "HTTP/1.1 200 X\r\nContent-Length: 100000\r\n\r\n0123456789"
-                    );
-                    _ = s.flush();
-                }
-                std::thread::sleep(std::time::Duration::from_secs(120));
-            });
-        }
-    });
-    url
 }
 
 #[test]

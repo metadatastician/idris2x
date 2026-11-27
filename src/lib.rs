@@ -8,9 +8,13 @@
 #![forbid(unsafe_code)]
 
 pub mod capsule;
+pub mod doctor;
+pub mod gc;
 pub mod lock;
 pub mod msg;
 pub mod net;
+pub mod pin;
+pub mod run;
 pub mod store;
 
 /// One line describing what this program is, used by `--version` and the tests.

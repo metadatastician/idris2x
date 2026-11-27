@@ -5,7 +5,10 @@
 == Current Status
 
 Phase 0 complete (2026-11-16): design pinned in ADRs 0004–0011 and tested on real builds (see PHASE0-REPORT.adoc).
-Phase 1 not started. Nothing is released.
+Phase 1 in progress (2026-11-26): the Rust launcher is being built in four milestones. Milestone 1 (messages) is
+merged; milestones 2 and 3 are open draft PRs. Milestone 4 has pin and channel trust built and tested with
+`cargo test`; the chaos suite does not yet run against the Rust launcher, so it is not yet the CI gate.
+Nothing is released, and no capsule is published.
 
 == Milestones
 
@@ -33,4 +36,6 @@ Phase 1 not started. Nothing is released.
 == Next actions
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
-. Decide and start the Rust launcher at xhigh effort; port `scripts/proto/idris2x.sh` behaviour drill by drill.
+. Finish the Rust launcher: review and merge milestones 2 to 4.
+. Port the chaos suite (`scripts/proto/chaos.sh`) to drive the Rust launcher, and run it in CI with a Chez Scheme
+  built from source. Then add `cargo vendor` and `cargo deny` (ADR 0007).
