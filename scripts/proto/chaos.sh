@@ -22,15 +22,16 @@ export no_proxy="127.0.0.1,localhost" NO_PROXY="127.0.0.1,localhost" IDRIS2X_QUI
 echo "== workdir $W"
 signify-openbsd -G -n -p "$W/key.pub" -s "$W/key.sec" -c "idris2x prototype channel key" >/dev/null
 signify-openbsd -G -n -p "$W/other.pub" -s "$W/other.sec" -c "attacker key" >/dev/null
+# The unquoted ${VAR:+--flag "$VAR"} words are deliberate: each adds its flag and its (quoted) value only when VAR is set.
 "$P/make-capsule.sh" --chez "$CHEZ_PREFIX" ${IDRIS2_PREFIX:+--idris2 "$IDRIS2_PREFIX"} ${CHEZ_SRC:+--chez-src "$CHEZ_SRC"} ${IDRIS2_SRC:+--idris2-src "$IDRIS2_SRC"} \
   --chez-version 10.4.1 --idris2-version 0.8.0 --target "$(uname -m | sed 's/aarch64/aarch64/;s/amd64/x86_64/')-unknown-linux-gnu" --machine ta6le \
   --out "$OUT" --key "$W/key.sec" --pub "$W/key.pub" --base-url "http://127.0.0.1:$PORT" || { echo "factory failed"; exit 1; }
 TGZ=$(ls "$OUT"/idris2-*.tar.gz | head -1); NAME=$(basename "$TGZ"); SIZE=$(stat -c%s "$TGZ")
-cp "$TGZ" "$OUT/corrupt.tar.gz"; printf '\xff' | dd of="$OUT/corrupt.tar.gz" bs=1 seek=$((SIZE/2)) conv=notrunc 2>/dev/null
-head -c $((SIZE/2)) "$TGZ" > "$OUT/trunc.tar.gz"
+cp "$TGZ" "$OUT/corrupt.tar.gz"; printf '\xff' | dd of="$OUT/corrupt.tar.gz" bs=1 seek="$((SIZE/2))" conv=notrunc 2>/dev/null
+head -c "$((SIZE/2))" "$TGZ" > "$OUT/trunc.tar.gz"
 # unsafe tarball: same gzip but with a '../evil' member
 mkdir -p "$W/evil/sub"; echo x > "$W/evil/evil.txt"; (cd "$W/evil/sub" && tar -P -czf "$OUT/unsafe.tar.gz" ../evil.txt 2>/dev/null); UNSAFE_SHA=$(sha256sum "$OUT/unsafe.tar.gz" | cut -d' ' -f1)
-"${FIXTURE_SERVER:?set FIXTURE_SERVER to the built examples/fixture_server binary}" "$OUT" "$PORT" >"$W/http.log" 2>&1 & SRV=$!; trap 'kill $SRV 2>/dev/null' EXIT; sleep 1
+"${FIXTURE_SERVER:?set FIXTURE_SERVER to the built examples/fixture_server binary}" "$OUT" "$PORT" >"$W/http.log" 2>&1 & SRV=$!; trap 'kill "$SRV" 2>/dev/null' EXIT; sleep 1
 export IDRIS2X_CHANNEL_URL="http://127.0.0.1:$PORT/v1.json" IDRIS2X_PUBKEY_FILE="$W/key.pub"
 # Where the two launchers differ by design, a drill takes the value for the launcher under test from here.
 #   manifest  the kept channel manifest. The prototype keeps v1.json beside its signature; the Rust launcher keeps one
@@ -118,7 +119,7 @@ mkdir -p "$IDRIS2X_CACHE/staging"; cp "$OUT/trunc.tar.gz" "$IDRIS2X_CACHE/stagin
 t "resume from partial .part"        0 "$X" install --locked
 assert "server answered the resume with 206 (Range)" grep -q "^206 " "$W/http.log"
 echo "== T5 four concurrent installs"; fresh t5; pin; pids=()
-for i in 1 2 3 4; do "$X" install --locked >"$W/c$i.out" 2>&1 & pids+=($!); done
+for i in 1 2 3 4; do "$X" install --locked >"$W/c$i.out" 2>&1 & pids+=("$!"); done
 okc=0; for p in "${pids[@]}"; do wait "$p" && okc=$((okc+1)); done
 assert "all 4 concurrent installs exit 0 ($okc/4)" test "$okc" = 4
 assert "exactly one store dir"       test "$(ls -1 "$IDRIS2X_CACHE/store" | wc -l)" = 1
@@ -166,7 +167,7 @@ echo "== T10 lock contention"; fresh t10; pin; mkdir -p "$IDRIS2X_CACHE/locks"
 ( exec 9>"$IDRIS2X_CACHE/locks/sha256-$DIG.lock"; flock 9; sleep 4 ) & HOLD=$!; sleep 0.3
 IDRIS2X_LOCK_TIMEOUT=1 t "lock held -> E-LOCK-TIMEOUT" 15 "$X" install --locked
 says "  exact text: held (no holder record: claims nothing it cannot see)" E-LOCK-TIMEOUT held digest="sha256:$DIG" seconds=1 lockfile="$IDRIS2X_CACHE/locks/sha256-$DIG.lock" holder="unknown (the holder left no record)"
-echo $HOLD > "$IDRIS2X_CACHE/locks/sha256-$DIG.holder"
+echo "$HOLD" > "$IDRIS2X_CACHE/locks/sha256-$DIG.holder"
 IDRIS2X_LOCK_TIMEOUT=1 t "lock held, holder recorded -> E-LOCK-TIMEOUT" 15 "$X" install --locked
 says "  exact text: held (names the running holder)" E-LOCK-TIMEOUT held digest="sha256:$DIG" seconds=1 lockfile="$IDRIS2X_CACHE/locks/sha256-$DIG.lock" holder="process $HOLD (still running)"
 wait "$HOLD"   # bare wait would also wait for the http server

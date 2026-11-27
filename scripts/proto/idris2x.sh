@@ -53,7 +53,7 @@ fail() { # fail ID CASE key=value... — print the message, leave the machine-re
 hexid() { od -An -tx1 | tr -d ' \n'; }     # 8-byte signify key id as hex
 note() { [ "${IDRIS2X_QUIET:-0}" = 1 ] || printf "idris2x: %s\n" "$(printf %s "$*" | jq -Rrsj -L "$HERE" 'include "clean"; clean')" >&2; }
 need() { command -v "$1" >/dev/null 2>&1 || fail E-INTERNAL missing-tool tool="$1"; }
-for t in curl jq sha256sum tar flock openssl; do need $t; done
+for t in curl jq sha256sum tar flock openssl; do need "$t"; done
 
 # ---------- pure, local resolution ----------
 target() {
@@ -118,8 +118,8 @@ fetch_to() { # fetch_to OUT URL...  -> 0 on success; resumes partial downloads; 
 }
 sha_of() { sha256sum "$1" | cut -d' ' -f1; }
 inside_tree() { # inside_tree PATH -> 0 if normalising PATH never climbs above the archive root
-  local part depth=0; local IFS=/
-  for part in $1; do case "$part" in ''|.) ;; ..) depth=$((depth-1)); [ $depth -lt 0 ] && return 1;; *) depth=$((depth+1));; esac; done; return 0
+  local part depth=0; local IFS=/   # IFS=/ so the unquoted $1 below splits on slashes: deliberate
+  for part in $1; do case "$part" in ''|.) ;; ..) depth=$((depth-1)); [ "$depth" -lt 0 ] && return 1;; *) depth=$((depth+1));; esac; done; return 0
 }
 safe_tar_list() { # reject absolute member paths, '..' components, and symlink/hardlink targets that escape the tree
   if tar -tzf "$1" 2>/dev/null | grep -E -q '(^/|(^|/)\.\.(/|$))'; then return 1; fi    # tar's own warnings are not our message
@@ -144,7 +144,7 @@ install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
     hp=$(cat "$holder" 2>/dev/null || true); [ -n "$hp" ] && kill -0 "$hp" 2>/dev/null && who="process $hp (still running)"
     fail E-LOCK-TIMEOUT held digest="sha256:$digest" seconds="$LOCK_TIMEOUT" lockfile="$CACHE/locks/sha256-$digest.lock" holder="$who"
   fi
-  echo $$ > "$holder"
+  echo "$$" > "$holder"
   [ -f "$dir/.complete" ] && { echo "$dir"; return 0; }      # finished by someone else while we waited
   local tarball="${IDRIS2X_FROM:-}"
   if [ -z "$tarball" ]; then
@@ -233,7 +233,7 @@ cmd_pin() { # pin VERSION: fetch + verify channel, write lock for all targets of
   note "pinned idris2 $ver (channel v$cv) into $LOCK for: $(lock_get '.capsules|keys|join(", ")')"
 }
 cmd_install() { local from=; while [ $# -gt 0 ]; do case "$1" in --locked) ;; --from) from=${2:-}; shift || true;; *) fail E-USAGE unknown-flag command=install word="$1" usage="idris2x install [--locked] [--from <bundle>]";; esac; shift || true; done
-  local res; res=$(resolve) || exit $?            # never die inside a subshell: the exit code would be lost
+  local res; res=$(resolve) || exit "$?"            # never die inside a subshell: the exit code would be lost
   read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res")
   [ -n "$from" ] && { [ -f "$from" ] || fail E-USAGE no-such-file path="$from" dir="$(pwd)"; export IDRIS2X_FROM=$from; }
   install_capsule "$digest" "$size" "${urls[@]}"; }
@@ -243,11 +243,11 @@ cmd_install() { local from=; while [ $# -gt 0 ]; do case "$1" in --locked) ;; --
 cmd_exec() { local root name w s i=0 words argv=()
   while :; do case "${1:-}" in --locked) shift;; --inherit-env) export IDRIS2X_INHERIT_ENV=1; shift;; --) shift; break;; *) break;; esac; done
   [ $# -gt 0 ] || fail E-USAGE missing-argument usage="idris2x exec [--locked] [--inherit-env] [--] <program> <args>" command=exec what="a program from the capsule, such as idris2"
-  name=$1; shift; root=$(cmd_install --locked) || exit $?; compose_env "$root"
+  name=$1; shift; root=$(cmd_install --locked) || exit "$?"; compose_env "$root"
   mapfile -t words < <(jq -c --arg n "$name" '.exec[$n] // [] | .[]' "$root/capsule.json")
-  [ ${#words[@]} -gt 0 ] || fail E-USAGE no-such-program word="$name" programs="$(cap '.exec // {} | keys | join(", ")' "$root")"
+  [ "${#words[@]}" -gt 0 ] || fail E-USAGE no-such-program word="$name" programs="$(cap '.exec // {} | keys | join(", ")' "$root")"
   for w in "${words[@]}"; do s=$(jq -r 'strings' <<< "$w")
-    if [ $i -gt 0 ] && [ "${s#-}" != "$s" ]; then argv+=("$s")
+    if [ "$i" -gt 0 ] && [ "${s#-}" != "$s" ]; then argv+=("$s")
     elif [[ $w == \"* && -n $s && $s != /* && ! $s =~ (^|/)\.\.?(/|$) ]]; then argv+=("$root/$s")
     else fail E-CAPSULE-INVALID bad-exec program="$name" entry="$w" store="$root"; fi; i=$((i+1)); done
   exec "${argv[@]}" "$@"; }
@@ -256,7 +256,7 @@ cmd_run()  { local f=(); while :; do case "${1:-}" in --locked|--inherit-env) f+
 cmd_env()  { local root; root=$(cmd_install --locked); compose_env "$root"
   if [ "${1:-}" = --json ]; then jq -n --arg c "$IDRIS2X_CAPSULE" --arg p "$IDRIS2_PREFIX" --arg z "$CHEZ" --arg h "$SCHEMEHEAPDIRS" --arg i "$IDRIS2_INC_SRC" --arg l "$LD_LIBRARY_PATH" --arg pa "$PATH" '{IDRIS2X_CAPSULE:$c,IDRIS2_PREFIX:$p,CHEZ:$z,SCHEMEHEAPDIRS:$h,IDRIS2_INC_SRC:$i,LD_LIBRARY_PATH:$l,PATH:$pa}'
   else for v in IDRIS2X_CAPSULE IDRIS2_PREFIX CHEZ SCHEMEHEAPDIRS IDRIS2_INC_SRC LD_LIBRARY_PATH PATH; do echo "export $v=\"${!v}\""; done; fi; }
-cmd_verify() { local res; res=$(resolve) || exit $?; read -r digest _ <<< "${res%%$'\n'*}"; local dir; dir=$(store_dir "$digest")
+cmd_verify() { local res; res=$(resolve) || exit "$?"; read -r digest _ <<< "${res%%$'\n'*}"; local dir; dir=$(store_dir "$digest")
   [ -f "$dir/.complete" ] || fail E-PIN-NOT-FOUND not-installed digest="sha256:$digest"
   (cd "$dir" && grep -Eq '^[0-9a-f]{64}  (\./)?capsule\.json$' sha256sums.txt && sha256sum --quiet -c sha256sums.txt >/dev/null 2>&1) || fail E-HASH-MISMATCH store-modified digest="sha256:$digest" dir="$dir"
   probe_capsule "$dir" || exit "${EXIT[E-PROBE-CODEGEN]}"; note "OK sha256:$digest verified ($(cap .name "$dir"))"; }
@@ -265,10 +265,10 @@ cmd_gc() { local keep=3; [ "${1:-}" = --keep-last ] && keep=$2
   for d in "$CACHE"/store/*/; do [ -d "$d" ] || continue; [ -f "$d/.complete" ] || { note "gc: removing incomplete $d"; rm -rf "$d"; }; done
   find "$CACHE/staging" -mindepth 1 -mmin +1440 -exec rm -rf {} + 2>/dev/null || true
   mapfile -t dirs < <(ls -1dt "$CACHE"/store/*/ 2>/dev/null)
-  for d in "${dirs[@]}"; do n=$((n+1)); if [ $n -gt "$keep" ]; then note "gc: removing old $d"; rm -rf "$d"; fi; done
+  for d in "${dirs[@]}"; do n=$((n+1)); if [ "$n" -gt "$keep" ]; then note "gc: removing old $d"; rm -rf "$d"; fi; done
   return 0; }   # a trailing false '&&' would otherwise become the function's status and trip set -e
 cmd_fetch() { local out=; [ "${1:-}" = -o ] && out=${2:-}; [ -n "$out" ] || fail E-USAGE missing-argument command=fetch what="a file to write, after -o" usage="idris2x fetch -o <bundle>"
-  local res; res=$(resolve) || exit $?; read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res"); mkdir -p "$CACHE/staging"
+  local res; res=$(resolve) || exit "$?"; read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res"); mkdir -p "$CACHE/staging"
   if ! fetch_to "$out.part" "${urls[@]}"; then rm -f "$out.part"
     [ -n "$FETCH_WRITE_ERR" ] && fail E-STORE-IO write-failed detail="writing the bundle ($FETCH_WRITE_ERR)" path="$(dirname "$out")"
     fail E-NETWORK all-mirrors-failed digest="sha256:$digest" tried="$TRIED" log="$CACHE/staging/fetch.log"; fi
@@ -277,8 +277,9 @@ cmd_fetch() { local out=; [ "${1:-}" = -o ] && out=${2:-}; [ -n "$out" ] || fail
   mv -f "$out.part" "$out"; note "fetched sha256:$digest -> $out ($size bytes); copy it with $LOCK to the air-gapped host"; }
 cmd_doctor() { local t; t=$(target); echo "[info] idris2x $PROTO_VERSION  target=$t  glibc=$(ldd --version 2>/dev/null | head -1 | grep -o '[0-9.]*$' || echo n/a)  cache=$CACHE"
   mkdir -p "$CACHE/locks" 2>/dev/null && ( exec 9>"$CACHE/locks/.doctor"; flock -n 9 ) && echo "[OK] store writable, flock works" || echo "[FAIL] store not writable or flock broken -> E-STORE-IO"
-  if [ -f "$LOCK" ]; then local res; res=$(resolve) || exit $?; read -r digest _ <<< "${res%%$'\n'*}"; local dir; dir=$(store_dir "$digest")
+  if [ -f "$LOCK" ]; then local res; res=$(resolve) || exit "$?"; read -r digest _ <<< "${res%%$'\n'*}"; local dir; dir=$(store_dir "$digest")
     [ -f "$dir/.complete" ] && echo "[OK] capsule sha256:${digest:0:12} installed ($(cap .name "$dir"))" || echo "[..] capsule sha256:${digest:0:12} not installed (idris2x install --locked)"
+    # the unquoted $(...) is deliberate: it splits the mirror list (one URL per line, no spaces) into words
     for u in $(tail -n +2 <<< "$res"); do [ "$OFFLINE" = 1 ] && break; local ms; ms=$(curl -sS -o /dev/null -I --connect-timeout 5 -w '%{http_code} %{time_total}' "$u" 2>/dev/null || echo "000 -")
       case "$ms" in 2*|3*) echo "[OK] mirror reachable ${ms#* }s $u";; *) echo "[FAIL] mirror unreachable ($ms) $u -> E-NETWORK";; esac; done
     [ -f "$dir/.complete" ] && { probe_capsule "$dir" 2>/dev/null && echo "[OK] probes: pure_eval, version_match" || echo "[FAIL] probes failed -> E-PROBE-CODEGEN"; }
@@ -305,10 +306,10 @@ cmd_selftest() { local root; root=$(cmd_install --locked); compose_env "$root"
   cd "$w"
   local kind=codegen-failed; case "$root" in *[[:space:]]*) kind=path-has-spaces;; esac    # the kernel splits a #! line at spaces
   printf 'module Main\nmain : IO ()\nmain = putStrLn "chez_codegen ok"\n' > Main.idr
-  "$root/bin/scheme" --program "$root/bin/idris2_app/idris2.so" -o hello Main.idr >/dev/null 2>&1 || fail E-PROBE-CODEGEN $kind probe="chez_codegen (compile)" store="$root"
-  [ "$(./build/exec/hello 2>/dev/null)" = "chez_codegen ok" ] || fail E-PROBE-CODEGEN $kind probe="chez_codegen (run the compiled program)" store="$root"
+  "$root/bin/scheme" --program "$root/bin/idris2_app/idris2.so" -o hello Main.idr >/dev/null 2>&1 || fail E-PROBE-CODEGEN "$kind" probe="chez_codegen (compile)" store="$root"
+  [ "$(./build/exec/hello 2>/dev/null)" = "chez_codegen ok" ] || fail E-PROBE-CODEGEN "$kind" probe="chez_codegen (run the compiled program)" store="$root"
   mkdir -p "$w/moved dir" && mv build/exec "$w/moved dir/exec" && [ "$(env -i PATH=/usr/bin:/bin "$w/moved dir/exec/hello" 2>/dev/null)" = "chez_codegen ok" ] \
-    || fail E-PROBE-CODEGEN $kind probe="relocatable_artifact (run after moving, clean environment)" store="$root"
+    || fail E-PROBE-CODEGEN "$kind" probe="relocatable_artifact (run after moving, clean environment)" store="$root"
   if command -v cc >/dev/null; then "$root/bin/scheme" --program "$root/bin/idris2_app/idris2.so" --cg refc -o hello_refc Main.idr >/dev/null 2>&1 && [ "$(./build/exec/hello_refc)" = "chez_codegen ok" ] && echo "[OK] refc_codegen" || echo "[FAIL] refc_codegen (cc present but RefC path broken)"; else echo "[skip] refc_codegen (no cc)"; fi
   echo "[OK] pure_eval version_match chez_codegen relocatable_artifact"; }
 
