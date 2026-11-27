@@ -223,9 +223,13 @@ cmd_pin() { # pin VERSION: fetch + verify channel, write lock for all targets of
   if [ -n "$exp" ] && [ "$(date -u +%s)" -gt "$(date -u -d "$exp" +%s)" ] && [ "${IDRIS2X_ALLOW_EXPIRED:-0}" != 1 ]; then
     fail E-CHANNEL-EXPIRED expired url="$CHANNEL_URL" expires="$exp" now="$(date -u +%Y-%m-%dT%H:%M:%SZ)" version="$ver"; fi
   jq -e --arg k "idris2@$ver" '.bundles[$k]' "$m" >/dev/null || fail E-PIN-NOT-FOUND no-version lock="$LOCK" version="$ver" available="$(jq -r '.bundles|keys|map(ltrimstr("idris2@"))|join(", ")' "$m")"
+  # The temporary file is new (mktemp, O_EXCL): a file or link a project commits at a fixed name is never followed.
+  local tmp; tmp=$(mktemp "$LOCK.XXXXXX" 2>/dev/null) || fail E-STORE-IO write-failed detail="writing the lock" path="$LOCK"
   jq --arg k "idris2@$ver" --arg v "$ver" --arg url "$CHANNEL_URL" --argjson cv "$cv" '
     {schema:1, toolchain:{idris2:$v, chez:(.compat[$k].chez)}, channel:{version:$cv, url:$url},
-     capsules: (.bundles[$k] | with_entries(.value |= {sha256, size, urls, min_glibc}))}' "$m" > "$LOCK.tmp" && mv -f "$LOCK.tmp" "$LOCK"
+     capsules: (.bundles[$k] | with_entries(.value |= {sha256, size, urls, min_glibc}))}' "$m" > "$tmp" &&
+    chmod "$(printf %o $((0666 & ~0$(umask))))" "$tmp" && mv -f "$tmp" "$LOCK" ||
+    { rm -f "$tmp"; fail E-STORE-IO write-failed detail="writing the lock" path="$LOCK"; }
   note "pinned idris2 $ver (channel v$cv) into $LOCK for: $(lock_get '.capsules|keys|join(", ")')"
 }
 cmd_install() { local from=; while [ $# -gt 0 ]; do case "$1" in --locked) ;; --from) from=${2:-}; shift || true;; *) fail E-USAGE unknown-flag command=install word="$1" usage="idris2x install [--locked] [--from <bundle>]";; esac; shift || true; done

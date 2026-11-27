@@ -451,10 +451,9 @@ fn a_refused_manifest_never_replaces_the_copy_kept_for_offline_pins() {
     assert_eq!(c.lock()["channel"]["version"], 5);
 }
 
-#[test]
-fn a_pin_that_waited_writes_nothing_if_idris2x_toml_changed_its_channel() {
-    let c = Chan::new("pin-moved");
-    c.publish(&manifest());
+/// Start `idris2x pin 0.8.0` while the project directory's turn is held, and return once it has the manifest and its
+/// signature. The pin waits for its turn until the returned file is dropped.
+fn pin_that_waits(c: &Chan) -> (std::process::Child, fs::File) {
     let f = fs::File::open(fs::canonicalize(c.t.p("")).unwrap()).unwrap();
     f.lock().unwrap();
     let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_idris2x"));
@@ -465,11 +464,18 @@ fn a_pin_that_waited_writes_nothing_if_idris2x_toml_changed_its_channel() {
         .env("IDRIS2X_CACHE", c.t.p("cache"))
         .env("IDRIS2X_ERROR_FILE", c.t.p("error.json"));
     let child = cmd.stderr(std::process::Stdio::piped()).spawn().unwrap();
-    // The pin has the manifest and its signature, and waits for its turn; then the project names another key.
     let start = std::time::Instant::now();
     while c.hits() < 2 && start.elapsed().as_secs() < 30 {
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
+    (child, f)
+}
+
+#[test]
+fn a_pin_that_waited_writes_nothing_if_idris2x_toml_changed_its_channel() {
+    let c = Chan::new("pin-moved");
+    c.publish(&manifest());
+    let (child, f) = pin_that_waits(&c);
     let other = Key::new(2).public();
     c.toml("0.8.0", &other);
     drop(f);
@@ -478,6 +484,56 @@ fn a_pin_that_waited_writes_nothing_if_idris2x_toml_changed_its_channel() {
     assert!(j.contains(&other) && j.contains(&c.key.public()), "{j}");
     assert!(!c.t.p("idris2x.lock").exists());
     assert_eq!(c.kept(), 0);
+}
+
+#[test]
+fn a_pin_of_another_version_than_idris2x_toml_asks_for_writes_nothing() {
+    let c = Chan::new("pin-other");
+    c.publish(&manifest());
+    c.toml("0.7.0", &c.key.public());
+    let j = failed(
+        &c.t,
+        &c.pin("0.8.0", &[]),
+        "E-PIN-DRIFT",
+        "other-version",
+        19,
+    );
+    assert!(
+        j.contains(r#""toml":"0.7.0""#) && j.contains(r#""version":"0.8.0""#),
+        "{j}"
+    );
+    assert!(j.contains(r#""command":"idris2x pin 0.7.0""#), "{j}");
+    assert_eq!(c.hits(), 0, "refused before the channel is asked");
+    // The same check runs again in the pin's turn, for an idris2x.toml that changed while the pin waited.
+    c.toml("0.8.0", &c.key.public());
+    let (child, f) = pin_that_waits(&c);
+    c.toml("0.7.0", &c.key.public());
+    drop(f);
+    let o = child.wait_with_output().unwrap();
+    failed(&c.t, &o, "E-PIN-DRIFT", "other-version", 19);
+    assert!(!c.t.p("idris2x.lock").exists());
+    assert_eq!(c.kept(), 0);
+}
+
+#[test]
+fn a_file_planted_at_the_temporary_name_is_refused_never_followed() {
+    let c = Chan::new("pin-planted");
+    c.publish(&manifest());
+    fs::write(c.t.p("victim"), "keep me").unwrap();
+    let (child, f) = pin_that_waits(&c);
+    // A project can commit a link at the name the lock is first written to.
+    let tmp = c.t.p(&format!("idris2x.{}.tmp", child.id()));
+    std::os::unix::fs::symlink(c.t.p("victim"), &tmp).unwrap();
+    drop(f);
+    let o = child.wait_with_output().unwrap();
+    let j = failed(&c.t, &o, "E-STORE-IO", "write-failed", 24);
+    assert!(j.contains("writing the lock"), "{j}");
+    assert_eq!(fs::read_to_string(c.t.p("victim")).unwrap(), "keep me");
+    assert!(
+        tmp.symlink_metadata().unwrap().is_symlink(),
+        "a file not made here is left alone"
+    );
+    assert!(!c.t.p("idris2x.lock").exists());
 }
 
 #[test]
@@ -568,6 +624,8 @@ fn a_missing_version_lists_the_others_and_a_deprecated_one_pins_with_a_note() {
         "idris2@0.8.0: \u{1b}[31mmoved, see https://evil.example"
     ]);
     c.publish(&m);
+    // idris2x.toml asks for the missing version, so the pin gets as far as the channel.
+    c.toml("0.9.9", &c.key.public());
     let j = failed(
         &c.t,
         &c.pin("0.9.9", &[]),
@@ -576,6 +634,7 @@ fn a_missing_version_lists_the_others_and_a_deprecated_one_pins_with_a_note() {
         10,
     );
     assert!(j.contains(r#""available":"0.8.0""#), "{j}");
+    c.toml("0.8.0", &c.key.public());
     let o = c.pin("0.8.0", &[]);
     ok(&o);
     let err = stderr(&o);
