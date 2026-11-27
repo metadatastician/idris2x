@@ -144,6 +144,9 @@ labels:
 #   "hypatia-scan" is emitted as `scan / Hypatia Neurosymbolic Analysis`
 #                  (a reusable-workflow call always reports `caller / called`)
 #
+# The CodeQL matrix now also emits `analyze (rust, none)`. It is recorded here
+# for accuracy only and is NOT required: `contexts` stays empty (see below).
+#
 # — while "openssf-compliance" resolved only because its job *id* is literally
 # `openssf-compliance` and it declares no `name:` and no matrix. That is the
 # rule: pin the job **id** to the context string. Note this file is applied by
