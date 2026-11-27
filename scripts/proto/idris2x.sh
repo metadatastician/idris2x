@@ -7,9 +7,9 @@
 set -euo pipefail
 PROTO_VERSION="0.0.0-proto"
 CACHE="${IDRIS2X_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/idris2x}"
-LOCK="${IDRIS2X_LOCK:-idris2x.lock}"                 # prototype lock is JSON (Go launcher: TOML or JSON, see ADR)
+LOCK="${IDRIS2X_LOCK:-idris2x.lock}"                 # JSON, as the Rust launcher's lock is
 CHANNEL_URL="${IDRIS2X_CHANNEL_URL:-}"
-PUBKEY_FILE="${IDRIS2X_PUBKEY_FILE:-}"                # signify-format .pub (Go launcher: embedded)
+PUBKEY_FILE="${IDRIS2X_PUBKEY_FILE:-}"                # signify-format .pub (Rust: the key in idris2x.toml)
 OFFLINE="${IDRIS2X_OFFLINE:-0}"
 LOCK_TIMEOUT="${IDRIS2X_LOCK_TIMEOUT:-600}"
 NET_TIMEOUT="${IDRIS2X_NET_TIMEOUT:-30}"      # seconds a download may go without data, before its answer or mid-file
@@ -75,7 +75,8 @@ resolve() { # prints: digest size urls... for this host, from the lock only (no 
   local d; d=$(lock_get ".capsules[\"$t\"].sha256 // empty")
   [ -n "$d" ] || fail E-PIN-NOT-FOUND no-target lock="$LOCK" target="$t" covered="$(lock_get '.capsules|keys|join(", ")')" version="$v"
   [[ "$d" =~ ^[0-9a-f]{64}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=digest
-  local needs host; needs=$(lock_get ".capsules[\"$t\"].min_glibc | if . == null then \"\" elif type == \"string\" then . else \"!\" end")
+  # An absent floor is null. Any other value, an empty string included, must have the version's form (as in Rust).
+  local needs host; needs=$(lock_get ".capsules[\"$t\"].min_glibc | if . == null then \"\" elif type == \"string\" and . != \"\" then . else \"!\" end")
   host=$(getconf GNU_LIBC_VERSION 2>/dev/null | cut -d' ' -f2)
   # ADR 0006: refuse before downloading. The floor has the version's form and limits; on Linux it is checked, never skipped.
   if [ -n "$needs" ]; then

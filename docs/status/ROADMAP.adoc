@@ -7,8 +7,9 @@
 Phase 0 complete (2026-11-16): design pinned in ADRs 0004–0011 and tested on real builds (see PHASE0-REPORT.adoc).
 Phase 1 in progress (2026-11-27): the Rust launcher is being built in four milestones. Milestones 1 to 3 are merged;
 milestone 4 (pin, channel trust and the exec map) is merged into the branch of the open PR #9, built and tested with
-`cargo test`. The chaos suite now drives the Rust launcher too (126 of 126 on each launcher, 2026-11-27, run by hand);
-it is not yet the CI gate.
+`cargo test`. The chaos suite now drives the Rust launcher too (128 of 128 on each launcher, both styles, 2026-11-27,
+run by hand through `scripts/proto/chaos-gate.sh`). The CI job that makes it the gate (`.github/workflows/chaos.yml`)
+is added and has not yet run.
 Nothing is released, and no capsule is published.
 
 == Milestones

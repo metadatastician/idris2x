@@ -14,7 +14,7 @@ which the `rust-cli` archetype pruned; it did not describe this repository and h
 | Category | Count | Details
 
 | Launcher tests (Rust) | 43 | `cargo test --all-targets`: 1 library test and 42 command-line tests in `tests/` (cli, install, pin, run); 43 of 43 pass (2026-11-27).
-| Chaos drills | 126 checks | `scripts/proto/chaos.sh` against a real Linux x86_64 capsule; 126 of 126 pass against the bash prototype and 126 of 126 against the Rust launcher (`IDRIS2X_BIN`), in both message styles (2026-11-27). Not yet run in CI.
+| Chaos drills |  128 checks | `scripts/proto/chaos.sh` against a real Linux x86_64 capsule; 128 of 128 pass against the bash prototype and 128 of 128 against the Rust launcher (`IDRIS2X_BIN`), in both message styles (2026-11-27). The CI job (`.github/workflows/chaos.yml`, through `scripts/proto/chaos-gate.sh`) is added and has not yet run.
 | Canaries | 12 | `tests/canaries/run.sh`; 11 of 12 pass on a relocated capsule, `unicode_paths` fails on an upstream Idris 2 bug (expected failure for 0.8.0).
 | Generator drift checks | 3 | `scripts/gen-runbooks.sh --check`, `scripts/gen-issue-forms.sh --check`, `scripts/sync-wiki.sh --check`; run in `wiki-sync.yml`.
 | Estate gates | inherited | root shape, SPDX, mint tokens, placeholders, I-JSON/JCS, lock sync, workflow edges, proven suite.

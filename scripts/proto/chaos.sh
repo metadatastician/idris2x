@@ -231,6 +231,9 @@ cp idris2x.lock lock.keep; jq '.capsules[].min_glibc = "9.99"' lock.keep > idris
 t "host glibc below the capsule's floor -> E-GLIBC-FLOOR" 16 "$X" install --locked
 says "  exact text: too-old"         E-GLIBC-FLOOR too-old host="$(getconf GNU_LIBC_VERSION | cut -d' ' -f2)" needs=9.99 digest="sha256:$DIG"
 assert "  refused before any download" test ! -e "$IDRIS2X_CACHE/store/sha256-$DIG" -a ! -e "$IDRIS2X_CACHE/staging/sha256-$DIG.part"
+jq '.capsules[].min_glibc = ""' lock.keep > idris2x.lock
+t "empty glibc floor in the lock -> refused, never skipped" 10 "$X" install --locked
+says "  exact text: malformed-lock (glibc floor)" E-PIN-NOT-FOUND malformed-lock lock=idris2x.lock target="$HOST" field="glibc floor"
 jq '.schema = 2' lock.keep > idris2x.lock
 t "lock from a newer idris2x -> E-CHANNEL-SCHEMA" 18 "$X" install --locked
 says "  exact text: lock-newer"      E-CHANNEL-SCHEMA lock-newer file=idris2x.lock found=2 supports=1 version="$V"

@@ -5,6 +5,7 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/build-notification.yml':
         - 'actions/checkout@v7.0.1'
+    '.github/workflows/chaos.yml': []
     '.github/workflows/codeql.yml':
         - 'actions/checkout@v7.0.1'
         - 'github/codeql-action@33d7b85da1a04171e211befe2c739303b9a4c066'
