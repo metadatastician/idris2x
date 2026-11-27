@@ -173,7 +173,7 @@ jobs:
             -v "$GITHUB_WORKSPACE/src:/src:ro" -v "$RUNNER_TEMP/work/out:/out:ro" "$IMAGE" \
             bash -euo pipefail -c '
               dnf install -y -q jq gmp-devel
-              ldd --version | head -n 1
+              ldd --version | sed -n 1p
               mkdir /tmp/cap && tar -xzf "/out/$CAPSULE_NAME.tar.gz" -C /tmp/cap
               /src/scripts/factory/run-canaries.sh /tmp/cap'
       - name: Install through the launcher from a throwaway-signed local channel, then canaries and selftest

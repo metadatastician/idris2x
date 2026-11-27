@@ -100,7 +100,7 @@ jobs:
           chmod +x /tmp/rustup-init
           /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain "${RUST_VERSION}"
           . "$HOME/.cargo/env"
-          ldd --version | head -1
+          ldd --version | sed -n 1p  # sed reads to the end; head would close the pipe and pipefail would see SIGPIPE
           cargo --version
           cargo build --release --locked --target "${TRIPLE}"
           IN_CONTAINER
