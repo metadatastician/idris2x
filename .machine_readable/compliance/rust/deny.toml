@@ -41,6 +41,10 @@ allow = [
 allow = ["OpenSSL"]
 name = "ring"
 
+[[licenses.exceptions]]
+allow = ["CDLA-Permissive-2.0"]
+name = "webpki-root-certs"
+
 # --- Crate bans ------------------------------------------------------------
 [bans]
 multiple-versions = "warn"

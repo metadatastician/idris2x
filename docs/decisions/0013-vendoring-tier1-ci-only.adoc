@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= ADR 0013. Vendor only the Tier 1 crates, in CI, with our own filter; run cargo deny beside it
+
+Date: 2026-11-27
+
+== Status
+
+Accepted by the owner on 2026-11-27 (three rulings, by selector). Built in this change: `scripts/vendor-tier1.sh`,
+`tests/vendor_tier1_test.sh` and `.github/workflows/vendor.yml`. The workflow has not run on GitHub yet.
+Nothing is released.
+
+== Context
+
+ADR 0007 asks for "minimal, vendored, audited crates" enforced by `cargo vendor`, `cargo deny` and a pinned toolchain.
+
+Measured on `main` at 63c1412: `cargo vendor --locked` gives 83 crates and 137 MB. The crates the four Tier 1 triples
+need (normal, build and dev edges) are 46 crates and 31 MB. The rest is weight for targets we do not build. Most of
+it is Windows: `ring` pulls `windows-sys` 0.52 and its `windows_*` import-library crates, and `errno` and
+`rustls-platform-verifier` pull `windows-sys` 0.61. Windows is Tier 2 and its launcher is not built.
+
+The launcher has no dev-dependencies. The Creusot proof crate (`verification/proofs/creusot/`) has its own workspace
+and lock and is out of scope.
+
+== Decision
+
+. Trim with our own filter. `scripts/vendor-tier1.sh` reads the rows with `tier = 1` from
+  `src/definitions/targets.toml`, asks `cargo metadata --locked --filter-platform TRIPLE` which crates each needs, and
+  replaces every other vendored crate by a stub. A stub keeps the crate's own `Cargo.toml`, so its declared
+  dependencies still match `Cargo.lock`. It has empty files at the source paths the manifest names, and a
+  `.cargo-checksum.json` with no files and the original package checksum. `Cargo.lock` does not change and an offline
+  build still resolves. No third-party filter tool is used (not `cargo-vendor-filterer`). Windows is left out until its
+  launcher is built.
+. The vendor set lives in CI only. Nothing under `vendor/` is committed, and no `.cargo/config.toml` is committed,
+  because it would force vendoring on every local build. The source replacement is passed with `--config` flags.
+. `ureq` keeps its `platform-verifier` feature. `Cargo.toml` dependencies and `src/` are not touched.
+
+The script uses `--versioned-dirs`, so each vendor directory is `NAME-VERSION`. Two versions of one crate (`syn`,
+`windows-sys`) then map to one directory each, and the script can match them to `cargo metadata` without guessing.
+
+The script fails loudly when `targets.toml` has no tier 1 row, when any step fails, when a needed crate is not
+vendored, when the vendor set differs from `Cargo.lock`, when nothing would be stubbed, or when the kept set is not
+exactly the set `cargo metadata` names. It prints a receipt.
+
+== Evidence (run locally on 2026-11-27, not yet on GitHub)
+
+* The script kept 46 crates (30 MB) and stubbed 37, for the four Tier 1 triples. The vendor directory is 31 MB after
+  stubbing, against 137 MB before.
+* `cargo build --release --locked --offline --frozen` and `cargo test --offline --frozen`, with the source replaced by
+  the filtered set through `--config`, passed. `Cargo.lock` was unchanged.
+* The build and tests also passed on the 1.89.0 toolchain, the repo's `rust-version`.
+* `tests/vendor_tier1_test.sh` checks the build and tests, and three refusals. With `ring` stubbed the build fails.
+  A targets file with no tier 1 row, or an empty one, is refused before anything is vendored. A non-empty output
+  directory is refused.
+* The filtered set is proven for the host this was run on, `x86_64-unknown-linux-gnu`. The other three triples are
+  covered by `cargo metadata`, not by a build on them.
+
+== Options considered
+
+[cols="1,3,1,1",options="header"]
+|===
+| | Approach | Elegance | Dependability
+| A | Our own filter over `cargo vendor`, stubs keep `Cargo.lock` unchanged (chosen) | 4 | 4
+| B | `cargo-vendor-filterer` | 3 | 3
+| C | Vendor everything (137 MB) | 2 | 5
+| D | Commit a trimmed `vendor/` and a `.cargo/config.toml` | 2 | 3
+|===
+
+== Consequences
+
+=== Positive
+* CI builds and tests with no network on the build and test steps, from 31 MB instead of 137 MB.
+* No tool outside the repo's own languages (bash, jq, awk) decides what is kept.
+* Local builds are unchanged: nothing forces vendoring on a developer.
+
+=== Negative
+* The filter is ours to maintain. A change in how `cargo metadata` reports platform edges would need a script fix.
+* A Windows launcher needs the Windows crates back. Then the triple moves to tier 1, or the script takes a flag.
+* The script needs the Go `yq` to read the stub paths in manifests.
+
+=== Not done
+* A signed vendor tarball per release. It belongs to Phase 2 and is not built.
+* Windows (Tier 2) is not vendored.
+* The workflow has not run on GitHub yet, so its timeout, 30 minutes, is a guess from local timings.
+* `cargo deny check` passes advisories, bans, licenses and sources. `webpki-root-certs` 1.0.12, pulled in by
+  `rustls-platform-verifier` and not in the Tier 1 set, is licensed `CDLA-Permissive-2.0`. The owner allowed that
+  licence for that one crate (2026-11-27), as a crate-scoped `[[licenses.exceptions]]` entry in this repository's
+  `deny.toml`; the allow list itself is unchanged. The agent made that one edit with the owner's one-time
+  permission. The template's own copy is unchanged and stays with the owner. The check is not a required check yet.
+  Run locally with cargo-deny 0.22.2, the version CI pins, it gives six warnings that block nothing: two duplicate-version
+  groups (`syn`, `windows-sys`); the `openssl` ban wrapper `openssl-sys`, the `ring` OpenSSL licence exception and the
+  `BSD-2-Clause` and `Unicode-DFS-2016` allowances are never used by this dependency set.

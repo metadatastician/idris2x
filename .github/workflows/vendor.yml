@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+# MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+name: Vendor and deny
+
+# ADR 0013. The vendor set lives in CI only: nothing under vendor/ and no .cargo/config.toml is committed.
+# scripts/vendor-tier1.sh runs `cargo vendor --locked`, keeps the crates the Tier 1 triples in
+# src/definitions/targets.toml need, and replaces every other crate by a stub, so that Cargo.lock does not change.
+# This job then builds and tests the launcher offline against that set (the source replacement is passed with
+# --config flags), runs tests/vendor_tier1_test.sh (which includes a negative case: stubbing ring must fail the
+# build), installs a pinned cargo-deny and runs `cargo deny check` with the estate's
+# .machine_readable/compliance/rust/deny.toml, which is template-owned and is not edited here.
+#
+# Rust: the repo pins its minimum as `rust-version = "1.89"` in Cargo.toml and nothing else, so the build and the
+# tests use 1.89.0, the oldest toolchain the repo supports. cargo-deny is built with 1.97.0 because it needs a newer
+# compiler than the launcher does. cargo-deny is 0.22.2 (installed with --locked).
+#
+# NOT a required check: no ruleset names it and .machine_readable/required-contexts-allow.txt does not map it, so a red
+# run does not block a merge. The pull_request trigger has no paths filter, as in chaos.yml, so that it could be
+# made required later without stranding a PR.
+#
+# NO `uses:` ANYWHERE, deliberately (same reason as chaos.yml): .github/workflows/actions.lock is keyed by
+# workflow path, and a workflow that pulls an unlisted action fails before any step.
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'Cargo.toml', 'Cargo.lock', 'tests/vendor_tier1_test.sh', 'scripts/vendor-tier1.sh', 'src/definitions/targets.toml', '.machine_readable/compliance/rust/deny.toml', '.github/workflows/vendor.yml']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vendor-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TOOLCHAIN: 1.89.0
+  DENY_TOOLCHAIN: 1.97.0
+  DENY_VERSION: 0.22.2
+
+jobs:
+  vendor:
+    name: "vendor"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30   # not yet measured on GitHub. Local, cold, 2026-11-27: vendor 8 s, build 45 s, tests 34 s, test script 88 s, cargo-deny install 158 s, deny check under 1 min; about 7 minutes in all. 30 is more than double
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch the commit (plain git, token as a masked header)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); echo "::add-mask::$auth"
+          git init -q src && cd src
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Check the tools the script needs (jq, awk, and the Go yq)
+        run: |
+          set -euo pipefail
+          for t in jq awk yq cargo rustup; do command -v "$t" >/dev/null || { echo "::error::$t is not on this runner"; exit 1; }; done
+          yq --version | grep -q mikefarah || { echo "::error::yq is not the Go (mikefarah) yq"; yq --version; exit 1; }
+      - name: Install the pinned Rust toolchains
+        run: |
+          set -euo pipefail
+          rustup toolchain install "$BUILD_TOOLCHAIN" "$DENY_TOOLCHAIN" --profile minimal
+          rustc +"$BUILD_TOOLCHAIN" --version
+          rustc +"$DENY_TOOLCHAIN" --version
+      - name: Vendor the Tier 1 crates and stub the rest
+        working-directory: src
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.BUILD_TOOLCHAIN }}
+        run: |
+          set -euo pipefail
+          scripts/vendor-tier1.sh "$RUNNER_TEMP/vendor"
+      - name: Build the release launcher offline against the filtered set
+        working-directory: src
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.BUILD_TOOLCHAIN }}
+        run: |
+          set -euo pipefail
+          cargo build --release --locked --offline --frozen \
+            --config 'source.crates-io.replace-with="vendored-sources"' \
+            --config "source.vendored-sources.directory=\"$RUNNER_TEMP/vendor\""
+      - name: Run the tests offline against the filtered set
+        working-directory: src
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.BUILD_TOOLCHAIN }}
+        run: |
+          set -euo pipefail
+          cargo test --offline --frozen \
+            --config 'source.crates-io.replace-with="vendored-sources"' \
+            --config "source.vendored-sources.directory=\"$RUNNER_TEMP/vendor\""
+      - name: Run the vendoring tests (positive, and negative with ring stubbed)
+        working-directory: src
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.BUILD_TOOLCHAIN }}
+        run: |
+          set -euo pipefail
+          bash tests/vendor_tier1_test.sh
+      - name: Install cargo-deny (pinned)
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          cargo +"$DENY_TOOLCHAIN" install cargo-deny --locked --version "$DENY_VERSION"
+          cargo +"$DENY_TOOLCHAIN" deny --version
+      - name: Run cargo deny (advisories, bans, licenses, sources) with the repo's config
+        if: ${{ !cancelled() }}
+        working-directory: src
+        run: |
+          set -euo pipefail
+          cargo +"$DENY_TOOLCHAIN" deny --manifest-path Cargo.toml --config .machine_readable/compliance/rust/deny.toml check

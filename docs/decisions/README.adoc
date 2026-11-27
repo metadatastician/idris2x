@@ -20,5 +20,6 @@ idris2x (Phase 0, measured on real builds; see link:../status/PHASE0-REPORT.adoc
 * link:0010-hosting-and-survivability.adoc[0010] Hosting and survivability: immutable releases, own-domain mirror, manifest URL list
 * link:0011-estate-compliance-mint-rust-cli.adoc[0011] Estate compliance: mint with `rust-cli`, MPL-2.0, AsciiDoc, PROOF-POLICY deviation, Idris 2 contract
 * link:0012-provenance-typed-diagnostics.adoc[0012] Proposed: diagnostic text carries its provenance; channel text may reach an advisory slot only (Idris 2 design model)
+* link:0013-vendoring-tier1-ci-only.adoc[0013] Vendor only the Tier 1 crates, in CI, with our own filter; `cargo deny` beside it
 
 A change to the channel schema, lock schema, exit codes or support matrix is Class C and needs a new ADR.

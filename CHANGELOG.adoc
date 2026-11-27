@@ -115,8 +115,17 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   `HTTP://` mirror may not redirect, and `HTTPS://` is tried as https.
 * The review's other points, and two that these fixes leave, wait for Phase 2, each with its reason, in
   `docs/status/ROADMAP.adoc`.
+* Dependency vendoring and `cargo deny` (ADR 0013, owner rulings 2026-11-27). `scripts/vendor-tier1.sh OUT_DIR`
+  runs `cargo vendor --locked --versioned-dirs`, keeps the crates the Tier 1 triples in `targets.toml` need and
+  replaces the others by stubs, so `Cargo.lock` does not change: 46 crates (30 MB) kept and 37 stubbed, against 83
+  crates and 137 MB. Nothing is committed under `vendor/` and there is no `.cargo/config.toml`; the source
+  replacement is passed with `--config`. `tests/vendor_tier1_test.sh` checks the offline build and tests, and that
+  the build fails with `ring` stubbed. `.github/workflows/vendor.yml` runs these, then `cargo deny check` (0.22.2)
+  with the template's `deny.toml`. The workflow has not run on GitHub yet and is not a required check. Run locally,
+  `cargo deny` passes all four checks. `webpki-root-certs` 1.0.12 is `CDLA-Permissive-2.0`; the owner allowed
+  that licence for that one crate (2026-11-27), and `deny.toml` carries it as a crate-scoped exception.
 
 ==== Not yet
 
-* The chaos ruleset applied on GitHub, `cargo vendor` and `cargo deny`, the capsule factory CI and published
-  capsules (Phase 1).
+* The chaos ruleset applied on GitHub, the capsule factory CI and published capsules (Phase 1).
+  Also not yet: the signed vendor tarball per release (Phase 2), Windows vendoring, and a `vendor.yml` run on GitHub.

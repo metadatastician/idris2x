@@ -65,4 +65,5 @@ Nothing is released, and no capsule is published.
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
 . Owner: apply `.github/rulesets/Chaos-Gate.json`, so that the chaos job gates every PR.
-. Add `cargo vendor` and `cargo deny` (ADR 0007).
+. Watch the first `vendor.yml` run on GitHub (`CDLA-Permissive-2.0` is allowed for `webpki-root-certs` alone, owner ruling 2026-11-27) and set its timeout from it (ADR 0013).
+. Phase 2: a signed vendor tarball per release. Windows vendoring when its launcher is built.

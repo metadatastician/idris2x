@@ -93,6 +93,23 @@ names it, so a red run does not block a merge. Its first run on GitHub passed (r
 about 17 minutes, 12 of them installing the tools, because nothing is cached. Its timeout, 40 minutes, comes from
 that run.
 
+== `vendor.yml` vendors the Tier 1 crates and runs cargo deny, and is not a required check
+
+`vendor.yml` runs `scripts/vendor-tier1.sh`, which vendors the crates in `Cargo.lock` and keeps only those the Tier 1
+triples in `src/definitions/targets.toml` need. The others become stubs, so `Cargo.lock` does not change. The job then
+builds and tests the launcher offline against that set, with the source replacement passed as `--config` flags, runs
+`tests/vendor_tier1_test.sh` (which includes a build that must fail with `ring` stubbed), installs `cargo-deny` 0.22.2
+and runs `cargo deny check` with `.machine_readable/compliance/rust/deny.toml`. The vendor set exists only on the
+runner. Nothing under `vendor/` and no `.cargo/config.toml` is committed (ADR 0013).
+
+The build and tests use Rust 1.89.0, the `rust-version` in `Cargo.toml`. `cargo-deny` is built with 1.97.0. The
+workflow has no `uses:`, so `actions.lock` lists it with no actions.
+
+It is not in `.machine_readable/required-contexts-allow.txt` and no ruleset names it, so a red run does not block a
+merge. It has not run on GitHub yet. Its timeout, 30 minutes, is taken from local timings, more than doubled, and
+should be reset from the first run. Run locally on 2026-11-27, `cargo deny check` passes advisories, bans, licenses and sources.
+`webpki-root-certs` 1.0.12 (`CDLA-Permissive-2.0`) passes through a crate-scoped exception the owner allowed.
+
 == Deed and K9 conformance come from the canon, not from this tree
 
 `dogfood-gate.yml` validates the repo deed and the K9 contracts by calling the
