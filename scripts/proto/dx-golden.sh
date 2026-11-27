@@ -45,6 +45,7 @@ E-PROBE-CODEGEN|idris2-failed|probe=version_match|output=Exception: (while loadi
 E-PROBE-CODEGEN|version-mismatch|want=0.8.0|got=Idris 2, version 0.7.0
 E-PROBE-CODEGEN|path-has-spaces|probe=chez_codegen (run the compiled program)|store=/home/ada/My Cache/idris2x/store/sha256-$A
 E-PROBE-CODEGEN|codegen-failed|probe=chez_codegen (compile)|store=/home/ada/.cache/idris2x/store/sha256-$A
+E-PROBE-CODEGEN|cannot-start|program=/home/ada/.cache/idris2x/store/sha256-$A/bin/scheme|detail=Permission denied (os error 13)
 E-CHANNEL-SCHEMA|lock-newer|file=idris2x.lock|found=2|supports=1|version=0.1.0
 E-CHANNEL-SCHEMA|channel-newer|url=https://channel.example.org/v1.json|found=2|supports=1|version=0.1.0
 E-PIN-DRIFT|toml-vs-lock|toml=0.8.1|locked=0.8.0

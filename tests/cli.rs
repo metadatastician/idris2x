@@ -54,7 +54,7 @@ fn an_unknown_command_is_e_usage_with_its_json_in_the_error_file() {
     let json = std::fs::read_to_string(&file).unwrap();
     assert!(json.starts_with(r#"{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"unknown-command","exit":2,"#));
     assert!(json.contains(
-        r#""context":{"word":"instal","commands":"install, verify, fetch, explain, help"}"#
+        r#""context":{"word":"instal","commands":"install, exec, run, env, verify, gc, fetch, doctor, selftest, explain, help"}"#
     ));
     std::fs::remove_dir_all(&dir).unwrap();
 }

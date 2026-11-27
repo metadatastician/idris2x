@@ -8,6 +8,7 @@ use crate::msg::note;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::Path;
+use std::time::Duration;
 
 /// A failed copy: reading the source, or writing the destination.
 pub enum Io {
@@ -89,6 +90,36 @@ fn get(agent: &ureq::Agent, out: &Path, u: &str, size: u64) -> Result<(), Io> {
     f.sync_all().map_err(Io::Write)
 }
 
+const REFUSED: &str = "refused: plain http is allowed only to this machine";
+/// The HTTP client: rustls on ring and the system's trust store. `secs` to connect, and for the whole request if
+/// `whole`. A read or a write that waits `stall` for data fails, before the answer or in the middle of the body.
+fn agent(secs: u64, whole: bool, stall: Duration) -> ureq::Agent {
+    use std::sync::Arc;
+    use ureq::tls::{RootCerts, TlsConfig};
+    let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier);
+    let tls =
+        tls.unversioned_rustls_crypto_provider(Arc::new(rustls::crypto::ring::default_provider()));
+    let t = Some(Duration::from_secs(secs));
+    let config = ureq::Agent::config_builder().tls_config(tls.build());
+    config
+        .timeout_connect(t)
+        .timeout_global(t.filter(|_| whole))
+        .timeout_per_read(Some(stall))
+        .timeout_per_write(Some(stall))
+        .build()
+        .into()
+}
+/// doctor's mirror check: one HEAD request, nothing downloaded. The milliseconds it took, or why it failed.
+pub fn head(u: &str) -> Result<u128, String> {
+    let t0 = std::time::Instant::now();
+    if !allowed(u) {
+        return Err(REFUSED.into());
+    }
+    let r = agent(5, true, Duration::from_secs(5)).head(u).call();
+    r.map(|_| t0.elapsed().as_millis())
+        .map_err(|e| e.to_string())
+}
+
 /// Download to `out` from the first address that works; return that address. Each failure goes to `log`. A mirror
 /// that sends nothing for `stall`, before its answer or in the middle of the file, has failed like any other.
 pub fn fetch(
@@ -96,33 +127,15 @@ pub fn fetch(
     urls: &[String],
     size: u64,
     log: &Path,
-    stall: std::time::Duration,
+    stall: Duration,
 ) -> Result<String, Lost> {
-    use std::sync::Arc;
-    use ureq::tls::{RootCerts, TlsConfig};
-    let tls = TlsConfig::builder().root_certs(RootCerts::PlatformVerifier);
-    let tls =
-        tls.unversioned_rustls_crypto_provider(Arc::new(rustls::crypto::ring::default_provider()));
-    let ten = Some(std::time::Duration::from_secs(10));
-    let agent = ureq::Agent::config_builder()
-        .tls_config(tls.build())
-        .timeout_connect(ten)
-        .timeout_per_read(Some(stall))
-        .timeout_per_write(Some(stall))
-        .build()
-        .into();
-    let mut tried = vec![];
+    let (agent, mut tried) = (agent(10, false, stall), vec![]);
     for u in urls {
-        let refused = || {
-            Io::Read(io::Error::other(
-                "refused: plain http is allowed only to this machine",
-            ))
-        };
         let once = || {
             if allowed(u) {
                 get(&agent, out, u, size)
             } else {
-                Err(refused())
+                Err(Io::Read(io::Error::other(REFUSED)))
             }
         };
         // A resume or a transfer that broke off is tried once more from the start.

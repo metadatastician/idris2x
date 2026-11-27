@@ -58,7 +58,7 @@ pub fn target() -> R<String> {
 /// The glibc version of this system, or None if getconf cannot tell (no getconf, or no glibc). getconf gets PATH and
 /// nothing else, so an inherited LD_LIBRARY_PATH or LD_PRELOAD cannot make it report another C library than the one
 /// the capsule will run with (ADR 0005).
-fn glibc() -> Option<String> {
+pub fn glibc() -> Option<String> {
     let path = std::env::var_os("PATH").map(|p| ("PATH", p));
     let o = std::process::Command::new("getconf")
         .env_clear()
