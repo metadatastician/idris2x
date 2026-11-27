@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+# MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+#
+# Creusot proofs of the launcher's date arithmetic, src/civil.rs. This crate is
+# not part of the launcher's build: its own [workspace] keeps it apart from the
+# root crate, and only `scripts/check-creusot.sh` (`cargo creusot`) runs it.
+# creusot-std is pinned to the Creusot commit the proofs were checked with.
+
+[package]
+name = "idris2x-creusot"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+creusot-std = { git = "https://github.com/creusot-rs/creusot", rev = "8763e2a9d5c6ba410f6ad68419123246ed6657de" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(creusot)"] }

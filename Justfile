@@ -666,6 +666,11 @@ help-me:
 
 import? "build/just/proofs.just"
 
+# Fatal if cargo-creusot is absent: verification/proofs/creusot/README.adoc.
+# Prove src/civil.rs with Creusot, then check that three broken copies fail.
+proof-check-creusot:
+    @bash scripts/check-creusot.sh
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SESSION MANAGEMENT (THIN BINDINGS TO CENTRAL STANDARDS)
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -28,6 +28,11 @@ signal-hook = { version = "0.4.6", default-features = false }
 tar = { version = "0.4", default-features = false }
 ureq = { version = "3.5.2", default-features = false, features = ["rustls-no-provider", "platform-verifier"] }
 
+# `creusot` is set only when Creusot reads the contracts in src/civil.rs, through
+# verification/proofs/creusot/; a normal build never sets it.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(creusot)"] }
+
 # std-only benchmark: no criterion, so the minted Cargo.lock stays
 # dependency-free. `cargo bench --no-run --locked` compiles it.
 [[bench]]

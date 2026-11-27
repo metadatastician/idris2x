@@ -91,8 +91,14 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * The chaos job runs on every pull request, and `.github/rulesets/Chaos-Gate.json` (with its producer mapping in
   `.machine_readable/required-contexts-allow.txt`) makes it a required check once the owner applies it. Nothing is
   enforced until then.
+* The date arithmetic of `pin` and `store` moves to `src/civil.rs`, and Creusot, with Pearlite contracts on that
+  file, proves it (DATE-1 in `docs/status/PROOF-STATUS.adoc`): `days` and `civil` are inverse on real dates, with no
+  overflow, for every value `pin` and `store` pass them. A normal build drops the contracts, so the launcher gains no
+  dependency. The proof crate `verification/proofs/creusot/` is built apart from the launcher, and
+  `scripts/check-creusot.sh` (`just proof-check-creusot`) also checks that three broken copies fail. It was run by
+  hand on 2026-11-27; CI does not run it yet. Verus has not been run on this code.
 
 ==== Not yet
 
-* The chaos ruleset applied on GitHub, `cargo vendor` and `cargo deny`, the capsule factory CI and published
-  capsules (Phase 1).
+* The chaos ruleset applied on GitHub, the Creusot proof in CI, `cargo vendor` and `cargo deny`, the capsule factory CI
+  and published capsules (Phase 1).

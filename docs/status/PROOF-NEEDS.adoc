@@ -19,7 +19,7 @@
 | *INV* | Invariant Proofs (state machines, monotonicity, bounds) |
 | *SEC* | Security Proofs (crypto, injection freedom, access control) |
 | *CONC* | Concurrency Proofs (linearizability, deadlock freedom) |
-| *ALG* | Algorithm Proofs (termination, correctness, bounds) |
+| *ALG* | Algorithm Proofs (termination, correctness, bounds) | Yes
 | *ABI* | ABI/FFI Proofs (memory layout, pointer safety, platform compat) | Yes
 | *DOM* | Domain-Specific Proofs (bespoke to this project) |
 |===
@@ -62,7 +62,7 @@ name into the child's, which once made this line credit the child.)
 |===
 | # | Proof Needed | Category | Prover | Priority | File(s)
 
-| | | | | |
+| DATE-1 | `days` and `civil` are inverse on real Gregorian dates, with no `i64` overflow on the values the launcher passes them, so `real` accepts exactly the real dates (the expiry check of TRUST-1). Proved; see `docs/status/PROOF-STATUS.adoc` | ALG | Creusot with Pearlite; Verus planned, not run | Medium | `src/civil.rs`, `verification/proofs/creusot/`
 |===
 
 == Dangerous Patterns (BANNED)
