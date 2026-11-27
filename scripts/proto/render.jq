@@ -29,7 +29,7 @@ def paint($on; $code): if $on then "\u001b[" + $code + "m" + . + "\u001b[0m" els
     elif .key == "fix_cmd" then .value |= fill($raw | map_values(shq)) else .value |= fill($ctx) end)) as $t
 | ($t.facts | split(" ") | map(select(. != "") | split("=") | {label: .[0], value: ($ctx[.[1]] // error("missing context value: " + .[1]))})) as $facts
 | if any($k | to_entries[] | select(.value | type == "string") | .value | scan("\\{([a-z_]+)\\}") | .[0]; . as $p | $ctx | has($p) | not) then error("unfilled {placeholder} in " + $id + "/" + $case) else . end
-| ($runbook + "/" + $id + ".adoc") as $docs
+| ($runbook + "/" + $id + ".adoc" | if $form == "json" then . else clean end) as $docs
 | if $form == "json" then
     {schema: 1, tool: "idris2x", level: "error", id: $id, case: $case, exit: $e.exit, title: $e.title, summary: $t.summary,
      context: $ctx, state: $t.state, why: $t.why, fix: {command: $t.fix_cmd, note: $t.fix_note, auto: $t.auto},

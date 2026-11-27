@@ -62,8 +62,9 @@ pub fn pin(ver: &str) -> R<()> {
     let wait =
         setting("IDRIS2X_LOCK_TIMEOUT", "a whole number of seconds", 600, |v| v.parse().ok())?;
     let tf = toml_path(&lf);
-    let release = RELEASE.map(|(u, k)| (u.to_owned(), k.to_owned()));
-    let Some((url, key)) = toml(&lf)?.and_then(|t| t.channel).or(release) else {
+    let named =
+        || R::Ok(toml(&lf)?.and_then(|t| t.channel).or(RELEASE.map(|(u, k)| (u.into(), k.into()))));
+    let Some((url, key)) = named()? else {
         return Err(Fail::UsageNoChannel { file: host(&tf).into() });
     };
     let malformed = |what: &'static str, file: String| Fail::SigInvalidMalformed {
@@ -71,15 +72,15 @@ pub fn pin(ver: &str) -> R<()> {
         file: host(file).into(),
     };
     let what = "the key in idris2x.toml is not a signify Ed25519 public key";
-    let (kid, pk) = signify(&key, 32).ok_or_else(|| malformed(what, tf))?;
+    let (kid, pk) = signify(&key, 32).ok_or_else(|| malformed(what, tf.clone()))?;
     let (c, offline, sig_url) = (cache()?, flag("IDRIS2X_OFFLINE")?, format!("{url}.sig"));
     let id = hex(ring::digest::digest(&ring::digest::SHA256, url.as_bytes()).as_ref());
     let (m, log) = (c.join(format!("manifests/{}.sig", &id[..16])), c.join("staging/fetch.log"));
     let at = |p: &Path| p.display().to_string();
     _ = fs::create_dir_all(c.join("staging")).and(fs::create_dir_all(c.join("manifests")));
-    // Offline, the manifest is the copy that verified last time, kept as one signify file with the body embedded (the
+    // Offline, the manifest is the copy that last made a lock, kept as one signify file with the body embedded (the
     // signature's two lines, then the body), so the pair is replaced whole or not at all (I2). Online each is fetched
-    // whole, never resumed, and nothing reaches the cache before its signature verifies.
+    // whole, never resumed, and nothing reaches the cache before every check below has passed.
     let get = |u: &str| {
         doc(u).map_err(|e| {
             logged(&log, &e);
@@ -121,10 +122,6 @@ pub fn pin(ver: &str) -> R<()> {
         key: lock(key_id(&kid)).into(),
         version: host(ver).into(),
     })?;
-    if !offline {
-        let kept = [format!("{}\n{}\n", two[0], two[1]).as_bytes(), &body].concat();
-        put(&m, &kept).map_err(|e| write_failed("keeping the channel manifest", &e, &m))?;
-    }
     // Pins of one lock file take turns, so the rollback check and the new lock are one step. The turn is the lock file's
     // real directory, locked as it is, so every spelling of the path and every cache share it. Only the holder's note is
     // in this cache.
@@ -142,13 +139,39 @@ pub fn pin(ver: &str) -> R<()> {
                 (host(wait.to_string()).into(), host(&lf).into(), host(ver).into());
             Fail::LockTimeoutPinHeld { lock, holder: who, seconds, version }
         })?;
-    let r = resolve(&body, ver, &lf, &url, &kid);
+    let r = (|| {
+        // idris2x.toml is read again in the turn: a pin that waited writes a lock only for the channel and key the project
+        // still names (I1).
+        let pair = |(u, k): &(String, String)| lock(format!("{u} with key {k}")).into();
+        let ours = (url.clone(), key.clone());
+        match named()? {
+            Some(now) if now == ours => {}
+            now => {
+                return Err(Fail::PinDriftChannelChanged {
+                    checked: pair(&ours),
+                    now: now.as_ref().map_or_else(|| embedded("no channel").into(), pair),
+                    file: host(&tf).into(),
+                    version: host(ver).into(),
+                })
+            }
+        }
+        let (new, cv, targets) = resolve(&body, ver, &lf, &url, &kid)?;
+        if !offline {
+            let kept = [format!("{}\n{}\n", two[0], two[1]).as_bytes(), &body].concat();
+            put(&m, &kept).map_err(|e| write_failed("keeping the channel manifest", &e, &m))?;
+        }
+        let w = put(Path::new(&lf), format!("{new:#}\n").as_bytes());
+        w.map_err(|e| write_failed("writing the lock", &e, Path::new(&lf)))?;
+        note(&format!("pinned idris2 {ver} (channel v{cv}) into {lf} for: {targets}"));
+        Ok(())
+    })();
     _ = fs::remove_file(holder);
     r
 }
 
-/// The checks on a manifest whose signature verified: format, version, expiry, then the lock for `ver`.
-fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
+/// The checks on a manifest whose signature verified: format, version, expiry, then the lock for `ver`, with its channel
+/// version and targets. Nothing is written.
+fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<(Value, u64, String)> {
     let bad = |field: &'static str| Fail::ChannelSchemaMalformedManifest {
         url: lock(url).into(),
         field: embedded(field).into(),
@@ -241,7 +264,7 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
         let s = |f: &str| c[f].as_str().unwrap_or_default();
         let (urls, glibc) =
             (c["urls"].as_array(), c["min_glibc"].is_null() || is_version(s("min_glibc")));
-        let urls = urls.is_some_and(|u| u.iter().all(Value::is_string));
+        let urls = urls.is_some_and(|u| !u.is_empty() && u.iter().all(Value::is_string));
         if !(is_digest(s("sha256")) && c["size"].is_u64() && urls && glibc) {
             return Err(bad("capsule entry"));
         }
@@ -258,8 +281,5 @@ fn resolve(body: &[u8], ver: &str, lf: &str, url: &str, kid: &str) -> R<()> {
     let targets = caps.keys().cloned().collect::<Vec<_>>().join(", ");
     let new = json!({"schema": 1, "toolchain": {"idris2": ver, "chez": chez},
         "channel": {"version": cv, "url": url, "key": kid}, "capsules": caps});
-    let w = put(Path::new(lf), format!("{new:#}\n").as_bytes());
-    w.map_err(|e| write_failed("writing the lock", &e, Path::new(lf)))?;
-    note(&format!("pinned idris2 {ver} (channel v{cv}) into {lf} for: {targets}"));
-    Ok(())
+    Ok((new, cv, targets))
 }

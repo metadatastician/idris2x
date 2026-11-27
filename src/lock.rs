@@ -112,12 +112,15 @@ pub fn toml(lock: &str) -> R<Option<Toml>> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         r => r.map_err(|e| bad(format!("reading it: {e}"), "it cannot be read"))?,
     };
-    let (mut table, mut got) = ("", std::collections::BTreeMap::new());
+    let (mut table, mut got, mut seen) = ("", std::collections::BTreeMap::new(), vec![]);
     for (n, l) in text.lines().enumerate() {
         let end = |r: &str| r.trim().is_empty() || r.trim().starts_with('#');
         let head = l.trim().strip_prefix('[').and_then(|t| t.split_once(']'));
         let head = head.filter(|h| end(h.1));
         table = head.map_or(table, |h| h.0.trim());
+        // TOML refuses a table defined twice, even with other keys the second time.
+        let twice = head.is_some() && seen.contains(&table);
+        seen.extend(head.map(|_| table));
         let pair = l.split_once('=').and_then(|(k, v)| {
             let (v, r) = v.trim().strip_prefix('"')?.split_once('"')?;
             (end(r) && !v.contains('\\')).then(|| (format!("{table}.{}", k.trim()), v))
@@ -128,6 +131,7 @@ pub fn toml(lock: &str) -> R<Option<Toml>> {
             {
                 "it opens a [table] that idris2x does not read"
             }
+            _ if twice => "it opens the same [table] twice",
             _ if end(l) || head.is_some() => "",
             Some((k, _)) if !KEYS.contains(&&*k) => "it sets a key that idris2x does not read",
             Some((k, v)) => got.insert(k, v).map_or("", |_| "it sets the same key twice"),

@@ -431,9 +431,59 @@ fn rollback_expiry_and_newer_formats_are_refused_and_leave_the_lock_alone() {
 }
 
 #[test]
+fn a_refused_manifest_never_replaces_the_copy_kept_for_offline_pins() {
+    let c = Chan::new("pin-keep");
+    let mut m = manifest();
+    m["channel_version"] = json!(5);
+    c.publish(&m);
+    ok(&c.pin("0.8.0", &[]));
+    // An older manifest, then an expired one: each verifies, each is refused, and neither is kept.
+    c.publish(&manifest());
+    let (e, case) = ("E-CHANNEL-ROLLBACK", "version-went-back");
+    failed(&c.t, &c.pin("0.8.0", &[]), e, case, 22);
+    m["channel_version"] = json!(6);
+    m["expires"] = json!("2001-01-01T00:00:00Z");
+    c.publish(&m);
+    let (e, case) = ("E-CHANNEL-EXPIRED", "expired");
+    failed(&c.t, &c.pin("0.8.0", &[]), e, case, 23);
+    // Offline, pin still reads the version 5 that made the lock.
+    ok(&c.pin("0.8.0", &[("IDRIS2X_OFFLINE", "1")]));
+    assert_eq!(c.lock()["channel"]["version"], 5);
+}
+
+#[test]
+fn a_pin_that_waited_writes_nothing_if_idris2x_toml_changed_its_channel() {
+    let c = Chan::new("pin-moved");
+    c.publish(&manifest());
+    let f = fs::File::open(fs::canonicalize(c.t.p("")).unwrap()).unwrap();
+    f.lock().unwrap();
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_idris2x"));
+    cmd.env_clear()
+        .current_dir(c.t.p(""))
+        .args(["pin", "0.8.0"]);
+    cmd.env("PATH", "/usr/bin:/bin")
+        .env("IDRIS2X_CACHE", c.t.p("cache"))
+        .env("IDRIS2X_ERROR_FILE", c.t.p("error.json"));
+    let child = cmd.stderr(std::process::Stdio::piped()).spawn().unwrap();
+    // The pin has the manifest and its signature, and waits for its turn; then the project names another key.
+    let start = std::time::Instant::now();
+    while c.hits() < 2 && start.elapsed().as_secs() < 30 {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let other = Key::new(2).public();
+    c.toml("0.8.0", &other);
+    drop(f);
+    let o = child.wait_with_output().unwrap();
+    let j = failed(&c.t, &o, "E-PIN-DRIFT", "channel-changed", 19);
+    assert!(j.contains(&other) && j.contains(&c.key.public()), "{j}");
+    assert!(!c.t.p("idris2x.lock").exists());
+    assert_eq!(c.kept(), 0);
+}
+
+#[test]
 fn a_malformed_manifest_is_refused_by_field() {
     let c = Chan::new("pin-malformed");
-    let cases: [(&str, Value, &str); 14] = [
+    let cases: [(&str, Value, &str); 15] = [
         ("/expires", json!("2099-01-01"), "expires"),
         // Not a real time: refused, never read as the far future.
         ("/expires", json!("2099-99-99T99:99:99Z"), "expires"),
@@ -469,6 +519,8 @@ fn a_malformed_manifest_is_refused_by_field() {
             json!(["https://a", 7]),
             "capsule entry",
         ),
+        // A capsule with nowhere to fetch it from could never install.
+        ("/bundles/idris2@0.8.0/T/urls", json!([]), "capsule entry"),
         (
             "/bundles/idris2@0.8.0/T/min_glibc",
             json!("new"),
@@ -578,6 +630,11 @@ fn idris2x_toml_is_read_strictly_and_a_lock_it_no_longer_matches_is_refused() {
         ("[tool\nidris2 = \"0.8.0\"\n", "line 1"),
         ("[]\n[toolchain]\nidris2 = \"0.8.0\"\n", "line 1"),
         ("[toolchain]\nidris2 = \"0.8.0\"\n[foo]\n", "line 3"),
+        // The same table twice, even with other keys: TOML refuses it, so idris2x does too.
+        (
+            "[toolchain]\nidris2 = \"0.8.0\"\n[channel]\nurl = \"http://127.0.0.1:1/v1.json\"\n[channel]\nkey = \"k\"\n",
+            "line 5",
+        ),
         ("[toolchain]\nidris2 = \"latest\"\n", "the end of the file"),
         (
             "[channel]\nurl = \"http://127.0.0.1:1/v1.json\"\n[toolchain]\nidris2 = \"0.8.0\"\n",

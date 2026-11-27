@@ -91,6 +91,32 @@ fn explain_knows_every_id_and_refuses_an_unknown_one() {
     assert!(text(&bad.stderr).starts_with("idris2x: error[E-USAGE]: no such error id: E-HASH\n"));
 }
 
+#[test]
+fn a_runbook_address_from_the_environment_is_shown_cleaned_and_escaped_in_json() {
+    let dir = std::env::temp_dir().join(format!("idris2x-runbook-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("error.json");
+    // An escape sequence, an Arabic letter mark and a tag character (past U+FFFF, so a surrogate pair in JSON).
+    let rb = "https://docs.example.org/\u{1b}[2J\u{61c}\u{e0041}";
+    let one = idris2x(&["explain", "E-USAGE"], &[("IDRIS2X_RUNBOOK", rb)]);
+    let want = "Runbook: https://docs.example.org/?[2J??/E-USAGE.adoc\n";
+    assert!(text(&one.stdout).ends_with(want), "{}", text(&one.stdout));
+    let env = [
+        ("IDRIS2X_RUNBOOK", rb),
+        ("IDRIS2X_ERROR_FILE", file.to_str().unwrap()),
+    ];
+    let err = text(&idris2x(&["instal"], &env).stderr);
+    assert!(
+        err.contains("see: https://docs.example.org/?[2J??/E-USAGE.adoc\n"),
+        "{err}"
+    );
+    assert!(!err.contains(['\u{1b}', '\u{61c}', '\u{e0041}']), "{err}");
+    let json = std::fs::read_to_string(&file).unwrap();
+    let docs = r#""docs":"https://docs.example.org/\u001b[2J\u061c\udb40\udc41/E-USAGE.adoc""#;
+    assert!(json.contains(docs), "{json}");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn a_failed_write_to_stdout_is_e_output_not_a_bug_report() {

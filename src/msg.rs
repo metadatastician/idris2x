@@ -267,7 +267,10 @@ fn js(s: &str) -> String {
         '\r' => "\\r".into(),
         '\u{8}' => "\\b".into(),
         '\u{c}' => "\\f".into(),
-        c if hidden(c) => format!("\\u{:04x}", c as u32),
+        // As UTF-16, so a character past U+FFFF is a surrogate pair, the only form JSON has for it.
+        c if hidden(c) => {
+            c.encode_utf16(&mut [0; 2]).iter().map(|u| format!("\\u{u:04x}")).collect()
+        }
         c => c.into(),
     };
     format!("\"{}\"", s.chars().map(esc).collect::<String>())
@@ -298,7 +301,8 @@ fn render(k: usize, ctx: &[(&str, &str)], form: Form, a: bool, w: usize) -> Rend
     let [summary, story, state, why, lead, note, auto] =
         [c.summary, c.story, c.state, c.why, c.fix_lead, c.fix_note, c.auto]
             .map(|t| fill(t, ctx, false));
-    let docs = format!("{}/{}.adoc", runbook(), e.id);
+    // IDRIS2X_RUNBOOK is host text like any other value: shown cleaned, and escaped in JSON.
+    let docs = format!("{}/{}.adoc", if json { runbook() } else { clean(&runbook()) }, e.id);
     let explain = format!("idris2x explain {}", e.id);
     let out = if form == Form::Json {
         fn kv(pairs: &[(&str, &str)]) -> String {
@@ -379,11 +383,19 @@ pub fn out(s: &str) -> R<()> {
     let r = o.write_all(s.as_bytes()).and_then(|()| o.flush());
     r.map_err(|e| Fail::OutputWriteFailed { detail: host(e.to_string()).into() })
 }
-/// A character that can hide or rewrite text on a terminal: a control character (C0, DEL or C1), a no-break or soft
-/// hyphen space, a zero-width character or a bidirectional control. scripts/proto/clean.jq `hidden` is the same set.
+/// A character that can hide or rewrite text on a terminal: a control character (Unicode category Cc: C0, DEL, C1),
+/// a format character (every Cf of Unicode 15.0: zero-width and bidirectional controls, tags and the rest; the whole
+/// tag block), or a no-break space (U+00A0, U+202F). scripts/proto/clean.jq `hidden` is the same set.
 fn hidden(c: char) -> bool {
-    let zw = matches!(c, '\u{a0}' | '\u{ad}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202f}');
-    c.is_control() || zw || matches!(c, '\u{2060}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+    let low = matches!(
+        c as u32,
+        0xa0 | 0xad | 0x600..=0x605 | 0x61c | 0x6dd | 0x70f | 0x890 | 0x891 | 0x8e2
+    );
+    c.is_control()
+        || low
+        || matches!(c as u32, 0x180e | 0x200b..=0x200f | 0x202a..=0x202f | 0x2060..=0x2064 | 0x2066..=0x206f)
+        || matches!(c as u32, 0xfeff | 0xfff9..=0xfffb | 0x110bd | 0x110cd | 0x13430..=0x1343f)
+        || matches!(c as u32, 0x1bca0..=0x1bca3 | 0x1d173..=0x1d17a | 0xe0000..=0xe007f)
 }
 /// `s` with each hidden character shown as `?`. Every value in a text or terminal message, and every note, goes
 /// through it; JSON keeps the value and escapes these characters instead.
@@ -453,5 +465,5 @@ pub fn explain(id: Option<&str>) -> R<()> {
         .iter()
         .find(|e| e.id == id)
         .ok_or_else(|| Fail::UsageNoSuchId { word: host(id).into() })?;
-    out(&format!("{}Runbook: {}/{id}.adoc\n", e.explain, runbook()))
+    out(&format!("{}Runbook: {}/{id}.adoc\n", e.explain, clean(&runbook())))
 }

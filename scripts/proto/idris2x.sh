@@ -299,7 +299,7 @@ cmd_explain() { # explain [ID]: the long form of an error, offline, from the sam
   local id=${1:-} j; j=$("$HERE/../lib/toml2json.sh" "$ERRORS_TOML")
   if [ -z "$id" ]; then jq -r '.error[] | .id + (" " * (24 - (.id | length))) + "exit " + (.exit | tostring | (" " * (2 - length)) + .) + "  " + (.title // .meaning)' <<< "$j"; return 0; fi
   jq -e --arg id "$id" '.error[] | select(.id == $id)' <<< "$j" >/dev/null || fail E-USAGE no-such-id word="$id"
-  jq -r --arg id "$id" --arg r "$RUNBOOK" '(.error[] | select(.id == $id)) as $e | [(.case // [])[] | select(.error == $id)] as $c
+  jq -r -L "$HERE" --arg id "$id" --arg r "$RUNBOOK" 'include "clean"; ($r | clean) as $r | (.error[] | select(.id == $id)) as $e | [(.case // [])[] | select(.error == $id)] as $c
     | "\($id) (exit \($e.exit)): \($e.title // $e.meaning)", "", "Meaning: \($e.meaning)", "Usual fix: \($e.fix)",
       (if ($c | length) > 0 then "", "It takes \($c | length) shape(s). Words in {braces} are filled in when it happens.",
          ($c[] | "", "  \(.case): \(.summary)", "    why: \(.why)", "    now: \(.state)",

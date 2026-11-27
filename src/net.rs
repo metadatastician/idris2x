@@ -53,7 +53,8 @@ fn allowed(u: &str) -> bool {
 /// A GET whose every hop obeys `allowed`: an https address may redirect only to https, and a local http one may not
 /// redirect at all.
 fn hop(agent: &ureq::Agent, u: &str) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
-    let https = u.starts_with("https://");
+    // The scheme as `allowed` reads it, so HTTPS://… is the same address as https://….
+    let https = u.parse::<ureq::http::Uri>().is_ok_and(|u| u.scheme_str() == Some("https"));
     agent.get(u).config().https_only(https).max_redirects(if https { 10 } else { 0 }).build()
 }
 /// One GET into `out`, resuming what is there. The body may not exceed what the lock says the file holds.
