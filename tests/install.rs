@@ -930,6 +930,25 @@ fn a_capsule_of_another_idris2_is_refused_and_one_of_chez_only_installs() {
     write_lock(&t, &sha(&chez), chez.len(), &[]);
     fs::write(t.p("c.tgz"), &chez).unwrap();
     ok(&run(&t, &["install", "--from", "c.tgz"], &[]));
+    // A finished entry is reused only for its own pin: the same digest locked as another Idris 2 is refused.
+    let ours = capsule(SCHEME, &[]);
+    write_lock(&t, &sha(&ours), ours.len(), &[]);
+    fs::write(t.p("c.tgz"), &ours).unwrap();
+    ok(&run(&t, &["install", "--from", "c.tgz"], &[]));
+    let lock = fs::read_to_string(t.p("idris2x.lock")).unwrap();
+    fs::write(
+        t.p("idris2x.lock"),
+        lock.replace(r#""0.8.0""#, r#""0.7.0""#),
+    )
+    .unwrap();
+    let o = run(&t, &["install"], &[]);
+    let json = failed(&t, &o, "E-CAPSULE-INVALID", "pin-mismatch", 21);
+    assert!(json.contains("0.7.0") && json.contains("0.8.0"), "{json}");
+    assert_eq!(
+        store(&t).len(),
+        2,
+        "the entry stays for the pin that installed it"
+    );
 }
 
 #[test]
