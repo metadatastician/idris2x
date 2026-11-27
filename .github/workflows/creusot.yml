@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+# MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+name: Creusot proof
+
+# Proves src/civil.rs with Creusot (the proof crate is verification/proofs/creusot/) and checks that three broken
+# copies fail on the goal each one breaks. scripts/check-creusot.sh is the last step and it alone decides pass or fail;
+# the steps before it only install the tools and refuse to go on if a pin is not met.
+#
+# STATUS: its first run on GitHub passed (run 45988074983 at 70e38ac, 2026-11-27, about 17 minutes). That is one run,
+# not a promise about the next one.
+#
+# It is NOT a required check: it is not in .machine_readable/required-contexts-allow.txt and no ruleset names it.
+# The paths filter is therefore fine: a pull request that touches none of the paths simply has no run.
+#
+# Pins (nothing is patched, nothing is built from a moving ref):
+#   * Creusot: commit 8763e2a9d5c6ba410f6ad68419123246ed6657de, fetched by commit and checked after the fetch. The same
+#     commit is in verification/proofs/creusot/Cargo.toml (creusot-std).
+#   * Rust: nightly-2026-10-26, the channel in Creusot's own rust-toolchain file; checked against that file.
+#   * Why3 and why3find: the commits in Creusot's creusot-deps.opam (why3 05bf4ddf, why3find 89dd8721), installed by
+#     Creusot's INSTALL script through opam.
+#   * Alt-Ergo, Z3, CVC4 and CVC5: downloaded by INSTALL from the release URLs in creusot-setup/src/tools_versions_urls.rs,
+#     each checked against a sha256 that is in the Creusot commit.
+#   * The versions Creusot reports are checked by name below, so a different tool fails the job before the proof runs.
+# Not pinned by this workflow: the runner image, apt's opam (2.1.x on Ubuntu 24.04) and the packages opam resolves for
+# the why3 and why3find dependencies beyond the two commits above.
+#
+# Hosts the install reaches: github.com (the Creusot fetch, creusot-std, why3find, the solver releases and their
+# release-assets hosts), gitlab.inria.fr (why3), static.rust-lang.org (the Rust toolchain), index.crates.io and
+# static.crates.io (crates), opam.ocaml.org and the source hosts of the opam packages (OCaml and its libraries).
+#
+# NO `uses:` ANYWHERE, deliberately (same reason as chaos.yml and wiki-sync.yml): .github/workflows/actions.lock is
+# keyed by workflow path, and a workflow that pulls an unlisted action fails before any step. So there is no cache
+# action either, and every run installs the tools from nothing.
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/civil.rs', 'verification/proofs/creusot/**', 'scripts/check-creusot.sh', '.github/workflows/creusot.yml']
+  pull_request:
+    paths: ['src/civil.rs', 'verification/proofs/creusot/**', 'scripts/check-creusot.sh', '.github/workflows/creusot.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: creusot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  creusot:
+    name: "creusot"
+    runs-on: ubuntu-24.04
+    # Measured about 17 minutes on GitHub (run 45988074983): 12 to install the tools from nothing, 4 to prove and to
+    # fail the three broken copies. More than doubled for runner variance, as in chaos.yml.
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch the commit (plain git, token as a masked header)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0); echo "::add-mask::$auth"
+          git init -q src && cd src
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Install system packages
+        # opam and libzmq3-dev: Creusot's own CI installs these (its why3find needs zmq). build-essential, m4,
+        # pkg-config, unzip, zlib1g-dev, libgmp-dev: opam compiles OCaml, Why3 and their libraries from source.
+        # curl, git: used by the installer and by this job; already present, listed so the dependency is explicit.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y -q opam libzmq3-dev build-essential m4 pkg-config unzip zlib1g-dev libgmp-dev curl git
+      - name: Fetch Creusot (commit pinned)
+        run: |
+          set -euo pipefail
+          want=8763e2a9d5c6ba410f6ad68419123246ed6657de
+          git init -q "$RUNNER_TEMP/creusot" && cd "$RUNNER_TEMP/creusot"
+          git remote add origin https://github.com/creusot-rs/creusot.git
+          git fetch -q --depth 1 origin "$want"
+          git checkout -q FETCH_HEAD
+          got=$(git rev-parse HEAD)
+          if [ "$got" != "$want" ]; then echo "::error::Creusot is $got, expected $want"; exit 1; fi
+          # The proof crate pins creusot-std to the same commit; the two must not drift apart.
+          if ! grep -qF "rev = \"$want\"" "$GITHUB_WORKSPACE/src/verification/proofs/creusot/Cargo.toml"; then
+            echo "::error::verification/proofs/creusot/Cargo.toml does not pin creusot-std to $want"; exit 1
+          fi
+          echo "CREUSOT_SRC=$RUNNER_TEMP/creusot" >> "$GITHUB_ENV"
+      - name: Install the Rust toolchain Creusot was built for
+        run: |
+          set -euo pipefail
+          chan=nightly-2026-10-26
+          if ! grep -qF "channel = \"$chan\"" "$CREUSOT_SRC/rust-toolchain"; then
+            echo "::error::Creusot's rust-toolchain is not $chan"; cat "$CREUSOT_SRC/rust-toolchain"; exit 1
+          fi
+          rustup toolchain install "$chan" --profile minimal -c rustfmt -c rustc-dev -c llvm-tools
+      - name: Set up opam
+        # No sandbox: a CI virtual machine, and the runner's user namespaces are restricted. in-creusot-ci=true is
+        # what Creusot's own CI sets; it leaves out why3-ide (a GUI) from the opam switch.
+        run: |
+          set -euo pipefail
+          opam init --bare --disable-sandboxing --no-setup -y
+          opam --cli=2.1 var --global in-creusot-ci=true
+      - name: Install Creusot with its own INSTALL script
+        # Builds the opam switch (OCaml 5.3.0, Why3, why3find), cargo-creusot and creusot-rustc, and downloads the
+        # solvers, each against the sha256 in the Creusot commit.
+        run: |
+          set -euo pipefail
+          cd "$CREUSOT_SRC"
+          ./INSTALL
+      - name: Check the tool versions (no silent substitution)
+        working-directory: src
+        run: |
+          set -euo pipefail
+          out=$(cargo creusot version 2>&1)
+          printf '%s\n' "$out"
+          for want in 'cargo-creusot 0.16.0-dev' 'Rust toolchain nightly-2026-10-26' 'Why3 platform, version 1.8.2+git' \
+                      'why3find v1.3.0+dev' 'alt-ergo 2.6.4' 'z3 5.3.2' 'cvc4 1.8'; do
+            if ! printf '%s\n' "$out" | grep -qxF "$want"; then echo "::error::cargo creusot version has no line: $want"; exit 1; fi
+          done
+          # CVC5 prints a long banner after "cvc5"; Why3 does not recognise 1.4.1 and says so, which is expected.
+          if ! printf '%s\n' "$out" | grep -qF 'cvc5 1.4.1'; then echo "::error::cvc5 1.4.1 not reported"; exit 1; fi
+      - name: Prove src/civil.rs, and check that three broken copies fail
+        working-directory: src
+        run: |
+          set -euo pipefail
+          scripts/check-creusot.sh

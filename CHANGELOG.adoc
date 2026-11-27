@@ -96,9 +96,12 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   overflow, for every value `pin` and `store` pass them. A normal build drops the contracts, so the launcher gains no
   dependency. The proof crate `verification/proofs/creusot/` is built apart from the launcher, and
   `scripts/check-creusot.sh` (`just proof-check-creusot`) also checks that three broken copies fail. It was run by
-  hand on 2026-11-27; CI does not run it yet. Verus has not been run on this code.
+  hand on 2026-11-27. Verus has not been run on this code.
+* `.github/workflows/creusot.yml` runs `scripts/check-creusot.sh` in CI, with Creusot installed at the pinned commit
+  and the tool versions checked first. Its first run on GitHub passed (run 45988074983, about 17 minutes). It is
+  not a required check.
 
 ==== Not yet
 
-* The chaos ruleset applied on GitHub, the Creusot proof in CI, `cargo vendor` and `cargo deny`, the capsule factory CI
-  and published capsules (Phase 1).
+* The chaos ruleset applied on GitHub, `cargo vendor` and `cargo deny`, the capsule factory CI and published
+  capsules (Phase 1).

@@ -121,7 +121,7 @@ them.
 | `ungraded`
 | not applicable (engineering)
 | not applicable (engineering)
-| None yet. Checked by hand on 2026-11-27 with `scripts/check-creusot.sh`: Creusot 8763e2a (cargo-creusot 0.16.0-dev, Rust nightly-2026-10-26), Why3 1.8.2+git, why3find 1.3.0+dev, Alt-Ergo 2.6.4, Z3 5.3.2, CVC4 1.8 and CVC5 1.4.1 (which Why3 reports as a version it does not recognise). Result: `Proved (7 files)`, and all three broken copies failed on their goals. CI does not run it. No headless, pinned receipt exists.
+| Headless, on GitHub: run 45988074983 (job `creusot` of `.github/workflows/creusot.yml`), 2026-11-27, at commit 70e38ac. It installed Creusot 8763e2a with Creusot's own `INSTALL` script and checked the tool versions: cargo-creusot 0.16.0-dev, Rust nightly-2026-10-26, Why3 1.8.2+git, why3find 1.3.0+dev, Alt-Ergo 2.6.4, Z3 5.3.2, CVC4 1.8 and CVC5 1.4.1 (which Why3 reports as a version it does not recognise). `scripts/check-creusot.sh` printed `Proved (7 files)`, and all three broken copies failed on their goals. The workflow pins Creusot, Rust, Why3, why3find and the solvers, not the runner image, opam or the other opam packages. GitHub keeps the log only for its retention period; this repository keeps no copy. The job is not a required check. The same result was first got by hand on 2026-11-27, with the same tool versions.
 
 |===
 

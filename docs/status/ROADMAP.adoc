@@ -13,6 +13,8 @@ first run failed one check, because the suite passed the job's `IDRIS2_PREFIX` o
 it passed on 2026-11-27 (run 45932797650 at 5f53e0c: four runs of 128 passed, 0 failed, in 16 minutes). It is not
 yet a required check. It runs on every pull request, and `.github/rulesets/Chaos-Gate.json` makes it one once the
 owner applies that ruleset; until then a red run does not block a merge.
+The Creusot proof of the date arithmetic (DATE-1) also runs on GitHub, in `.github/workflows/creusot.yml`; its first
+run passed on 2026-11-27 (run 45988074983). It is not a required check.
 Nothing is released, and no capsule is published.
 
 == Milestones
@@ -43,5 +45,4 @@ Nothing is released, and no capsule is published.
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
 . Owner: apply `.github/rulesets/Chaos-Gate.json`, so that the chaos job gates every PR.
-. Run the Creusot date proof (merged in #13) in CI, with pinned tools.
 . Add `cargo vendor` and `cargo deny` (ADR 0007).

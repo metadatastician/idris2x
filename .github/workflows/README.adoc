@@ -80,6 +80,19 @@ pins), and gitleaks in CI catches a genuine SonarCloud token as `generic-api-key
 Each targets a different language/surface; together they cover what no single
 analyser does.
 
+== `creusot.yml` runs the Creusot proof, and is not a required check
+
+`creusot.yml` proves `src/civil.rs` with Creusot and checks that three broken copies fail, by running
+`scripts/check-creusot.sh` as its last step. That script alone decides pass or fail. The steps before it install
+Creusot at the commit named in `verification/proofs/creusot/README.adoc`, using Creusot's own `INSTALL` script, and
+stop if a tool is not the pinned version. The workflow has no `uses:`, so `actions.lock` lists it with no actions.
+
+It runs on pull requests and pushes to `main` that touch `src/civil.rs`, the proof crate, the script or the
+workflow, and on `workflow_dispatch`. It is not in `.machine_readable/required-contexts-allow.txt` and no ruleset
+names it, so a red run does not block a merge. Its first run on GitHub passed (run 45988074983, 2026-11-27) in
+about 17 minutes, 12 of them installing the tools, because nothing is cached. Its timeout, 40 minutes, comes from
+that run.
+
 == Deed and K9 conformance come from the canon, not from this tree
 
 `dogfood-gate.yml` validates the repo deed and the K9 contracts by calling the
