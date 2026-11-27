@@ -5,13 +5,13 @@
 == Current Status
 
 Phase 0 complete (2026-11-16): design pinned in ADRs 0004–0011 and tested on real builds (see PHASE0-REPORT.adoc).
-Phase 1 in progress (2026-11-27): the Rust launcher is being built in four milestones. Milestones 1 to 3 are merged;
-milestone 4 (pin, channel trust and the exec map) is merged into the branch of the open PR #9, built and tested with
-`cargo test`. The chaos suite now drives the Rust launcher too (128 of 128 on each launcher, both styles, 2026-11-27,
-run by hand through `scripts/proto/chaos-gate.sh`). The CI job `.github/workflows/chaos.yml` runs the same four
-runs on GitHub. Its first run failed one check, because the suite passed the job's `IDRIS2_PREFIX` on to its drills.
-With that fixed, it passed on 2026-11-27 (run 45932797650 at 5f53e0c: four runs of 128 passed, 0 failed, in 16
-minutes). It is not yet a required check, so a red run would not block a merge.
+Phase 1 in progress (2026-11-27): the Rust launcher was built in four milestones, and all four are merged
+(milestone 4, pin, channel trust and the exec map, in #9), built and tested with `cargo test`. The chaos suite now
+drives the Rust launcher too (128 of 128 on each launcher, both styles, 2026-11-27, run by hand through
+`scripts/proto/chaos-gate.sh`). The CI job `.github/workflows/chaos.yml` runs the same four runs on GitHub. Its
+first run failed one check, because the suite passed the job's `IDRIS2_PREFIX` on to its drills. With that fixed,
+it passed on 2026-11-27 (run 45932797650 at 5f53e0c: four runs of 128 passed, 0 failed, in 16 minutes). It is not
+yet a required check, so a red run would not block a merge.
 Nothing is released, and no capsule is published.
 
 == Milestones
@@ -23,7 +23,7 @@ Nothing is released, and no capsule is published.
 * [x] Fact-check the plan against primary sources; record ADRs
 
 === Phase 1 — MVP (Rust launcher + factory)
-* [ ] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 2,000 lines of our own code; the cap was 1,000 until the owner raised it on 2026-11-26)
+* [x] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 2,000 lines of our own code; the cap was 1,000 until the owner raised it on 2026-11-26). All four milestones merged, 2026-11-27; not released.
 * [ ] Chaos suite as the launcher's CI gate (the job passes on GitHub; it gates once it is a required check, an
   owner setting)
 * [ ] Factory CI for idris2@0.8.0 × four Tier 1 targets (manylinux_2_28, native macOS), signed channel
@@ -41,6 +41,6 @@ Nothing is released, and no capsule is published.
 == Next actions
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
-. Finish the Rust launcher: review and merge milestones 2 to 4.
-. Run the chaos suite (`scripts/proto/chaos.sh`, which now drives the Rust launcher) in CI with a Chez Scheme
-  built from source. Then add `cargo vendor` and `cargo deny` (ADR 0007).
+. Make the chaos job a required check, so that it gates every PR.
+. Merge the Creusot date proof (#13), then run it in CI with pinned tools.
+. Add `cargo vendor` and `cargo deny` (ADR 0007).
