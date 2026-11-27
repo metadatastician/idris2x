@@ -140,8 +140,8 @@ install_capsule() { # install_capsule DIGEST SIZE URL... ; prints store dir
   mkdir -p "$CACHE/locks" "$CACHE/staging" "$CACHE/store" 2>/dev/null || fail E-STORE-IO cannot-create path="$CACHE"
   exec 9>"$CACHE/locks/sha256-$digest.lock"
   local holder="$CACHE/locks/sha256-$digest.holder" hp who="unknown (the holder left no record)"
-  if ! flock -w "$LOCK_TIMEOUT" 9; then     # only claim a holder we can see running; never advise deleting a held lock
-    hp=$(cat "$holder" 2>/dev/null || true); [ -n "$hp" ] && kill -0 "$hp" 2>/dev/null && who="process $hp (still running)"
+  if ! flock -w "$LOCK_TIMEOUT" 9; then     # name the last recorded holder, which may have ended; never advise deleting a held lock
+    hp=$(cat "$holder" 2>/dev/null || true); case $hp in ""|*[!0-9]*) ;; *) who="process $hp (last recorded; it may have ended)" ;; esac
     fail E-LOCK-TIMEOUT held digest="sha256:$digest" seconds="$LOCK_TIMEOUT" lockfile="$CACHE/locks/sha256-$digest.lock" holder="$who"
   fi
   echo "$$" > "$holder"

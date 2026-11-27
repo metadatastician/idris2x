@@ -131,7 +131,7 @@ pub fn gc(keep: usize, dry: bool, yes: bool) -> R<()> {
         if remove(&c, Some(d), p)? {
             (n, freed) = (n + 1, freed + b);
         } else {
-            text += &format!("idris2x: kept sha256:{}…: an install holds its lock\n", &d[..12]);
+            text += &format!("idris2x: kept sha256:{}…: in use (its lock is held)\n", &d[..12]);
         }
     }
     let (n, freed) = (plural(n), mb(freed));

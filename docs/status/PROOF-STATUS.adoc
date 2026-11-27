@@ -92,7 +92,7 @@ them.
 | None. The environment tests run in `cargo test`; these are tests, not a proof receipt.
 
 | GC-1
-| `gc` removes only what idris2x wrote, and never leaves a damaged capsule marked complete (I2). What exists (milestone 3): in `src/gc.rs`, `digest` accepts only the names idris2x writes (a prefix, 64 lowercase hex digits, a suffix); `remove` takes the capsule's lock without waiting, returns without removing when an install holds it, and deletes `.complete` before the rest. `tests/run.rs` checks that a name idris2x never writes is kept, that a held lock keeps its capsule, and that `--dry-run` and a missing `--yes` remove no capsule. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to `digest` (it returns a value only for those names) and to the order in `remove` (no removal is reached without the lock, and `.complete` goes first). The file system calls are a boundary below.
+| `gc` removes only what idris2x wrote, and never leaves a damaged capsule marked complete (I2). What exists (milestone 3): in `src/gc.rs`, `digest` accepts only the names idris2x writes (a prefix, 64 lowercase hex digits, a suffix); `remove` takes the capsule's lock without waiting, returns without removing when an install holds it, and deletes `.complete` before the rest. `tests/run.rs` checks that a name idris2x never writes is kept, that a held lock keeps its capsule, and that `--dry-run` and a missing `--yes` remove no capsule. Since 2026-11-27 a capsule that a program started by `exec` is using counts as held too (EXEC-2): `gc` keeps it and says it is in use. `gc` keeps every name it did not write without listing it (a Phase 2 point in the roadmap). Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to `digest` (it returns a value only for those names) and to the order in `remove` (no removal is reached without the lock, and `.complete` goes first). The file system calls are a boundary below.
 | `open`
 | `ungraded`
 | not applicable (engineering)
@@ -114,6 +114,14 @@ them.
 | not applicable (engineering)
 | not applicable (engineering)
 | None. The exec tests run in `cargo test`; these are tests, not a proof receipt.
+
+| EXEC-2
+| While a program that `exec` started runs, and any child that keeps the descriptor it inherited, `gc` does not remove its capsule (I2). What exists (2026-11-27): in `src/run.rs`, `held` takes a shared lock on the capsule's lock file, then clears `FD_CLOEXEC` on that descriptor with one `libc::fcntl` call, so the lock stays open through `execve` and passes to children; it checks `.complete` only after the lock is held, and installs again if `gc` removed the capsule first. `gc` takes the same lock exclusively without waiting, so it keeps a held capsule. This is the launcher's only `unsafe` code: `src/lib.rs` denies `unsafe_code` and `held` alone allows it. `tests/run.rs` (`gc_keeps_a_capsule_while_a_program_started_by_exec_runs`) starts a program through `exec`, checks that `gc --keep-last 1 --yes` keeps its capsule, then stops the program and checks that `gc` removes it. Two mutants, `exec` without `held` and `held` without the `fcntl` call, each failed that test when run by hand on 2026-11-27; that run is not in CI. Planned verifiers, none run: Kani for the `unsafe` seam (PROOF-POLICY §1.2), which is not installed here; what it could check is narrow, that the call has no undefined behaviour for a descriptor the `File` owns, since its effect on the kernel's descriptor table is the boundary below. Creusot with Pearlite contracts, and Verus, scoped to the order in `held` (`.complete` is read only after the lock is held, and the hold is dropped before a retry). Whether either can state that order over the file system calls has not been checked.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The test runs in `cargo test`; it is a test, not a proof receipt.
 
 | DATE-1
 | The launcher's date arithmetic is right. In `src/civil.rs`, `days` equals the logic function `spec::days`, with no `i64` overflow, for every value `real` in `src/pin.rs` can pass it; `civil(n)` returns a real Gregorian date whose day count is `n`, with no overflow, for every `n` that `utc` in `src/store.rs` passes it; and the lemma `date_back` shows that every real date comes back from its day count unchanged. So `days` and `civil` are inverse on real dates, and `real`, which keeps a time only if `utc` writes it back byte for byte, accepts exactly the real dates, if the text parsing and formatting around them are right. Those are tested in `tests/civil.rs` and `tests/pin.rs`, not proved. Creusot with Pearlite contracts on the code; the proof crate `verification/proofs/creusot/` supplies the logic functions and lemmas. `scripts/check-creusot.sh` (`just proof-check-creusot`) also checks that three broken copies fail, each on the goal it breaks: `days` off by one day, a contract on `civil` that is false for 31-day months, and 29 February in every year. Verus has not been run: it reads code written inside its `verus!` macro, which `src/civil.rs` is not. The owner chose on 2026-11-27 to record it as not run for this row, for that reason, rather than copy the code into the macro. This supports the expiry check of TRUST-1. Rests on the `std` boundary below.
@@ -172,8 +180,12 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 | STORE-1, STORE-2
 
 | Advisory file locks
-| `File::try_lock` (flock on Linux) excludes every other idris2x process that locks the same file. Locks are advisory: a program that ignores them, or a file system that does not support them, breaks this. `exec` takes no lock, so `gc` cannot see a capsule that is running.
-| GC-1
+| `File::try_lock` (flock on Linux) excludes every other idris2x process that locks the same file. Locks are advisory: a program that ignores them, or a file system that does not support them, breaks this. A flock belongs to the open file, not the process, so the hold `exec` takes lasts until every copy of its descriptor is closed; a program that closes the descriptors it inherited, or a daemon that does, gives up the hold early, and `gc` may then remove a capsule still in use.
+| GC-1, EXEC-2
+
+| `fcntl(F_SETFD)` (`ASSUMED`, operating system)
+| `fcntl(fd, F_SETFD, 0)` clears `FD_CLOEXEC` and nothing else on an open descriptor, as POSIX documents, and the descriptor then survives `execve`. Neither Kani nor any other verifier here checks the kernel.
+| EXEC-2
 
 |===
 

@@ -386,7 +386,7 @@ pub fn out(s: &str) -> R<()> {
 /// A character that can hide or rewrite text on a terminal: a control character (Unicode category Cc: C0, DEL, C1),
 /// a format character (every Cf of Unicode 15.0: zero-width and bidirectional controls, tags and the rest; the whole
 /// tag block), or a no-break space (U+00A0, U+202F). scripts/proto/clean.jq `hidden` is the same set.
-fn hidden(c: char) -> bool {
+pub fn hidden(c: char) -> bool {
     let low = matches!(
         c as u32,
         0xa0 | 0xad | 0x600..=0x605 | 0x61c | 0x6dd | 0x70f | 0x890 | 0x891 | 0x8e2

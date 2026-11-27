@@ -169,7 +169,7 @@ IDRIS2X_LOCK_TIMEOUT=1 t "lock held -> E-LOCK-TIMEOUT" 15 "$X" install --locked
 says "  exact text: held (no holder record: claims nothing it cannot see)" E-LOCK-TIMEOUT held digest="sha256:$DIG" seconds=1 lockfile="$IDRIS2X_CACHE/locks/sha256-$DIG.lock" holder="unknown (the holder left no record)"
 echo "$HOLD" > "$IDRIS2X_CACHE/locks/sha256-$DIG.holder"
 IDRIS2X_LOCK_TIMEOUT=1 t "lock held, holder recorded -> E-LOCK-TIMEOUT" 15 "$X" install --locked
-says "  exact text: held (names the running holder)" E-LOCK-TIMEOUT held digest="sha256:$DIG" seconds=1 lockfile="$IDRIS2X_CACHE/locks/sha256-$DIG.lock" holder="process $HOLD (still running)"
+says "  exact text: held (names the last recorded holder)" E-LOCK-TIMEOUT held digest="sha256:$DIG" seconds=1 lockfile="$IDRIS2X_CACHE/locks/sha256-$DIG.lock" holder="process $HOLD (last recorded; it may have ended)"
 wait "$HOLD"   # bare wait would also wait for the http server
 echo "== T11 unsafe tar member"; fresh t11; pin
 # The lock pins the archive's real size, so the download completes and the drill reaches the unpacking.
