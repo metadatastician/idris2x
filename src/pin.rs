@@ -53,11 +53,15 @@ fn real(t: &str) -> bool {
     f().is_some_and(|s| utc(s) == t)
 }
 
-/// Replace `p` whole, by one rename, or leave it as it was (I2).
+/// Replace `p` whole, by one rename, or leave it as it was (I2). The temporary file must be new: a file or link already
+/// at its name (a project can commit one) is refused, never followed, and only a file made here is removed.
 fn put(p: &Path, b: &[u8]) -> std::io::Result<()> {
     let tmp = p.with_extension(format!("{}.tmp", std::process::id()));
-    let w = fs::File::create(&tmp).and_then(|mut f| f.write_all(b).and_then(|()| f.sync_all()));
-    w.and_then(|()| fs::rename(&tmp, p)).inspect_err(|_| _ = fs::remove_file(&tmp))
+    let with_name =
+        |e: std::io::Error| std::io::Error::new(e.kind(), format!("{}: {e}", tmp.display()));
+    let f = fs::OpenOptions::new().write(true).create_new(true).open(&tmp).map_err(with_name)?;
+    let w = (&f).write_all(b).and_then(|()| f.sync_all()).and_then(|()| fs::rename(&tmp, p));
+    w.inspect_err(|_| _ = fs::remove_file(&tmp))
 }
 
 /// `idris2x pin <version>`: resolve `ver` through the channel and write idris2x.lock for every target it lists.
@@ -66,8 +70,14 @@ pub fn pin(ver: &str) -> R<()> {
     let wait =
         setting("IDRIS2X_LOCK_TIMEOUT", "a whole number of seconds", 600, |v| v.parse().ok())?;
     let tf = toml_path(&lf);
-    let named =
-        || R::Ok(toml(&lf)?.and_then(|t| t.channel).or(RELEASE.map(|(u, k)| (u.into(), k.into()))));
+    // The channel idris2x.toml names, or the built-in one. A pin of another version than idris2x.toml asks for is
+    // refused: install would refuse the lock it wrote (I1).
+    let named = || match toml(&lf)? {
+        Some(t) if t.idris2.shown() != ver => {
+            Err(Fail::PinDriftOtherVersion { toml: t.idris2.into(), version: host(ver).into() })
+        }
+        t => Ok(t.and_then(|t| t.channel).or(RELEASE.map(|(u, k)| (u.into(), k.into())))),
+    };
     let Some((url, key)) = named()? else {
         return Err(Fail::UsageNoChannel { file: host(&tf).into() });
     };
