@@ -53,7 +53,16 @@ copies fail, each on the goal it breaks:
   rests on the leap rule.
 
 The script fails if `cargo-creusot` is not installed. It prints the tool
-versions and the commit, as a receipt. CI does not run it yet.
+versions and the commit, as a receipt.
+
+== CI
+
+`.github/workflows/creusot.yml` installs Creusot at the commit below with
+Creusot's own `INSTALL` script, checks the tool versions, and runs
+`scripts/check-creusot.sh`. It runs on changes to `src/civil.rs`, this crate,
+the script and the workflow. It is not a required check. It has not run on
+GitHub yet, so there is no CI receipt. The first run also sets its timeout,
+which is a guess until then.
 
 == Install Creusot
 

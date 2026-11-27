@@ -139,7 +139,9 @@ just proof-check-coq       # Coq only
 just proof-check-creusot   # Creusot: src/civil.rs, and three broken copies that must fail
 ----
 
-`proof-check-all` does not include Creusot yet.
+`proof-check-all` does not include Creusot yet. `.github/workflows/creusot.yml`
+runs the Creusot check in CI with pinned tools. It is not a required check, and
+it has not run on GitHub yet.
 
 == Banned patterns
 

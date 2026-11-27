@@ -43,5 +43,6 @@ Nothing is released, and no capsule is published.
 
 . Owner: apply rulesets, enable Discussions and immutable releases, create the wiki's first page, register at bestpractices.dev.
 . Owner: apply `.github/rulesets/Chaos-Gate.json`, so that the chaos job gates every PR.
-. Run the Creusot date proof (merged in #13) in CI, with pinned tools.
+. Run the Creusot job `.github/workflows/creusot.yml` once on GitHub (it has not run yet). Read the run, set its
+  timeout from the measured time, and fix whatever the first run shows. Until a run passes, DATE-1 has no CI receipt.
 . Add `cargo vendor` and `cargo deny` (ADR 0007).
