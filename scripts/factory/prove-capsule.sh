@@ -22,13 +22,17 @@ done
 for v in CAPSULE BUNDLE X FIXTURE WORK; do [ -n "${!v}" ] || die "missing --$(echo "$v" | tr '[:upper:]' '[:lower:]')"; done
 for f in "$CAPSULE" "$BUNDLE" "$X" "$FIXTURE"; do [ -f "$f" ] || die "no such file: $f"; done
 if [ ! -x "$X" ] || [ ! -x "$FIXTURE" ]; then die "the launcher and the fixture server must be executable"; fi
+# The run changes directory before it starts the launcher, so a relative path given here is made absolute first.
+abs() { printf '%s/%s\n' "$(cd "$(dirname "$1")" && pwd)" "$(basename "$1")"; }
+CAPSULE=$(abs "$CAPSULE") BUNDLE=$(abs "$BUNDLE") X=$(abs "$X") FIXTURE=$(abs "$FIXTURE")
 SIGNIFY=''; for c in signify-openbsd signify; do command -v "$c" >/dev/null 2>&1 && { SIGNIFY=$c; break; }; done
 [ -n "$SIGNIFY" ] || die "no signify found (signify-openbsd on Linux; on macOS brew install signify-osx)"
 if command -v sha256sum >/dev/null 2>&1; then sha() { sha256sum "$1" | cut -d' ' -f1; }; else sha() { shasum -a 256 "$1" | cut -d' ' -f1; }; fi
 # The drills start from a known environment (ADR 0005): nothing the launcher resets is inherited from the caller.
 while read -r v; do unset "$v"; done < <(compgen -e | grep -E '^(IDRIS2_|DYLD_)|^(LD_LIBRARY_PATH|CHEZ|SCHEMEHEAPDIRS)$')
 
-mkdir -p "$WORK"; WORK=$(cd "$WORK" && pwd); rm -rf "$WORK/serve" "$WORK/proj" "$WORK/cache"; mkdir -p "$WORK/serve" "$WORK/proj"
+mkdir -p "$WORK"; WORK=$(cd "$WORK" && pwd)
+rm -rf "$WORK/serve" "$WORK/proj" "$WORK/cache" "$WORK/throwaway.pub" "$WORK/throwaway.sec"; mkdir -p "$WORK/serve" "$WORK/proj"
 target=$(jq -r .target "$BUNDLE"); file=$(jq -r .file "$BUNDLE"); want=$(jq -r .sha256 "$BUNDLE"); size=$(jq -r .size "$BUNDLE")
 chez=$(jq -r .chez "$BUNDLE"); glibc=$(jq -r '.min_glibc // ""' "$BUNDLE")
 [ "$(basename "$CAPSULE")" = "$file" ] || die "the bundle names $file but the capsule is $(basename "$CAPSULE")"

@@ -146,6 +146,8 @@ jobs:
           rustup toolchain install "$RUST_VERSION" --profile minimal
           cargo "+$RUST_VERSION" build --locked --release --bin idris2x --example fixture_server
       - name: Build Chez Scheme, Idris 2 and the capsule inside the manylinux_2_28 image
+        # gmp-devel: Idris 2's refc support library needs gmp.h to build, and the image lacks it. The package comes from
+        # the image's own repositories and is not pinned; only the image is (scripts/factory/README.adoc).
         if: matrix.os == 'linux'
         run: |
           set -euo pipefail
@@ -155,6 +157,7 @@ jobs:
             bash -euo pipefail -c '
               command -v jq >/dev/null || dnf install -y -q jq
               command -v git >/dev/null || dnf install -y -q git-core
+              dnf install -y -q gmp-devel
               /src/scripts/factory/build-toolchain.sh --target "$TRIPLE" --machine "$MACHINE" --work /work/build --out /work/out'
       - name: Build Chez Scheme, Idris 2 and the capsule (macOS, native)
         if: matrix.os == 'macos'

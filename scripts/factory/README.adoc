@@ -44,6 +44,7 @@ with Chez's `make bootquick XM=ta6osx`. That fallback is not written and has not
 == Not verified
 
 * Every macOS step: the `signify-osx` package name, `gtar` and `shasum` use, `sort -z`, the build of Chez and Idris 2, and the refc canary linking GMP.
-* The manylinux build and the glibc floor of 2.28.
+* The manylinux build and the glibc floor of 2.28. The build installs `gmp-devel` from the image's own repositories;
+  that package is not pinned, only the image is.
 * The `docker run` steps and the pinned image digests.
 * Attestation.
