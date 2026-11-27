@@ -93,6 +93,19 @@ names it, so a red run does not block a merge. Its first run on GitHub passed (r
 about 17 minutes, 12 of them installing the tools, because nothing is cached. Its timeout, 40 minutes, comes from
 that run.
 
+== `factory.yml` builds the capsules, and has not run on GitHub yet
+
+It builds one capsule for each Tier 1 target of `src/definitions/targets.toml`, proves each one, and attests it. It signs nothing.
+The owner signs the channel offline. The steps live in `scripts/factory/` (see its README).
+
+* `matrix-check` fails if the matrix and `targets.toml` differ.
+* `capsule (<triple>)` builds, then installs the capsule with the Rust launcher from a throwaway-signed local channel, runs the canaries and `idris2x selftest`, and uploads the artifact `capsule-<triple>`. Linux jobs build and run the canaries in the manylinux_2_28 image, pinned by digest.
+* `attest (<triple>)` attests the tarball with `actions/attest-build-provenance`. Only this job has `id-token: write` and `attestations: write`. It is skipped on pull requests.
+* The workflow is also `workflow_call`, for the release workflow, which must grant those two permissions.
+* It has no `uses:` for checkout (plain git, as `chaos.yml`). `actions.lock` lists the attest, upload and download actions.
+* It is not in `required-contexts-allow.txt` and no ruleset requires it.
+* The `unicode_paths` canary fails on Idris 2 0.8.0 (upstream bug). `run-canaries.sh` names it in the log and does not count it.
+
 == Deed and K9 conformance come from the canon, not from this tree
 
 `dogfood-gate.yml` validates the repo deed and the K9 contracts by calling the

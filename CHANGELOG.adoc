@@ -100,6 +100,10 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * `.github/workflows/creusot.yml` runs `scripts/check-creusot.sh` in CI, with Creusot installed at the pinned commit
   and the tool versions checked first. Its first run on GitHub passed (run 45988074983, about 17 minutes). It is
   not a required check.
+* Capsule factory CI (not run on GitHub yet): `.github/workflows/factory.yml` builds, proves and attests one capsule
+  per Tier 1 target, and `scripts/factory/` holds its scripts, among them `make-channel.sh`, which writes an unsigned
+  channel manifest from bundle records. `make-capsule.sh` signs only when given a key, and runs on macOS. The Linux
+  x86_64 path was run by hand; the manylinux, macOS and attestation steps were not.
 
 ==== Not yet
 

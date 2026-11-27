@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+= Capsule factory scripts
+
+These scripts back `.github/workflows/factory.yml`. The workflow has not run on GitHub yet.
+Only the Linux x86_64 path was run, by hand, on one machine. Nothing here signs anything.
+The owner signs the channel offline with the root key (`docs/MAINTAINERS.adoc`).
+
+[cols="1,3",options="header"]
+|===
+| Script | What it does
+| `build-toolchain.sh` | Builds Chez Scheme 10.4.1 and Idris 2 v0.8.0 from the pinned sources (the same pins as `chaos.yml`), with their own Makefiles and no patches. Then calls `scripts/proto/make-capsule.sh` without a key. On Linux it fails if the measured glibc floor is above the floor in `targets.toml`.
+| `run-canaries.sh` | Runs `tests/canaries/run.sh` on a capsule root. It fails on a failed canary, a skipped canary, or a count other than 12. The one exception is `unicode_paths`, a known upstream Idris 2 0.8.0 bug (`docs/status/UPSTREAM-NOTES.adoc`). The script names it in its output when it fails.
+| `prove-capsule.sh` | Makes a throwaway signify key and a one-target channel, serves it on localhost with `examples/fixture_server`, and installs the capsule with the Rust launcher. Then runs `exec`, `verify`, the canaries and `selftest`. The key stays in the work directory.
+| `check-matrix.sh` | Fails if the matrices in `factory.yml` differ from the Tier 1 rows of `targets.toml`.
+| `make-channel.sh` | Turns a directory of `<triple>.bundle.json` files into an unsigned `v1.json`. It refuses a missing Tier 1 target, a duplicate target, a malformed field, a non-https URL or a past expiry. It re-checks the result against the rules of `channel-v1.schema.json`, written out in jq, because the repository has no JSON Schema validator.
+|===
+
+== make-channel.sh example
+
+----
+scripts/factory/make-channel.sh --bundles DIR \
+  --base-url https://github.com/metadatastician/idris2x/releases/download/vX \
+  --base-url https://MIRROR/vX \
+  --channel-version 1 --expires 2027-02-25T00:00:00Z
+----
+
+Each `--base-url` adds one entry to every `urls[]`. The release asset comes first, then the mirror (ADR 0010).
+
+== make-capsule.sh changes
+
+`scripts/proto/make-capsule.sh` signs only when given `--key`, `--pub` and `--base-url`. Without them it makes no manifest.
+`--gzip-only` skips the `.zst` and `.xz` comparison files. `--bundle-json FILE` writes the bundle record.
+It finds GNU tar by the name `gtar` or `tar` and stops if neither is GNU. It uses `shasum` when `sha256sum` is missing.
+It measures the glibc floor only for `*-linux-gnu` targets. The tarball is byte for byte the same as before the change.
+
+== Intel macOS
+
+`macos-15-intel` and `macos-26-intel` are listed on the GitHub-hosted runners page, so `factory.yml` builds natively.
+GitHub plans to retire Intel runners, and the page gives no date. If the label goes, the fallback is a cross-build on arm64
+with Chez's `make bootquick XM=ta6osx`. That fallback is not written and has not been tried.
+
+== Not verified
+
+* Every macOS step: the `signify-osx` package name, `gtar` and `shasum` use, `sort -z`, the build of Chez and Idris 2, and the refc canary linking GMP.
+* The manylinux build and the glibc floor of 2.28.
+* The `docker run` steps and the pinned image digests.
+* Attestation.
