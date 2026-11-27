@@ -33,11 +33,14 @@ OUT=${OUT:-$DIR/v1.json}
 
 [[ "$CHV" =~ ^[1-9][0-9]*$ ]] || die "channel version '$CHV' is not a positive integer"
 [[ "$EXP" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || die "expiry '$EXP' is not YYYY-MM-DDTHH:MM:SSZ (UTC)"
+# A date that does not exist, such as 2027-02-30, comes back changed from jq's parse and print, so it is refused.
+[ "$(jq -rn --arg e "$EXP" 'try ($e | fromdateiso8601 | todateiso8601) catch ""')" = "$EXP" ] || die "expiry '$EXP' is not a real UTC date and time"
 now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 [[ "$EXP" > "$now" ]] || die "expiry $EXP is not in the future (now $now)"
 for b in "${BASES[@]}"; do
   [[ "$b" =~ ^https://[^/[:space:]]+ ]] || die "base URL '$b' is not an https URL"
   [[ "$b" != */ ]] || die "base URL '$b' ends in a slash"
+  [[ "$b" != *[?#]* ]] || die "base URL '$b' has a query or fragment; the capsule file name is appended to it, so it must be a plain path"
 done
 
 targets=$("$root/scripts/lib/toml2json.sh" "$root/src/definitions/targets.toml") || die "cannot read src/definitions/targets.toml"
@@ -95,6 +98,7 @@ jq -e '
   and hasall(["schema","channel_version","expires","bundles","compat","deprecated"])
   and .schema == 1 and (.channel_version | type == "number" and . == floor and . >= 1)
   and (.expires | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))
+  and (.expires as $e | try ($e | fromdateiso8601 | todateiso8601 == $e) catch false)
   and (.deprecated | type == "array")
   and (.bundles | type == "object" and length > 0 and (keys | all(test("^idris2@[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9]+)?$")))
        and all(.[]; type == "object" and (keys | all(test("^[a-z0-9_]+-[a-z]+-[a-z]+(-[a-z]+)?$")))

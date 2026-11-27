@@ -15,7 +15,7 @@ on:
     tags:
       - 'v*'
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}   # one release run at a time, whatever the tag, so the draft check below holds
   cancel-in-progress: false
 permissions:
   contents: read
@@ -183,6 +183,12 @@ jobs:
           echo "CHANNEL_VERSION=$cv" >> "$GITHUB_ENV"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::a release for $TAG already exists; delete the draft before re-running (published releases are immutable)"; exit 1
+          fi
+          # One draft at a time. Two drafts could each pass the check below against the same published release and then
+          # be published in the wrong order, which would lower the published channel_version.
+          drafts=$(gh release list --limit 1000 --json tagName,isDraft --jq '[.[] | select(.isDraft) | .tagName] | join(" ")')
+          if [ -n "$drafts" ]; then
+            echo "::error::a draft release already exists ($drafts); publish or delete it before drafting $TAG"; exit 1
           fi
           prev=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')
           if [ -z "$prev" ]; then

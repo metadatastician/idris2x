@@ -205,6 +205,9 @@ printf 'Type "sign" to continue, anything else to stop: '
 ans=''
 IFS= read -r ans || { printf '\n'; die 'no confirmation on standard input; nothing was signed'; }
 [ "$ans" = sign ] || die "confirmation was '$ans', not 'sign'; nothing was signed"
+# The checks above and the wait for "sign" take time, so the expiry is checked again just before signing.
+now_cmp=$(date -u +%Y-%m-%dT%H:%M:%S)
+[[ "$exp_cmp" > "$now_cmp" ]] || die "v1.json expired at $EXPIRES (it is now ${now_cmp}Z) before it was signed; nothing was signed"
 
 # 8. Sign. The secret key is passed by path to signify and goes nowhere else.
 "$SIGNIFY" -S -s "$KEY" -m "$OUT/v1.json" -x "$OUT/v1.json.sig" \

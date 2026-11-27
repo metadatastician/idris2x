@@ -59,8 +59,14 @@ Immutable releases need the order draft, attach every asset, then publish. After
 
 * A refusal from `sign-channel.sh` means the draft is not fit to sign. Do not sign by hand to get past it. Fix the cause
   and run the release again.
-* A draft cannot be repaired in place by CI: delete the draft in the GitHub UI or with `gh release delete`, then push the
-  tag again. A published release is immutable; a fix is a new tag and a higher `channel_version`.
+* A draft cannot be repaired in place by CI. Pushing the same tag again starts nothing, so:
+** If the tag's commit is right (for example, a runner failed), delete the draft with `gh release delete vX.Y.Z`, then
+   re-run the release workflow's run for that tag (`gh run rerun <run-id>`).
+** If the fix changes the commit, delete the draft and its tag with `gh release delete vX.Y.Z --cleanup-tag`, then tag
+   the fixed commit and push the tag.
+* A published release is immutable; a fix is a new tag and a higher `channel_version`.
+* Only one draft may exist at a time. `release.yml` refuses to draft a tag while another draft exists, so two drafts
+  cannot be published in the wrong order and lower the published `channel_version`.
 * The manifest expires 90 days after `assemble` ran. Sign and publish soon after the draft appears.
 
 == Not done yet

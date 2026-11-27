@@ -27,7 +27,7 @@ signify-openbsd -G -n -p "$work/key/t.pub" -s "$work/key/t.sec" -c 'throwaway te
 
 # Stub gh. It only serves $FIXTURE; any other call is a loud failure (exit 99).
 mkdir -p "$work/bin"
-cat > "$work/bin/gh" <<'STUB'
+cat > "$work/bin/gh" <<'GH_FIXTURE'
 #!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >> "$FIXTURE/gh.log"
@@ -45,7 +45,7 @@ case "$1 ${2:-}" in
     fi ;;
   *) echo "stub gh: unexpected call: $*" >&2; exit 99 ;;
 esac
-STUB
+GH_FIXTURE
 chmod +x "$work/bin/gh"
 
 # Fixture: a draft with four fake capsules, four fake launchers, a v1.json, SHA256SUMS.
