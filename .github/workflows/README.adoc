@@ -107,9 +107,8 @@ workflow has no `uses:`, so `actions.lock` lists it with no actions.
 
 It is not in `.machine_readable/required-contexts-allow.txt` and no ruleset names it, so a red run does not block a
 merge. It has not run on GitHub yet. Its timeout, 30 minutes, is taken from local timings, more than doubled, and
-should be reset from the first run. Run locally on 2026-11-27, `cargo deny check` passes advisories, bans and sources
-and fails licenses on `webpki-root-certs` 1.0.12 (`CDLA-Permissive-2.0`), a crate that is not in the Tier 1 set. So
-the first run on GitHub is expected to be red until the owner decides that licence.
+should be reset from the first run. Run locally on 2026-11-27, `cargo deny check` passes advisories, bans, licenses and sources.
+`webpki-root-certs` 1.0.12 (`CDLA-Permissive-2.0`) passes through a crate-scoped exception the owner allowed.
 
 == Deed and K9 conformance come from the canon, not from this tree
 

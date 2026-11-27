@@ -82,12 +82,11 @@ exactly the set `cargo metadata` names. It prints a receipt.
 * A signed vendor tarball per release. It belongs to Phase 2 and is not built.
 * Windows (Tier 2) is not vendored.
 * The workflow has not run on GitHub yet, so its timeout, 30 minutes, is a guess from local timings.
-* `cargo deny check` with the template's `deny.toml` does not pass today. The licence check rejects
-  `webpki-root-certs` 1.0.12, licence `CDLA-Permissive-2.0`, which is not in the allow list. The crate is pulled in
-  by `rustls-platform-verifier` and is not in the Tier 1 set. Allowing a licence is the owner's decision; the
-  template-owned `deny.toml` has not been changed. Advisories, bans and sources pass. The check is not a required
-  check, so a red run blocks nothing.
-  Run with cargo-deny 0.22.2, it also gives seven warnings that block nothing: two duplicate-version groups (`syn`,
-  `windows-sys`); the `openssl` ban wrapper `openssl-sys`, the `ring` OpenSSL licence exception and the `BSD-2-Clause`
-  and `Unicode-DFS-2016` allowances are never used by this dependency set. Changes to `deny.toml` are the owner's call and
-  none was made.
+* `cargo deny check` passes advisories, bans, licenses and sources. `webpki-root-certs` 1.0.12, pulled in by
+  `rustls-platform-verifier` and not in the Tier 1 set, is licensed `CDLA-Permissive-2.0`. The owner allowed that
+  licence for that one crate (2026-11-27), as a crate-scoped `[[licenses.exceptions]]` entry in this repository's
+  `deny.toml`; the allow list itself is unchanged. The agent made that one edit with the owner's one-time
+  permission. The template's own copy is unchanged and stays with the owner. The check is not a required check yet.
+  Run locally with cargo-deny 0.22.2, the version CI pins, it gives six warnings that block nothing: two duplicate-version
+  groups (`syn`, `windows-sys`); the `openssl` ban wrapper `openssl-sys`, the `ring` OpenSSL licence exception and the
+  `BSD-2-Clause` and `Unicode-DFS-2016` allowances are never used by this dependency set.

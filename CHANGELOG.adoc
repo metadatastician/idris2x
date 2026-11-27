@@ -122,8 +122,8 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
   replacement is passed with `--config`. `tests/vendor_tier1_test.sh` checks the offline build and tests, and that
   the build fails with `ring` stubbed. `.github/workflows/vendor.yml` runs these, then `cargo deny check` (0.22.2)
   with the template's `deny.toml`. The workflow has not run on GitHub yet and is not a required check. Run locally,
-  `cargo deny` passes advisories, bans and sources and fails licenses: `webpki-root-certs` 1.0.12 is
-  `CDLA-Permissive-2.0`, which the allow list does not name. That decision is the owner's.
+  `cargo deny` passes all four checks. `webpki-root-certs` 1.0.12 is `CDLA-Permissive-2.0`; the owner allowed
+  that licence for that one crate (2026-11-27), and `deny.toml` carries it as a crate-scoped exception.
 
 ==== Not yet
 
