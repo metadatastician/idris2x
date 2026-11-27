@@ -22,6 +22,8 @@ FIXTURE_SERVER=target/release/examples/fixture_server IDRIS2X_BIN=target/release
 
 In CI, `.github/workflows/chaos.yml` builds both toolchains from the pinned sources and runs `scripts/proto/chaos-gate.sh`:
 four runs (the prototype and the Rust launcher, each in message styles a and b), which must all pass with equal counts.
+The job runs on every pull request. `.github/rulesets/Chaos-Gate.json` makes it a required check once the owner
+applies that ruleset; until then a red run does not block a merge.
 
 == What is drilled (128 checks, all passing on both launchers on 2026-11-27, by hand and in CI)
 

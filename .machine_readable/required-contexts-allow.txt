@@ -9,7 +9,7 @@
 # renamed or path-filtered workflow can never silently strand pull requests
 # behind an unsatisfiable ruleset check (issue #219 class).
 #
-# All three contexts come from ONE workflow and are ordinary job names, not the
+# All four contexts are ordinary job names (three from one workflow, one from another), not the
 # `<caller> / <called job>` pairs a job-level reusable call would produce:
 #
 #   * `scan / gitleaks` is the historic headline context for the
@@ -21,10 +21,14 @@
 #     workflow and are listed here so that (a) the gate certifies that every
 #     generated repository really starts all three scanner jobs, and (b) turning
 #     any of them on in a ruleset needs no mapping edit. Listing a produced
-#     context is not the same as requiring it: this file is a producer map, and
-#     the empty `required_status_checks` in `.github/rulesets/base.json` and in
-#     `.github/settings.yml` is still what keeps the floor where the owner left
-#     it.
+#     context is not the same as requiring it: this file is a producer map. The
+#     `required_status_checks` in `.github/rulesets/base.json` stays empty because that
+#     file is upstream-verbatim; `.github/rulesets/Chaos-Gate.json` is this repo's own
+#     ruleset, and it requires `chaos`.
+#
+# `chaos` is the launcher's gate (four chaos runs through `scripts/proto/chaos-gate.sh`).
+# `.github/rulesets/Chaos-Gate.json` requires it once the owner applies that ruleset; until
+# then it is produced, not required.
 #
 # A context here MUST be a job `name:` (or job id) in its workflow. A remote
 # reusable-workflow call produces nothing this gate can certify, which is why
@@ -33,3 +37,4 @@
 scan / gitleaks => .github/workflows/secret-scanner.yml
 scan / rust-secrets => .github/workflows/secret-scanner.yml
 scan / shell-secrets => .github/workflows/secret-scanner.yml
+chaos => .github/workflows/chaos.yml

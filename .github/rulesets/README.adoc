@@ -59,6 +59,18 @@ always linear-safe. Sourced verbatim from `config/rulesets/require-linear-histor
 `Immutable-Tags.json`:: Makes release tags immutable — blocks tag deletion,
 non-fast-forward updates, and overwrites, and requires signed tags.
 
+`Chaos-Gate.json`:: This repository's own ruleset, not sourced from upstream. It requires the `chaos` check from
+GitHub Actions on the default branch, with the branch up to date before merge, and no bypass actors. It is a
+separate file because `base.json` is upstream-verbatim. It is not in force until the owner applies it:
++
+[source,bash]
+----
+gh api --method POST \
+  -H "Accept: application/vnd.github+json" \
+  "/repos/{owner}/{repo}/rulesets" \
+  --input .github/rulesets/Chaos-Gate.json
+----
+
 [NOTE]
 ====
 Files here are named to match the *live ruleset name*, which is not always the
@@ -85,6 +97,24 @@ gh api "/repos/{owner}/{repo}/rulesets" --jq '.[] | "\(.id)\t\(.name)\t\(.enforc
 | `Secret-Scan-Floor` (`24309812`) | active | branch | *none* — `rules: []`
 | `Immutable-Tags` (`22959911`) | active | tag | creation, deletion, non-fast-forward, update, required signatures
 |===
+
+[NOTE]
+====
+Measured 2026-11-27 (`gh api repos/{owner}/{repo}/rulesets` and `gh api repos/{owner}/{repo}/rules/branches/main`).
+The table above is out of date.
+
+Live rulesets: 25336366 App Permissions (active, branch); 25336455 Automations (active, branch); 23868655
+Branch-Floor (active, branch); 24634124 Branch-Signatures (active, branch); 18221978 Estate Baseline (active,
+repository); 18225024 EstateBranching (active, branch); 18225051 EstateTagging (active, tag); 23868851 Tag-Floor
+(active, tag).
+
+Rules on `main`: `Branch-Floor` gives `deletion`, `non_fast_forward`, `required_linear_history` and
+`require_secret_scanning_alert_resolution`; `EstateBranching` gives `required_signatures` and `pull_request`
+(squash or rebase, code owner review, review thread resolution); `Estate Baseline` gives `repository_delete`,
+`repository_transfer` and `repository_visibility`. No rule on `main` requires a status check.
+
+Regenerating the full table and the drift notes is left for a later change.
+====
 
 [IMPORTANT]
 ====
