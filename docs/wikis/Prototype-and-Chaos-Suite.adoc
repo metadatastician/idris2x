@@ -5,19 +5,22 @@
 = Prototype and chaos suite
 
 `scripts/proto/` holds the Phase 0 bash prototype: `idris2x.sh` (launcher), `make-capsule.sh` (factory), `chaos.sh` (drills).
-The Rust launcher must pass the same drills; `chaos.sh` is its executable specification.
+`chaos.sh` is the executable specification of both launchers: `IDRIS2X_BIN` names the one to drill (the prototype by default).
+The expected message text always comes from the prototype's renderer, so neither launcher is checked against its own wording.
 
 == Run it (Linux)
 
 [source,bash]
 ----
 apt-get install jq zstd signify-openbsd libgmp-dev
-cargo build --example fixture_server        # Range-capable test server, std only
-FIXTURE_SERVER=target/debug/examples/fixture_server \
+cargo build --release --bin idris2x --example fixture_server   # the Rust launcher, and a Range-capable test server (std only)
+FIXTURE_SERVER=target/release/examples/fixture_server \
+  scripts/proto/chaos.sh <chez-prefix> <idris2-prefix> <chez-src> <idris2-src>          # the prototype
+FIXTURE_SERVER=target/release/examples/fixture_server IDRIS2X_BIN=target/release/idris2x \
   scripts/proto/chaos.sh <chez-prefix> <idris2-prefix> <chez-src> <idris2-src>
 ----
 
-== What is drilled (121 checks, all passing on 2026-11-17)
+== What is drilled (126 checks, all passing on both launchers on 2026-11-27, not yet in CI)
 
 404 on the primary mirror, flipped byte, truncation and resume (asserting a 206), four concurrent installs, a disk-full analogue,
 tampered manifest, wrong key, rollback, expiry with and without override, offline cache miss, air-gap bundle, lock contention,

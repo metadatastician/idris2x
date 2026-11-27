@@ -29,9 +29,9 @@ designed so that existing pins keep working even if this project is abandoned.
 
 [IMPORTANT]
 ====
-*Status: Phase 0 complete, Phase 1 not started.* The design is pinned in nine ADRs (0004–0012, two still proposed) and was tested on real builds:
-121 chaos checks and 11 of 12 canaries pass against a prototype launcher (bash) and a real Linux x86_64 capsule.
-The Rust launcher, the capsule factory CI and published capsules do *not* exist yet. Nothing below the "Planned" line
+*Status: Phase 0 complete, Phase 1 in progress.* The design is pinned in nine ADRs (0004–0012, two still proposed) and was tested on real builds:
+126 chaos checks pass against both the prototype launcher (bash) and the Rust launcher, and 11 of 12 canaries pass, on a real Linux x86_64 capsule.
+The Rust launcher is partly merged and unreleased; the capsule factory CI and published capsules do *not* exist yet. Nothing below the "Planned" line
 is usable today. Unofficial; not affiliated with the Idris 2 or Chez Scheme projects.
 ====
 

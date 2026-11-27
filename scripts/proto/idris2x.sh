@@ -232,10 +232,22 @@ cmd_install() { local from=; while [ $# -gt 0 ]; do case "$1" in --locked) ;; --
   read -r digest size <<< "${res%%$'\n'*}"; mapfile -t urls < <(tail -n +2 <<< "$res")
   [ -n "$from" ] && { [ -f "$from" ] || fail E-USAGE no-such-file path="$from" dir="$(pwd)"; export IDRIS2X_FROM=$from; }
   install_capsule "$digest" "$size" "${urls[@]}"; }
-cmd_exec() { [ "${1:-}" = -- ] && shift; local root; root=$(cmd_install --locked); compose_env "$root"
-  [ -n "$(cap '.idris2 // empty' "$root")" ] || fail E-PIN-NOT-FOUND no-idris2 name="$(cap .name "$root")"
-  exec "$root/bin/scheme" --program "$root/bin/idris2_app/idris2.so" "$@"; }
-cmd_run()  { [ "${1:-}" = -- ] && shift; local root; root=$(cmd_install --locked); compose_env "$root"; exec "$root/bin/scheme" "$@"; }
+# exec [--locked] [--inherit-env] [--] PROGRAM ARGS: PROGRAM from the capsule's exec map (ADR 0005). The launcher's flags
+# come first; from the first other word, or after a --, every word is the program's. In the map a word after the first
+# that starts with "-" is passed as it is; every other word is a path that must stay inside the capsule.
+cmd_exec() { local root name w s i=0 words argv=()
+  while :; do case "${1:-}" in --locked) shift;; --inherit-env) export IDRIS2X_INHERIT_ENV=1; shift;; --) shift; break;; *) break;; esac; done
+  [ $# -gt 0 ] || fail E-USAGE missing-argument usage="idris2x exec [--locked] [--inherit-env] [--] <program> <args>" command=exec what="a program from the capsule, such as idris2"
+  name=$1; shift; root=$(cmd_install --locked) || exit $?; compose_env "$root"
+  mapfile -t words < <(jq -c --arg n "$name" '.exec[$n] // [] | .[]' "$root/capsule.json")
+  [ ${#words[@]} -gt 0 ] || fail E-USAGE no-such-program word="$name" programs="$(cap '.exec // {} | keys | join(", ")' "$root")"
+  for w in "${words[@]}"; do s=$(jq -r 'strings' <<< "$w")
+    if [ $i -gt 0 ] && [ "${s#-}" != "$s" ]; then argv+=("$s")
+    elif [[ $w == \"* && -n $s && $s != /* && ! $s =~ (^|/)\.\.?(/|$) ]]; then argv+=("$root/$s")
+    else fail E-CAPSULE-INVALID bad-exec program="$name" entry="$w" store="$root"; fi; i=$((i+1)); done
+  exec "${argv[@]}" "$@"; }
+cmd_run()  { local f=(); while :; do case "${1:-}" in --locked|--inherit-env) f+=("$1"); shift;; --) shift; break;; *) break;; esac; done
+  cmd_exec "${f[@]}" -- chez "$@"; }
 cmd_env()  { local root; root=$(cmd_install --locked); compose_env "$root"
   if [ "${1:-}" = --json ]; then jq -n --arg c "$IDRIS2X_CAPSULE" --arg p "$IDRIS2_PREFIX" --arg z "$CHEZ" --arg h "$SCHEMEHEAPDIRS" --arg i "$IDRIS2_INC_SRC" --arg l "$LD_LIBRARY_PATH" --arg pa "$PATH" '{IDRIS2X_CAPSULE:$c,IDRIS2_PREFIX:$p,CHEZ:$z,SCHEMEHEAPDIRS:$h,IDRIS2_INC_SRC:$i,LD_LIBRARY_PATH:$l,PATH:$pa}'
   else for v in IDRIS2X_CAPSULE IDRIS2_PREFIX CHEZ SCHEMEHEAPDIRS IDRIS2_INC_SRC LD_LIBRARY_PATH PATH; do echo "export $v=\"${!v}\""; done; fi; }
@@ -306,7 +318,7 @@ cmd_explain() { # explain [ID]: the long form of an error, offline, from the sam
             (if .fix_cmd != "" then "    fix: \(.fix_cmd)" else empty end), (if .fix_note != "" then "    note: \(.fix_note)" else empty end))
        else empty end), "", "Runbook: \($r)/\($id).adoc"' <<< "$j"; }
 
-USAGE=("pin <version>|choose a version; writes idris2x.lock" "install [--locked] [--from <bundle>]|fetch and verify the pinned capsule" "exec -- <idris2 args>|run the pinned Idris 2" "run -- <chez args>|run the pinned Chez Scheme" "env [--json]|print the environment the toolchain runs in" "verify|re-check the installed capsule" "gc [--keep-last N]|remove old capsules" "fetch -o <bundle>|download the pinned capsule to a file" "doctor|report on this machine and project" "selftest|compile and run a test program" "explain [<id>]|describe an error id")
+USAGE=("pin <version>|choose a version; writes idris2x.lock" "install [--locked] [--from <bundle>]|fetch and verify the pinned capsule" "exec [--locked] [--inherit-env] [--] <program> <args>|run a program of the pinned capsule, such as idris2" "run [--locked] [--inherit-env] [--] <chez args>|run the pinned Chez Scheme, as exec -- chez does" "env [--json]|print the environment the toolchain runs in" "verify|re-check the installed capsule" "gc [--keep-last N]|remove old capsules" "fetch -o <bundle>|download the pinned capsule to a file" "doctor|report on this machine and project" "selftest|compile and run a test program" "explain [<id>]|describe an error id")
 cmd=${1:-}; shift || true
 
 case "$cmd" in
