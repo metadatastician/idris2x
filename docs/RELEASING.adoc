@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+// MPL-2.0 (code) and CC-BY-SA-4.0 (prose)
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Releasing idris2x
+:toc: macro
+
+How a Phase 1 tag becomes a published release. CI builds and drafts; the owner signs and publishes.
+No private key is ever on GitHub or with an agent (link:decisions/0010-hosting-and-survivability.adoc[ADR 0010],
+link:MAINTAINERS.adoc[MAINTAINERS]).
+
+The workflow `.github/workflows/release.yml` and the script `scripts/sign-channel.sh` have not been run on GitHub yet.
+Treat the first release as a rehearsal of this page.
+
+toc::[]
+
+== What a release holds
+
+* Four capsules, one per tier 1 target in `src/definitions/targets.toml`, each attested by the factory.
+* Four launcher tarballs `idris2x-<tag>-<triple>.tar.gz` (binary plus licence files), attested by `release.yml`.
+* `v1.json`, the channel manifest, attested by `release.yml`. CI writes it *unsigned*.
+* `SHA256SUMS` over every other asset.
+* After your step 5, `v1.json.sig`, the signify signature that only you can make.
+
+== Steps
+
+. *Bump the channel version.* Edit `src/definitions/channel-version`: one integer, greater than the `channel_version` in the
+  previous release's `v1.json`. The first release holds `1`. Merge that change to `main` by pull request.
+. *Tag and push.* Tag the merge commit `vX.Y.Z` and push the tag. This is the only trigger; nothing else starts a release.
+. *Wait for the Release workflow.* Its jobs are `version`, `launcher` (four targets), `factory` (four capsules) and
+  `assemble`. `version` fails first unless the tag is `v` followed by the `version` in `Cargo.toml`. `assemble` fails
+  if the channel version did not rise, and when it succeeds it leaves a *draft* release with every asset except the
+  signature. It never publishes. If a job fails for a transient reason, such as a network error, re-run it. Otherwise
+  fix the cause on `main`, delete the draft release if one was made, delete the tag, and tag the fixed commit.
+. *Sign offline.* On your own machine, in a checkout, with `gh` logged in, `jq`, `signify` (or `signify-openbsd`) and
+  `sha256sum` or `shasum` installed:
++
+----
+scripts/sign-channel.sh --key /path/to/root.sec --pub /path/to/root.pub vX.Y.Z
+----
++
+The script downloads the draft and refuses, with a specific message and a non-zero exit, unless all of these hold:
+the release is still a draft; `SHA256SUMS` matches every asset; every capsule digest and size in `v1.json` matches the
+file; `v1.json` lists all four tier 1 targets and expires in the future; `gh attestation verify --deny-self-hosted-runners`
+passes for every capsule, launcher tarball and `v1.json`; and the draft holds no unexpected asset. Then it prints a summary
+and asks you to type `sign`. Only then does it run `signify -S`. The key path is the argument you give; the script reads
+no default and no environment variable, and copies the key nowhere.
+. *Upload and publish.* The script prints two commands. It does not run them. Run them yourself:
++
+----
+gh release upload vX.Y.Z <downloads>/v1.json.sig --repo metadatastician/idris2x
+gh release edit vX.Y.Z --draft=false --repo metadatastician/idris2x
+----
++
+Immutable releases need the order draft, attach every asset, then publish. After publishing, assets cannot change.
+. *Check from outside.* Download `v1.json` and `v1.json.sig` from the published release and verify them with
+  `signify -V -p root.pub -m v1.json -x v1.json.sig`.
+
+== If something is wrong
+
+* A refusal from `sign-channel.sh` means the draft is not fit to sign. Do not sign by hand to get past it. Fix the cause
+  and run the release again.
+* A draft cannot be repaired in place by CI: delete the draft in the GitHub UI or with `gh release delete`, then push the
+  tag again. A published release is immutable; a fix is a new tag and a higher `channel_version`.
+* The manifest expires 90 days after `assemble` ran. Sign and publish soon after the draft appears.
+
+== Not done yet
+
+* The object-store mirror and archival deposits of ADR 0010 (Phase 2).
+* Verifying that an attestation came from this repository's `release.yml` on the tag, beyond `--repo` and
+  `--deny-self-hosted-runners`. Add `--signer-workflow` or `--source-ref` to the script once the first run shows
+  what the attestations record.
