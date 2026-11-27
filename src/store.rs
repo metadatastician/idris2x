@@ -96,14 +96,8 @@ pub fn now() -> i64 {
 }
 /// A date as RFC 3339 UTC, from seconds since 1970 (the civil-from-days algorithm).
 pub fn utc(t: i64) -> String {
-    let (z, sec) = (t.div_euclid(86400) + 719468, t.rem_euclid(86400));
-    let doe = z.rem_euclid(146097);
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let (mp, y) = ((5 * doy + 2) / 153, yoe + z.div_euclid(146097) * 400);
-    let (d, m) = (doy - (153 * mp + 2) / 5 + 1, if mp < 10 { mp + 3 } else { mp - 9 });
-    let (y, h) = (y + i64::from(m <= 2), sec / 3600);
-    format!("{y:04}-{m:02}-{d:02}T{h:02}:{:02}:{:02}Z", sec / 60 % 60, sec % 60)
+    let ((y, m, d), sec) = (crate::civil::civil(t.div_euclid(86400)), t.rem_euclid(86400));
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", sec / 3600, sec / 60 % 60, sec % 60)
 }
 pub fn write_failed(what: &str, e: &io::Error, at: &Path) -> Fail {
     let why = if e.kind() == io::ErrorKind::FileTooLarge {

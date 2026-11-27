@@ -5,6 +5,7 @@
 //! and expiry (ADR 0008), and write idris2x.lock. This is the only module that reads the channel and the only caller
 //! of `msg::channel`, so channel text never reaches the executor (ADR 0012).
 
+use crate::civil;
 use crate::lock::{flag, path, runs, setting, toml, toml_path};
 use crate::msg::{channel, embedded, host, is_digest, is_version, lock, note, Fail, R};
 use crate::net::{doc, logged};
@@ -36,19 +37,14 @@ fn signify(text: &str, n: usize) -> Option<(String, Vec<u8>)> {
     Some((hex(&b[2..10]), b[10..].to_vec()))
 }
 
-/// Is `t` a real time, as RFC 3339 UTC to the second with a four-digit year? Its fields are read as numbers (the
-/// days-from-civil algorithm) and the time is written back by `utc`: only a time that comes back the same, byte for
-/// byte, passes.
+/// Is `t` a real time, as RFC 3339 UTC to the second with a four-digit year? Its fields are read as numbers (by
+/// `civil::days`) and the time is written back by `utc`: only a time that comes back the same, byte for byte, passes.
 fn real(t: &str) -> bool {
     let n = |a: usize| t.get(a..a + 2).and_then(|d| d.parse::<i64>().ok());
     let f = || {
         // Four digits: a sign or a fifth digit would break the order of the text.
-        let (m, y) = (n(5)?, i64::from(t.get(..4)?.parse::<u16>().ok()?));
-        let y = y - i64::from(m <= 2);
-        let (era, yoe) = (y.div_euclid(400), y.rem_euclid(400));
-        let doe = yoe * 365 + yoe / 4 - yoe / 100 + (153 * ((m + 9) % 12) + 2) / 5 + n(8)? - 1;
-        let s = (era * 146097 + doe - 719468) * 86400 + n(11)? * 3600 + n(14)? * 60 + n(17)?;
-        Some(s)
+        let y = i64::from(t.get(..4)?.parse::<u16>().ok()?);
+        Some(civil::days(y, n(5)?, n(8)?) * 86400 + n(11)? * 3600 + n(14)? * 60 + n(17)?)
     };
     f().is_some_and(|s| utc(s) == t)
 }

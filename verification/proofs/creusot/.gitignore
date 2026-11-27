@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+# MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+# What `cargo creusot` writes when run here by hand. scripts/check-creusot.sh
+# runs in a temporary copy and writes none of these into the tree.
+/target/
+/verif/
+/.why3find/
+/why3find.proofs/
+/_creusot_erasure/

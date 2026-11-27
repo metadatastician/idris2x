@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0
+// MPL-2.0 (code) and CC-BY-SA-4.0 (prose).
+= Creusot proofs of the date arithmetic
+
+This crate proves the launcher's date arithmetic, `src/civil.rs`, with Creusot.
+The contracts are Pearlite, written on that file itself under
+`cfg_attr(creusot, ...)`. A normal build drops them, so the launcher has no
+proof dependency. This crate includes the file by path, unchanged, and adds
+what the contracts are stated in. It is not part of the launcher's build: its
+own `[workspace]` keeps it apart from the root crate.
+
+== What is proved
+
+* `days(y, m, d)` equals the logic function `spec::days`, with no `i64`
+  overflow, for a year from 0 to 65535 and a month and day from -9 to 99:
+  every value that `real` in `src/pin.rs` can pass it.
+* `civil(n)` returns a real date (`spec::valid`: a month from 1 to 12 and a
+  day of that month under the Gregorian leap rule), whose day count is `n`.
+  It equals `spec::civil(n)`, with no overflow, for every `n` up to
+  `i64::MAX - 719468`, which covers every `n` that `utc` passes it.
+* The lemma `date_back`: every real date comes back from its day count
+  unchanged, so no two real dates share a day count. It rests on four helper
+  lemmas: `leap_back`, `era_back`, `month_back` and `year_back`.
+
+So `days` and `civil` are inverse on real dates. `real` keeps a time only if
+`utc` writes it back byte for byte. So `real` accepts exactly the real dates,
+if the text parsing and formatting around the arithmetic are right.
+
+== What is not proved
+
+* Reading and writing text. `real` reads fields with `str::get` and `parse`,
+  and `utc` writes them with `format!`. These are tested in `tests/civil.rs`
+  and `tests/pin.rs`. They are not proved.
+* The rest of `real`. It turns the day count into seconds and adds the time
+  of day. With a four-digit year that sum stays below 3 × 10^11, so it cannot
+  overflow, but that is checked by reading, not proved.
+* The standard library. `i64::div_euclid` and `i64::rem_euclid` are ASSUMED
+  to do what their documentation says: see the `extern_spec!` block in
+  `src/lib.rs`. Creusot does not check `std`.
+* Verus has not been run. It needs the code inside its `verus!` macro, so it
+  cannot read `src/civil.rs` as it stands.
+
+== Run it
+
+`just proof-check-creusot` runs `scripts/check-creusot.sh`. The script proves
+a temporary copy laid out as the repository. Then it checks that three broken
+copies fail, each on the goal it breaks:
+
+* `days` off by one day must fail the contract of `days`;
+* a contract on `civil` that is false for 31-day months must fail, which shows
+  that the contracts are read at all;
+* 29 February in every year must fail `date_back`, which shows that the lemma
+  rests on the leap rule.
+
+The script fails if `cargo-creusot` is not installed. It prints the tool
+versions and the commit, as a receipt. CI does not run it yet.
+
+== Install Creusot
+
+Use Creusot commit `8763e2a9d5c6ba410f6ad68419123246ed6657de` from
+https://github.com/creusot-rs/creusot. `Cargo.toml` pins `creusot-std` to the
+same commit. Run Creusot's own `INSTALL` script there. It needs opam and
+rustup, and installs the Rust toolchain Creusot was built for, Why3, why3find
+and the solvers.
+
+The proofs were checked with these versions (from `cargo creusot version`):
+cargo-creusot 0.16.0-dev, Rust nightly-2026-10-26, Why3 1.8.2+git,
+why3find 1.3.0+dev, Alt-Ergo 2.6.4, Z3 5.3.2, CVC4 1.8 and CVC5 1.4.1. Why3
+reports that CVC5 1.4.1 is not a version it recognises. In the run of 27
+November 2026, CVC5 still discharged 6 of the 83 leaf goals.
