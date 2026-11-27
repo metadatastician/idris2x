@@ -67,6 +67,23 @@ them.
 | not applicable (engineering)
 | None. The six negatives run in `cargo test` and in the `check` job of `.github/workflows/wiki-sync.yml`; these are tests, not a proof receipt.
 
+| STORE-1
+| Unpacking a capsule writes only inside its staging tree. What exists (milestone 2): in `src/store.rs`, `plain` refuses a member name that is absolute or has `..`; `inside` refuses a link target whose walk from the archive root would climb above it; `parents` creates a member's parent directories one at a time and refuses any that exists but is not a real directory; and after the last member every symbolic link is resolved and must land in the tree. `tests/install.rs` has twelve archives that must be refused as unsafe and links that must be kept. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, both scoped to `plain` and `inside` (a name passes only if no prefix of its components has negative depth). Whether either can reason about `std::path::Components` has not been checked; if not, the contract is stated over a list of components and the `Path` wrapper becomes a boundary below. `parents` and the final link check act on the file system and are out of reach of both.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The unsafe-archive tests run in `cargo test`; these are tests, not a proof receipt.
+
+| STORE-2
+| Nothing enters the store unverified (I5). What exists (milestone 2): `install` renames the staging tree into the store only after the archive's sha256 equals the lock's digest, every file listed in `sha256sums.txt` matches its sum there, the list covers `capsule.json`, `capsule.json` names the capsule and its versions (`capsule::valid`), it names no other Idris 2 than the lock pins (`capsule::holds`), and both embedded probes pass; it writes `.complete` last. Files not listed in `sha256sums.txt` are not checked: the factory lists every file but that one, `capsule.json` included. `verify` repeats the sums, coverage and metadata checks on an installed capsule. Planned verifiers, neither run: Creusot with Pearlite contracts, and Verus, scoped to the order of these steps in `fill` (the rename is reached only on the path where all six checks returned success). The checks themselves rest on the boundaries below.
+| `open`
+| `ungraded`
+| not applicable (engineering)
+| not applicable (engineering)
+| None. The digest-mismatch, modified-store and invalid-capsule tests run in `cargo test`; these are tests, not a proof receipt.
+
+
 |===
 
 == Trust boundary
@@ -84,8 +101,21 @@ List every axiom, `ASSUMED` boundary specification (third-party code, PROOF-POLI
 | DX-PROV-1, DX-PROV-2
 
 | Format checks
-| `checkDigest` and `checkVersion` are trusted by inspection, not proved, to admit no shell syntax: a digest is 64 characters from `0-9a-f`, a version is two to four runs of decimal digits separated by dots. The prototype applies the same checks in `scripts/proto/idris2x.sh` `resolve`, and the Rust launcher in `src/msg.rs` `check_digest` and `check_version`.
+| `checkDigest` and `checkVersion` are trusted by inspection, not proved, to admit no shell syntax: a digest is 64 characters from `0-9a-f`, a version is two to four runs of one to 19 decimal digits separated by dots, so every run fits in 64 bits and two versions always compare. The prototype applies the same checks in `scripts/proto/idris2x.sh` `resolve`, and the Rust launcher in `src/msg.rs` `check_digest` and `check_version`.
 | DX-PROV-1, DX-PROV-2
+
+| `tar` headers (`ASSUMED`, third-party)
+| The `tar` crate returns each member's name, link name, kind and mode as the archive holds them. The launcher's own checks act on those values; the crate's parsing is not checked.
+| STORE-1
+
+| `ring` SHA-256 (`ASSUMED`, third-party)
+| `ring`'s SHA-256 is correct, so equal digests mean equal bytes up to the hash's collision resistance.
+| STORE-2
+
+| Staging tree is private
+| Nothing else writes under the staging directory while an install holds the per-digest lock. Another process running as the same user could break this; the launcher does not defend against that.
+| STORE-1, STORE-2
+
 |===
 
 == Verification commands

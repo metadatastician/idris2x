@@ -9,6 +9,9 @@ Date: 2026-11-09
 Proposed — recommendation A′ below (Rust). Superseded in part by the estate audit (ADR 0011): the canon bans Go for new work and the
 template's gates enforce it, so the plan's Go launcher is not available without an owner ruling. The owner decision still to take is Rust vs Zig.
 
+NOTE: Superseded in part (2026-11-26, owner ruling): the line ceiling for our own launcher code is 2,000, not 1,000. Measured with standard
+rustfmt, milestone 2 of the Rust launcher has 1,265 lines; all of Phase 1 is projected at about 1,700 to 1,800.
+
 == Context
 
 The plan requires simultaneously: Go, `CGO_ENABLED=0`, *standard library only*, under 1,000 lines, zstd tarballs, BLAKE3 digests,

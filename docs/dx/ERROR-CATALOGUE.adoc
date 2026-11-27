@@ -365,6 +365,24 @@ launcher panicked and reported `E-INTERNAL`, which tells the user the fault is i
 A closed standard output (`>&-`) is not detected. The Rust runtime reopens it as `/dev/null` before the launcher
 starts, so the output is thrown away, as it would be with `>/dev/null`.
 
+On the same day, eight templates were reworded so that no sentence quotes a value read from the lock or the channel
+(owner ruling by selector, option A). ADR 0012 lets lock text fill a fact slot only. The value stays on its fact line,
+where it was already shown in full, and the sentence now describes it instead of naming it. The glibc summary, for
+example, says the system's glibc is "older than the pinned capsule needs" and no longer names the version the
+capsule needs. The cases are `E-GLIBC-FLOOR/too-old`,
+`E-PROBE-CODEGEN/version-mismatch`, `E-CHANNEL-SCHEMA/lock-newer` and `channel-newer`, `E-PIN-DRIFT/toml-vs-lock`,
+`E-CHANNEL-ROLLBACK/version-went-back` and `E-CHANNEL-EXPIRED/expired`. In `E-PIN-DRIFT` the fix command
+`+idris2x pin {toml}+` keeps its value: a fix slot accepts lock text once it has passed the version check.
+
+The advice note `lsp-mismatch` quoted the pinned version twice. An `\[[advice]]` entry may now carry `facts`, written
+as in a `\[[case]]`, and the pinned version moved to a fact line printed between the note and its silencing line:
+
+----
+note: idris2-lsp on PATH does not report the Idris 2 version this project pins. Editors may show wrong errors until it is rebuilt for that version.
+    project-pins: 0.8.0
+note: silence this note with IDRIS2X_ADVICE_LSP=0
+----
+
 == What is tested, exactly
 
 [cols="2,3",options="header"]
@@ -389,3 +407,27 @@ Nineteen cases have a golden rendering and no live drill. They include every cas
 Limits of that evidence. The capsule in these runs used Debian's Chez Scheme 9.5.8 labelled as 10.4.1, and Idris 2
 0.8.0 built from source on the same machine; it is a test fixture, not a capsule the factory would publish. The
 terminal form is tested by forcing colour, not on a real terminal. Nothing was tested on macOS or Windows.
+
+Two cases were added on 2026-11-26 for milestone 2 of the Rust launcher (install from a lock).
+`E-PIN-NOT-FOUND/unreadable-lock` (exit 10) covers a lock that exists but cannot be opened or is not JSON. The
+prototype passed such a file to `jq` and printed `jq`'s error. `E-USAGE/bad-setting` (exit 2) covers an
+`IDRIS2X_OFFLINE` or `IDRIS2X_LOCK_TIMEOUT` value the launcher cannot read. The prototype treated any value but `1` as
+off, and passed the timeout to `flock` unchecked. The launcher now refuses the value instead of falling back to a
+default (I3). Tests in `tests/install.rs` reach both cases.
+
+Three more cases were added on 2026-11-26 after review of milestone 2.
+`E-GLIBC-FLOOR/unknown` (exit 16) covers a Linux system where `getconf` cannot report the glibc version. The launcher
+skipped the floor check then; now it refuses the pin. `E-CAPSULE-INVALID/bad-metadata` (exit 21) covers a
+`capsule.json` that matches its checksum but does not name the capsule, does not give a Chez Scheme version that passes
+the version check, or gives an Idris 2 version that does not pass it. `E-STORE-IO/no-cache-dir` (exit 24) covers
+`IDRIS2X_CACHE`, `XDG_CACHE_HOME` and `HOME` all unset. The launcher put the store in the current directory then.
+`E-USAGE/bad-setting` now also covers `IDRIS2X_LOCK` and `IDRIS2X_CACHE`, and any setting that is not Unicode text.
+Tests in `tests/install.rs` reach all of these.
+
+One more case was added on 2026-11-26, after the second review of milestone 2. `E-CAPSULE-INVALID/pin-mismatch`
+(exit 21) covers a capsule whose `capsule.json` names a different Idris 2 than the lock pins. A capsule of Chez Scheme
+only names none, and it still installs. The checksum list must now cover `capsule.json`, as the factory's list does, or
+the capsule is refused as `tree-mismatch`. `verify` reads `capsule.json` again. The `unsafe-path` state no longer says
+that a bundle given with `--from` was deleted. The prototype did delete it; now it keeps it, as the launcher does.
+`E-USAGE/bad-setting` also covers `IDRIS2X_NET_TIMEOUT`: the seconds a download may go without data before that
+mirror counts as failed. Tests in `tests/install.rs` reach all of these.

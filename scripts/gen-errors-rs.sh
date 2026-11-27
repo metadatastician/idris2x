@@ -19,6 +19,8 @@ def uniq: reduce .[] as $k ([]; if any(.[]; . == $k) then . else . + [$k] end);
 def keys: ((.facts | split(" ") | map(select(. != "") | split("=") | .[1]))
   + ([.summary, .story, .state, .why, .fix_lead, .fix_cmd, .fix_note] | map(keys_in) | add) | uniq);
 def ctx($ks): "vec![\($ks | map("(\(lit), &*\(.).0)") | join(", "))]";
+def afacts: (.facts // "") | split(" ") | map(select(. != "") | split("="));
+def akeys: ((.text | keys_in) + (afacts | map(.[1]))) | uniq;
 . as $all | (.error | map(.id)) as $ids
 | "// SPDX-License-Identifier: MPL-2.0 AND CC-BY-SA-4.0",
   "// The code is MPL-2.0. The message wording, copied from src/errors/errors.toml, is CC-BY-SA-4.0.",
@@ -32,8 +34,8 @@ def ctx($ks): "vec![\($ks | map("(\(lit), &*\(.).0)") | join(", "))]";
   "    error: usize, case: \(S), summary: \(S), story: \(S), facts: &\u0027static [(\(S), \(S))], state: \(S),",
   "    why: \(S), fix_lead: \(S), fix_cmd: \(S), fix_note: \(S), auto: \(S),",
   "}",
-  "/// One `[[advice]]`: a note that is not an error, and the variable that silences it.",
-  "pub(crate) struct AdviceDef { text: \(S), silence: \(S) }",
+  "/// One `[[advice]]`: a note that is not an error, its facts as (label, key), and the variable that silences it.",
+  "pub(crate) struct AdviceDef { text: \(S), facts: &\u0027static [(\(S), \(S))], silence: \(S) }",
   "",
   "/// The text of `idris2x explain` with no id: one line per error.",
   "pub(crate) static EXPLAIN_ALL: &str = \([.error[] | .id + (" " * (24 - (.id | length))) + "exit " + (.exit | tostring | (" " * (2 - length)) + .) + "  " + (.title // .meaning) + "\n"] | add | lit);",
@@ -59,7 +61,8 @@ def ctx($ks): "vec![\($ks | map("(\(lit), &*\(.).0)") | join(", "))]";
   "];",
   "",
   "pub(crate) static ADVICE: [AdviceDef; \(.advice | length)] = [",
-  (.advice[] | "    AdviceDef { text: \(.text | lit), silence: \(.silence | lit) },"),
+  (.advice[] | (afacts | map("(\(.[0] | lit), \(.[1] | lit))") | join(", ")) as $f
+   | "    AdviceDef { text: \(.text | lit), facts: &[\($f)], silence: \(.silence | lit) },"),
   "];",
   "",
   "/// Every way the launcher can fail: one variant per `[[case]]` in errors.toml.",
@@ -71,9 +74,10 @@ def ctx($ks): "vec![\($ks | map("(\(lit), &*\(.).0)") | join(", "))]";
      "    \($c | variant) { \($c | keys | map(. as $k | "\($k): " + (if any($prose[]; . == $k) then "Prose" elif any($fix[]; . == $k) then "Fix" else "Fact" end)) | join(", ")) },"),
   "}",
   "",
-  "/// Every note that is not an error: one variant per `[[advice]]`. Its words are prose.",
+  "/// Every note that is not an error: one variant per `[[advice]]`. A key in its text is prose, one only on a fact line is a fact.",
   "pub enum Advice {",
-  (.advice[] | "    \(.id | camel) { \(.text | keys_in | uniq | map("\(.): Prose") | join(", ")) },"),
+  (.advice[] | (.text | keys_in) as $p
+   | "    \(.id | camel) { \(akeys | map(. as $k | "\($k): " + (if any($p[]; . == $k) then "Prose" else "Fact" end)) | join(", ")) },"),
   "}",
   "",
   "impl Fail {",
@@ -90,7 +94,7 @@ def ctx($ks): "vec![\($ks | map("(\(lit), &*\(.).0)") | join(", "))]";
   "    /// The index of this note in `ADVICE`, and its context values.",
   "    fn parts(&self) -> (usize, Vec<(\(S), &str)>) {",
   "        match self {",
-  (.advice | to_entries[] | .key as $i | .value | (.text | keys_in | uniq) as $ks
+  (.advice | to_entries[] | .key as $i | .value | akeys as $ks
    | "            Advice::\(.id | camel) { \($ks | join(", ")) } => (\($i), \(ctx($ks))),"),
   "        }",
   "    }",

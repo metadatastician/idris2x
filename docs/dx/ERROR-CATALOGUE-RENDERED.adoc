@@ -466,6 +466,86 @@ idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_CHANNEL_URL is not set
 {"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"prototype-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_CHANNEL_URL is not set","context":{"variable":"IDRIS2X_CHANNEL_URL","what":"the address of the channel manifest"},"state":"Nothing was run.","why":"The bash prototype reads its channel address and trusted key from the environment. The real launcher will have both built in.","fix":{"command":"","note":"Set IDRIS2X_CHANNEL_URL and run the command again. See scripts/proto/chaos.sh for a working example.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
 ----
 
+=== E-USAGE, case `bad-setting`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-USAGE (exit 2)
+
+IDRIS2X_LOCK_TIMEOUT must be a whole number of seconds, and it is set to
+something else.
+
+    setting  IDRIS2X_LOCK_TIMEOUT
+    value    ten
+
+Nothing was run.
+
+idris2x refuses a setting it cannot read. It does not fall back to a default, so
+a typo never changes what runs.
+
+Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the
+default.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-USAGE (exit 2) ---------------------------------------------------- idris2x<ESC>[0m
+
+IDRIS2X_LOCK_TIMEOUT must be a whole number of seconds, and it is set to
+something else.
+
+    setting  IDRIS2X_LOCK_TIMEOUT
+    value    ten
+
+Nothing was run.
+
+idris2x refuses a setting it cannot read. It does not fall back to a default, so
+a typo never changes what runs.
+
+Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the
+default.
+
+More: idris2x explain E-USAGE
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-USAGE]: IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds
+    setting: IDRIS2X_LOCK_TIMEOUT
+    value: ten
+  state: Nothing was run.
+  why: idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.
+  fix: Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.
+  see: idris2x explain E-USAGE
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-USAGE]<ESC>[0m: IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds
+    setting: IDRIS2X_LOCK_TIMEOUT
+    value: ten
+  <ESC>[1mstate<ESC>[0m: Nothing was run.
+  <ESC>[1mwhy<ESC>[0m: idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.
+  <ESC>[1mfix<ESC>[0m: Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-USAGE
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-USAGE","case":"bad-setting","exit":2,"title":"the command line was not understood","summary":"IDRIS2X_LOCK_TIMEOUT is not a whole number of seconds","context":{"variable":"IDRIS2X_LOCK_TIMEOUT","what":"a whole number of seconds","value":"ten"},"state":"Nothing was run.","why":"idris2x refuses a setting it cannot read. It does not fall back to a default, so a typo never changes what runs.","fix":{"command":"","note":"Set IDRIS2X_LOCK_TIMEOUT to a whole number of seconds, or unset it to use the default.","auto":"none"},"explain":"idris2x explain E-USAGE","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-USAGE.adoc"}
+----
+
 == E-PIN-NOT-FOUND
 
 === E-PIN-NOT-FOUND, case `no-lock`
@@ -1038,6 +1118,90 @@ idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: idris2x.lock has a malformed
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"malformed-lock","exit":10,"title":"nothing is pinned for this version and target","summary":"idris2x.lock has a malformed digest for this machine","context":{"lock":"idris2x.lock","target":"x86_64-unknown-linux-gnu","field":"digest"},"state":"Nothing was downloaded or changed.","why":"A digest is exactly 64 lowercase hexadecimal characters and a version is numbers separated by dots. Anything else means the lock was edited by hand or damaged, and it is refused before it can reach a download, a store path or a printed command.","fix":{"command":"idris2x pin <version>","note":"If the lock is under version control, compare it with the last committed version first.","auto":"placeholder"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
+----
+
+=== E-PIN-NOT-FOUND, case `unreadable-lock`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-NOT-FOUND (exit 10)
+
+idris2x.lock is here, and I could not read it as a lock file.
+
+    problem  expected value at line 1 column 1
+
+Nothing was downloaded or changed.
+
+A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is
+not that JSON, is refused, not guessed at.
+
+Write the lock again from the channel:
+
+    idris2x pin <version>
+
+If the lock is under version control, compare it with the last committed version
+first.
+
+More: idris2x explain E-PIN-NOT-FOUND
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-NOT-FOUND (exit 10) ------------------------------------------- idris2x<ESC>[0m
+
+idris2x.lock is here, and I could not read it as a lock file.
+
+    problem  expected value at line 1 column 1
+
+Nothing was downloaded or changed.
+
+A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is
+not that JSON, is refused, not guessed at.
+
+Write the lock again from the channel:
+
+    <ESC>[1midris2x pin <version><ESC>[0m
+
+If the lock is under version control, compare it with the last committed version
+first.
+
+More: idris2x explain E-PIN-NOT-FOUND
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-NOT-FOUND]: cannot read idris2x.lock as a lock file
+    problem: expected value at line 1 column 1
+  state: Nothing was downloaded or changed.
+  why: A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at.
+  fix: idris2x pin <version>
+  note: If the lock is under version control, compare it with the last committed version first.
+  see: idris2x explain E-PIN-NOT-FOUND
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-NOT-FOUND]<ESC>[0m: cannot read idris2x.lock as a lock file
+    problem: expected value at line 1 column 1
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin <version><ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If the lock is under version control, compare it with the last committed version first.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-NOT-FOUND
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-NOT-FOUND","case":"unreadable-lock","exit":10,"title":"nothing is pinned for this version and target","summary":"cannot read idris2x.lock as a lock file","context":{"lock":"idris2x.lock","problem":"expected value at line 1 column 1"},"state":"Nothing was downloaded or changed.","why":"A lock is JSON that idris2x pin writes. A file that cannot be opened, or that is not that JSON, is refused, not guessed at.","fix":{"command":"idris2x pin <version>","note":"If the lock is under version control, compare it with the last committed version first.","auto":"placeholder"},"explain":"idris2x explain E-PIN-NOT-FOUND","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-NOT-FOUND.adoc"}
 ----
 
 == E-HASH-MISMATCH
@@ -1752,8 +1916,10 @@ When the network is back, run it again:
 
     idris2x install --locked
 
-If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror
-answers 404, the capsule was withdrawn: see the runbook below.
+If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow
+rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go
+without data (30 by default). If every mirror answers 404, the capsule was
+withdrawn: see the runbook below.
 
 More: idris2x explain E-NETWORK
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
@@ -1779,8 +1945,10 @@ When the network is back, run it again:
 
     <ESC>[1midris2x install --locked<ESC>[0m
 
-If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror
-answers 404, the capsule was withdrawn: see the runbook below.
+If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow
+rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go
+without data (30 by default). If every mirror answers 404, the capsule was
+withdrawn: see the runbook below.
 
 More: idris2x explain E-NETWORK
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
@@ -1796,7 +1964,7 @@ idris2x: error[E-NETWORK]: every mirror failed for the pinned capsule
   state: Nothing was installed. The store is unchanged.
   why: Each address in the lock was tried in turn and each one failed for the reason shown after it.
   fix: idris2x install --locked
-  note: If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.
+  note: If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go without data (30 by default). If every mirror answers 404, the capsule was withdrawn: see the runbook below.
   see: idris2x explain E-NETWORK
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
 ----
@@ -1811,7 +1979,7 @@ idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: every mirror failed for the pinned
   <ESC>[1mstate<ESC>[0m: Nothing was installed. The store is unchanged.
   <ESC>[1mwhy<ESC>[0m: Each address in the lock was tried in turn and each one failed for the reason shown after it.
   <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x install --locked<ESC>[0m
-  <ESC>[1mnote<ESC>[0m: If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.
+  <ESC>[1mnote<ESC>[0m: If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go without data (30 by default). If every mirror answers 404, the capsule was withdrawn: see the runbook below.
   <ESC>[1msee<ESC>[0m: idris2x explain E-NETWORK
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc
 ----
@@ -1819,7 +1987,7 @@ idris2x: <ESC>[1;31merror[E-NETWORK]<ESC>[0m: every mirror failed for the pinned
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"all-mirrors-failed","exit":14,"title":"the download could not be completed","summary":"every mirror failed for the pinned capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","tried":"https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net","log":"/home/ada/.cache/idris2x/staging/fetch.log"},"state":"Nothing was installed. The store is unchanged.","why":"Each address in the lock was tried in turn and each one failed for the reason shown after it.","fix":{"command":"idris2x install --locked","note":"If you are behind a proxy, check that HTTPS_PROXY is set. If every mirror answers 404, the capsule was withdrawn: see the runbook below.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-NETWORK","case":"all-mirrors-failed","exit":14,"title":"the download could not be completed","summary":"every mirror failed for the pinned capsule","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","tried":"https://mirror.example.org/idris2.tar.gz: (22) The requested URL returned error: 404; https://backup.example.net/idris2.tar.gz: (6) Could not resolve host: backup.example.net","log":"/home/ada/.cache/idris2x/staging/fetch.log"},"state":"Nothing was installed. The store is unchanged.","why":"Each address in the lock was tried in turn and each one failed for the reason shown after it.","fix":{"command":"idris2x install --locked","note":"If you are behind a proxy, check that HTTPS_PROXY is set. If a mirror is slow rather than down, raise IDRIS2X_NET_TIMEOUT, the seconds a download may go without data (30 by default). If every mirror answers 404, the capsule was withdrawn: see the runbook below.","auto":"safe"},"explain":"idris2x explain E-NETWORK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-NETWORK.adoc"}
 ----
 
 === E-NETWORK, case `manifest-unreachable`
@@ -2027,11 +2195,11 @@ This system's C library is too old for the pinned capsule.
 
 Nothing was downloaded or changed.
 
-The capsule's programs were built against glibc 2.28. On an older glibc they
+The capsule's programs were built against a newer glibc. On an older glibc they
 would fail to start, with a less clear message than this one.
 
-Run this project in a newer distribution or container image, one with glibc 2.28
-or newer. This check cannot be skipped.
+Run this project in a newer distribution or container image, one with at least
+the glibc shown above. This check cannot be skipped.
 
 More: idris2x explain E-GLIBC-FLOOR
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
@@ -2050,11 +2218,11 @@ This system's C library is too old for the pinned capsule.
 
 Nothing was downloaded or changed.
 
-The capsule's programs were built against glibc 2.28. On an older glibc they
+The capsule's programs were built against a newer glibc. On an older glibc they
 would fail to start, with a less clear message than this one.
 
-Run this project in a newer distribution or container image, one with glibc 2.28
-or newer. This check cannot be skipped.
+Run this project in a newer distribution or container image, one with at least
+the glibc shown above. This check cannot be skipped.
 
 More: idris2x explain E-GLIBC-FLOOR
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
@@ -2063,13 +2231,13 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-GLIBC-FLOOR]: this system has glibc 2.17 and the capsule needs 2.28 or newer
+idris2x: error[E-GLIBC-FLOOR]: this system has glibc 2.17, older than the pinned capsule needs
     this-system: 2.17
     capsule-needs: 2.28
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
   state: Nothing was downloaded or changed.
-  why: The capsule's programs were built against glibc 2.28. On an older glibc they would fail to start, with a less clear message than this one.
-  fix: Run this project in a newer distribution or container image, one with glibc 2.28 or newer. This check cannot be skipped.
+  why: The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.
+  fix: Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.
   see: idris2x explain E-GLIBC-FLOOR
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
 ----
@@ -2077,13 +2245,13 @@ idris2x: error[E-GLIBC-FLOOR]: this system has glibc 2.17 and the capsule needs 
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17 and the capsule needs 2.28 or newer
+idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17, older than the pinned capsule needs
     this-system: 2.17
     capsule-needs: 2.28
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
   <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
-  <ESC>[1mwhy<ESC>[0m: The capsule's programs were built against glibc 2.28. On an older glibc they would fail to start, with a less clear message than this one.
-  <ESC>[1mfix<ESC>[0m: Run this project in a newer distribution or container image, one with glibc 2.28 or newer. This check cannot be skipped.
+  <ESC>[1mwhy<ESC>[0m: The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.
+  <ESC>[1mfix<ESC>[0m: Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.
   <ESC>[1msee<ESC>[0m: idris2x explain E-GLIBC-FLOOR
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
 ----
@@ -2091,7 +2259,93 @@ idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: this system has glibc 2.17 and
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"too-old","exit":16,"title":"this system's C library is older than the capsule needs","summary":"this system has glibc 2.17 and the capsule needs 2.28 or newer","context":{"host":"2.17","needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"The capsule's programs were built against glibc 2.28. On an older glibc they would fail to start, with a less clear message than this one.","fix":{"command":"","note":"Run this project in a newer distribution or container image, one with glibc 2.28 or newer. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"too-old","exit":16,"title":"this system's C library is older than the capsule needs","summary":"this system has glibc 2.17, older than the pinned capsule needs","context":{"host":"2.17","needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"The capsule's programs were built against a newer glibc. On an older glibc they would fail to start, with a less clear message than this one.","fix":{"command":"","note":"Run this project in a newer distribution or container image, one with at least the glibc shown above. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
+----
+
+=== E-GLIBC-FLOOR, case `unknown`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-GLIBC-FLOOR (exit 16)
+
+The pinned capsule needs a minimum glibc, and I could not find out which glibc
+this system has.
+
+    capsule-needs  2.28
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was downloaded or changed.
+
+idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the
+environment. Either getconf is not on PATH, or this system's C library is not
+glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not
+built for fails to start, with a less clear message than this one.
+
+Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run
+this project in a glibc-based distribution or container image. This check cannot
+be skipped.
+
+More: idris2x explain E-GLIBC-FLOOR
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-GLIBC-FLOOR (exit 16) --------------------------------------------- idris2x<ESC>[0m
+
+The pinned capsule needs a minimum glibc, and I could not find out which glibc
+this system has.
+
+    capsule-needs  2.28
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was downloaded or changed.
+
+idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the
+environment. Either getconf is not on PATH, or this system's C library is not
+glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not
+built for fails to start, with a less clear message than this one.
+
+Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run
+this project in a glibc-based distribution or container image. This check cannot
+be skipped.
+
+More: idris2x explain E-GLIBC-FLOOR
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-GLIBC-FLOOR]: cannot tell which glibc this system has
+    capsule-needs: 2.28
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  state: Nothing was downloaded or changed.
+  why: idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the environment. Either getconf is not on PATH, or this system's C library is not glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not built for fails to start, with a less clear message than this one.
+  fix: Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run this project in a glibc-based distribution or container image. This check cannot be skipped.
+  see: idris2x explain E-GLIBC-FLOOR
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-GLIBC-FLOOR]<ESC>[0m: cannot tell which glibc this system has
+    capsule-needs: 2.28
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the environment. Either getconf is not on PATH, or this system's C library is not glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not built for fails to start, with a less clear message than this one.
+  <ESC>[1mfix<ESC>[0m: Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run this project in a glibc-based distribution or container image. This check cannot be skipped.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-GLIBC-FLOOR
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-GLIBC-FLOOR","case":"unknown","exit":16,"title":"this system's C library is older than the capsule needs","summary":"cannot tell which glibc this system has","context":{"needs":"2.28","digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was downloaded or changed.","why":"idris2x asks getconf GNU_LIBC_VERSION, with only PATH passed on from the environment. Either getconf is not on PATH, or this system's C library is not glibc: musl, as on Alpine, is not supported. A capsule on a C library it was not built for fails to start, with a less clear message than this one.","fix":{"command":"","note":"Put getconf on PATH (on Debian and Ubuntu it is in the libc-bin package), or run this project in a glibc-based distribution or container image. This check cannot be skipped.","auto":"none"},"explain":"idris2x explain E-GLIBC-FLOOR","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-GLIBC-FLOOR.adoc"}
 ----
 
 == E-PROBE-CODEGEN
@@ -2283,8 +2537,8 @@ idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: Idris 2 from the capsule doe
 ----
 idris2x: E-PROBE-CODEGEN (exit 17)
 
-The capsule says it holds Idris 2 0.8.0, and the compiler inside reports
-something else.
+The capsule says it holds one version of Idris 2, and the compiler inside
+reports another.
 
     capsule-says      0.8.0
     compiler-reports  Idris 2, version 0.7.0
@@ -2306,8 +2560,8 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEG
 ----
 <ESC>[36m-- E-PROBE-CODEGEN (exit 17) ------------------------------------------- idris2x<ESC>[0m
 
-The capsule says it holds Idris 2 0.8.0, and the compiler inside reports
-something else.
+The capsule says it holds one version of Idris 2, and the compiler inside
+reports another.
 
     capsule-says      0.8.0
     compiler-reports  Idris 2, version 0.7.0
@@ -2327,7 +2581,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEG
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-PROBE-CODEGEN]: the capsule's Idris 2 reports Idris 2, version 0.7.0, not 0.8.0
+idris2x: error[E-PROBE-CODEGEN]: the compiler in the capsule reports a different version than the capsule says it holds
     capsule-says: 0.8.0
     compiler-reports: Idris 2, version 0.7.0
   state: The capsule was not installed. The store is unchanged.
@@ -2340,7 +2594,7 @@ idris2x: error[E-PROBE-CODEGEN]: the capsule's Idris 2 reports Idris 2, version 
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the capsule's Idris 2 reports Idris 2, version 0.7.0, not 0.8.0
+idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the compiler in the capsule reports a different version than the capsule says it holds
     capsule-says: 0.8.0
     compiler-reports: Idris 2, version 0.7.0
   <ESC>[1mstate<ESC>[0m: The capsule was not installed. The store is unchanged.
@@ -2353,7 +2607,7 @@ idris2x: <ESC>[1;31merror[E-PROBE-CODEGEN]<ESC>[0m: the capsule's Idris 2 report
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"version-mismatch","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"the capsule's Idris 2 reports Idris 2, version 0.7.0, not 0.8.0","context":{"want":"0.8.0","got":"Idris 2, version 0.7.0"},"state":"The capsule was not installed. The store is unchanged.","why":"The capsule was labelled wrongly when it was built. This is a fault in the capsule, not in your machine.","fix":{"command":"","note":"Report the capsule using the runbook below. Until it is replaced, pin a different version.","auto":"none"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PROBE-CODEGEN","case":"version-mismatch","exit":17,"title":"the installed toolchain failed a self-check on this machine","summary":"the compiler in the capsule reports a different version than the capsule says it holds","context":{"want":"0.8.0","got":"Idris 2, version 0.7.0"},"state":"The capsule was not installed. The store is unchanged.","why":"The capsule was labelled wrongly when it was built. This is a fault in the capsule, not in your machine.","fix":{"command":"","note":"Report the capsule using the runbook below. Until it is replaced, pin a different version.","auto":"none"},"explain":"idris2x explain E-PROBE-CODEGEN","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PROBE-CODEGEN.adoc"}
 ----
 
 === E-PROBE-CODEGEN, case `path-has-spaces`
@@ -2589,7 +2843,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCH
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-SCHEMA]: idris2x.lock uses lock format 2; this idris2x reads up to 1
+idris2x: error[E-CHANNEL-SCHEMA]: idris2x.lock uses a newer lock format; this idris2x reads up to 1
     file: idris2x.lock
     its-format: 2
     this-idris2x-reads: 1
@@ -2604,7 +2858,7 @@ idris2x: error[E-CHANNEL-SCHEMA]: idris2x.lock uses lock format 2; this idris2x 
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: idris2x.lock uses lock format 2; this idris2x reads up to 1
+idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: idris2x.lock uses a newer lock format; this idris2x reads up to 1
     file: idris2x.lock
     its-format: 2
     this-idris2x-reads: 1
@@ -2619,7 +2873,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: idris2x.lock uses lock form
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"lock-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"idris2x.lock uses lock format 2; this idris2x reads up to 1","context":{"file":"idris2x.lock","found":"2","supports":"1","version":"0.1.0"},"state":"Nothing was downloaded or changed. The lock file is intact.","why":"Someone pinned this project with a newer idris2x. An older one refuses to guess at fields it does not know.","fix":{"command":"","note":"Update idris2x to the version your colleagues use, then run the same command again.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"lock-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"idris2x.lock uses a newer lock format; this idris2x reads up to 1","context":{"file":"idris2x.lock","found":"2","supports":"1","version":"0.1.0"},"state":"Nothing was downloaded or changed. The lock file is intact.","why":"Someone pinned this project with a newer idris2x. An older one refuses to guess at fields it does not know.","fix":{"command":"","note":"Update idris2x to the version your colleagues use, then run the same command again.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
 ----
 
 === E-CHANNEL-SCHEMA, case `channel-newer`
@@ -2671,7 +2925,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCH
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-SCHEMA]: the channel uses manifest format 2; this idris2x reads up to 1
+idris2x: error[E-CHANNEL-SCHEMA]: the channel uses a newer manifest format; this idris2x reads up to 1
     manifest: https://channel.example.org/v1.json
     its-format: 2
     this-idris2x-reads: 1
@@ -2686,7 +2940,7 @@ idris2x: error[E-CHANNEL-SCHEMA]: the channel uses manifest format 2; this idris
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses manifest format 2; this idris2x reads up to 1
+idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses a newer manifest format; this idris2x reads up to 1
     manifest: https://channel.example.org/v1.json
     its-format: 2
     this-idris2x-reads: 1
@@ -2701,7 +2955,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-SCHEMA]<ESC>[0m: the channel uses manifest f
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"channel-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel uses manifest format 2; this idris2x reads up to 1","context":{"url":"https://channel.example.org/v1.json","found":"2","supports":"1","version":"0.1.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel moved to a new format after this idris2x was released.","fix":{"command":"","note":"Update idris2x, then pin again. Until then, existing pins keep working.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-SCHEMA","case":"channel-newer","exit":18,"title":"a file was written for a newer idris2x","summary":"the channel uses a newer manifest format; this idris2x reads up to 1","context":{"url":"https://channel.example.org/v1.json","found":"2","supports":"1","version":"0.1.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"The channel moved to a new format after this idris2x was released.","fix":{"command":"","note":"Update idris2x, then pin again. Until then, existing pins keep working.","auto":"none"},"explain":"idris2x explain E-CHANNEL-SCHEMA","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-SCHEMA.adoc"}
 ----
 
 == E-PIN-DRIFT
@@ -2727,7 +2981,8 @@ Make the lock match idris2x.toml:
 
     idris2x pin 0.8.1
 
-If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+If the lock is the one that is right, change the version in idris2x.toml to the
+one idris2x.lock pins instead.
 
 More: idris2x explain E-PIN-DRIFT
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
@@ -2752,7 +3007,8 @@ Make the lock match idris2x.toml:
 
     <ESC>[1midris2x pin 0.8.1<ESC>[0m
 
-If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+If the lock is the one that is right, change the version in idris2x.toml to the
+one idris2x.lock pins instead.
 
 More: idris2x explain E-PIN-DRIFT
 https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
@@ -2761,13 +3017,13 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.a
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for idris2 0.8.1 and idris2x.lock pins 0.8.0
+idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for a different idris2 version than idris2x.lock pins
     idris2x.toml: 0.8.1
     idris2x.lock: 0.8.0
   state: Nothing was downloaded or changed.
   why: One of the two files was edited without the other. With --locked the lock is never rewritten to match.
   fix: idris2x pin 0.8.1
-  note: If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+  note: If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.
   see: idris2x explain E-PIN-DRIFT
   see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
 ----
@@ -2775,13 +3031,13 @@ idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for idris2 0.8.1 and idris2x.lock
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for idris2 0.8.1 and idris2x.lock pins 0.8.0
+idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for a different idris2 version than idris2x.lock pins
     idris2x.toml: 0.8.1
     idris2x.lock: 0.8.0
   <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
   <ESC>[1mwhy<ESC>[0m: One of the two files was edited without the other. With --locked the lock is never rewritten to match.
   <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.1<ESC>[0m
-  <ESC>[1mnote<ESC>[0m: If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.
+  <ESC>[1mnote<ESC>[0m: If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.
   <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-DRIFT
   <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
 ----
@@ -2789,7 +3045,7 @@ idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for idris2 0.8
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"toml-vs-lock","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for idris2 0.8.1 and idris2x.lock pins 0.8.0","context":{"toml":"0.8.1","locked":"0.8.0"},"state":"Nothing was downloaded or changed.","why":"One of the two files was edited without the other. With --locked the lock is never rewritten to match.","fix":{"command":"idris2x pin 0.8.1","note":"If the lock is the one that is right, change idris2x.toml to 0.8.0 instead.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"toml-vs-lock","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for a different idris2 version than idris2x.lock pins","context":{"toml":"0.8.1","locked":"0.8.0"},"state":"Nothing was downloaded or changed.","why":"One of the two files was edited without the other. With --locked the lock is never rewritten to match.","fix":{"command":"idris2x pin 0.8.1","note":"If the lock is the one that is right, change the version in idris2x.toml to the one idris2x.lock pins instead.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
 ----
 
 == E-OFFLINE
@@ -2984,7 +3240,8 @@ I refused to unpack it.
 
     capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
 
-Nothing was unpacked or installed. The archive was deleted.
+Nothing was installed. Any files already unpacked were deleted, and so was a
+downloaded archive. A bundle you gave with --from was left where it was.
 
 The archive has an absolute path, a .. component or a link that leaves its own
 directory. A correctly built capsule never does, so the archive is faulty or
@@ -3007,7 +3264,8 @@ I refused to unpack it.
 
     capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
 
-Nothing was unpacked or installed. The archive was deleted.
+Nothing was installed. Any files already unpacked were deleted, and so was a
+downloaded archive. A bundle you gave with --from was left where it was.
 
 The archive has an absolute path, a .. component or a link that leaves its own
 directory. A correctly built capsule never does, so the archive is faulty or
@@ -3025,7 +3283,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INV
 ----
 idris2x: error[E-CAPSULE-INVALID]: the capsule archive has a member that would be written outside the store
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
-  state: Nothing was unpacked or installed. The archive was deleted.
+  state: Nothing was installed. Any files already unpacked were deleted, and so was a downloaded archive. A bundle you gave with --from was left where it was.
   why: The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.
   fix: Do not unpack it by hand. Report the digest above to idris2x using the runbook below.
   see: idris2x explain E-CAPSULE-INVALID
@@ -3037,7 +3295,7 @@ idris2x: error[E-CAPSULE-INVALID]: the capsule archive has a member that would b
 ----
 idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule archive has a member that would be written outside the store
     capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
-  <ESC>[1mstate<ESC>[0m: Nothing was unpacked or installed. The archive was deleted.
+  <ESC>[1mstate<ESC>[0m: Nothing was installed. Any files already unpacked were deleted, and so was a downloaded archive. A bundle you gave with --from was left where it was.
   <ESC>[1mwhy<ESC>[0m: The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.
   <ESC>[1mfix<ESC>[0m: Do not unpack it by hand. Report the digest above to idris2x using the runbook below.
   <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
@@ -3047,7 +3305,7 @@ idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule archive has a 
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"unsafe-path","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule archive has a member that would be written outside the store","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was unpacked or installed. The archive was deleted.","why":"The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.","fix":{"command":"","note":"Do not unpack it by hand. Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"unsafe-path","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule archive has a member that would be written outside the store","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. Any files already unpacked were deleted, and so was a downloaded archive. A bundle you gave with --from was left where it was.","why":"The archive has an absolute path, a .. component or a link that leaves its own directory. A correctly built capsule never does, so the archive is faulty or hostile.","fix":{"command":"","note":"Do not unpack it by hand. Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
 ----
 
 === E-CAPSULE-INVALID, case `no-metadata`
@@ -3206,6 +3464,176 @@ idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's files do not
 {"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"tree-mismatch","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's files do not match its own checksum list","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were deleted.","why":"The archive as a whole matched the lock, so the fault was built into the capsule, or the disk damaged the files while unpacking.","fix":{"command":"idris2x install --locked","note":"If it fails the same way, report the digest above to idris2x using the runbook below.","auto":"safe"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
 ----
 
+=== E-CAPSULE-INVALID, case `bad-metadata`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CAPSULE-INVALID (exit 21)
+
+The capsule has a capsule.json, and it does not say what the capsule holds.
+
+    capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was installed. The unpacked files were deleted.
+
+capsule.json must be a JSON object that names the capsule, gives its Chez Scheme
+version and, if the capsule has Idris 2, its version too. This archive matched
+its digest, so the fault was built into the capsule.
+
+Report the digest above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CAPSULE-INVALID (exit 21) ----------------------------------------- idris2x<ESC>[0m
+
+The capsule has a capsule.json, and it does not say what the capsule holds.
+
+    capsule  sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+
+Nothing was installed. The unpacked files were deleted.
+
+capsule.json must be a JSON object that names the capsule, gives its Chez Scheme
+version and, if the capsule has Idris 2, its version too. This archive matched
+its digest, so the fault was built into the capsule.
+
+Report the digest above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CAPSULE-INVALID]: the capsule's capsule.json does not describe it
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  state: Nothing was installed. The unpacked files were deleted.
+  why: capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.
+  fix: Report the digest above to idris2x using the runbook below.
+  see: idris2x explain E-CAPSULE-INVALID
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule's capsule.json does not describe it
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+  <ESC>[1mstate<ESC>[0m: Nothing was installed. The unpacked files were deleted.
+  <ESC>[1mwhy<ESC>[0m: capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.
+  <ESC>[1mfix<ESC>[0m: Report the digest above to idris2x using the runbook below.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"bad-metadata","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule's capsule.json does not describe it","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were deleted.","why":"capsule.json must be a JSON object that names the capsule, gives its Chez Scheme version and, if the capsule has Idris 2, its version too. This archive matched its digest, so the fault was built into the capsule.","fix":{"command":"","note":"Report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+----
+
+=== E-CAPSULE-INVALID, case `pin-mismatch`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-CAPSULE-INVALID (exit 21)
+
+The capsule matched its digest, and it holds a different version of Idris 2 than
+the lock pins.
+
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins      0.8.0
+    capsule-holds  0.7.0
+
+Nothing was installed. The unpacked files were deleted.
+
+The lock names this capsule by its digest for one version of Idris 2, and the
+capsule's own capsule.json names another. The lock was edited by hand, or the
+channel listed the wrong capsule.
+
+Write the lock again from the channel:
+
+    idris2x pin 0.8.0
+
+If it fails the same way, the channel lists the wrong capsule: report the digest
+above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-CAPSULE-INVALID (exit 21) ----------------------------------------- idris2x<ESC>[0m
+
+The capsule matched its digest, and it holds a different version of Idris 2 than
+the lock pins.
+
+    capsule        sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins      0.8.0
+    capsule-holds  0.7.0
+
+Nothing was installed. The unpacked files were deleted.
+
+The lock names this capsule by its digest for one version of Idris 2, and the
+capsule's own capsule.json names another. The lock was edited by hand, or the
+channel listed the wrong capsule.
+
+Write the lock again from the channel:
+
+    <ESC>[1midris2x pin 0.8.0<ESC>[0m
+
+If it fails the same way, the channel lists the wrong capsule: report the digest
+above to idris2x using the runbook below.
+
+More: idris2x explain E-CAPSULE-INVALID
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-CAPSULE-INVALID]: the capsule holds a different Idris 2 than the lock pins
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins: 0.8.0
+    capsule-holds: 0.7.0
+  state: Nothing was installed. The unpacked files were deleted.
+  why: The lock names this capsule by its digest for one version of Idris 2, and the capsule's own capsule.json names another. The lock was edited by hand, or the channel listed the wrong capsule.
+  fix: idris2x pin 0.8.0
+  note: If it fails the same way, the channel lists the wrong capsule: report the digest above to idris2x using the runbook below.
+  see: idris2x explain E-CAPSULE-INVALID
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-CAPSULE-INVALID]<ESC>[0m: the capsule holds a different Idris 2 than the lock pins
+    capsule: sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21
+    lock-pins: 0.8.0
+    capsule-holds: 0.7.0
+  <ESC>[1mstate<ESC>[0m: Nothing was installed. The unpacked files were deleted.
+  <ESC>[1mwhy<ESC>[0m: The lock names this capsule by its digest for one version of Idris 2, and the capsule's own capsule.json names another. The lock was edited by hand, or the channel listed the wrong capsule.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: If it fails the same way, the channel lists the wrong capsule: report the digest above to idris2x using the runbook below.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-CAPSULE-INVALID
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CAPSULE-INVALID","case":"pin-mismatch","exit":21,"title":"the capsule archive is malformed or unsafe","summary":"the capsule holds a different Idris 2 than the lock pins","context":{"digest":"sha256:0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21","version":"0.8.0","found":"0.7.0"},"state":"Nothing was installed. The unpacked files were deleted.","why":"The lock names this capsule by its digest for one version of Idris 2, and the capsule's own capsule.json names another. The lock was edited by hand, or the channel listed the wrong capsule.","fix":{"command":"idris2x pin 0.8.0","note":"If it fails the same way, the channel lists the wrong capsule: report the digest above to idris2x using the runbook below.","auto":"none"},"explain":"idris2x explain E-CAPSULE-INVALID","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CAPSULE-INVALID.adoc"}
+----
+
 == E-CHANNEL-ROLLBACK
 
 === E-CHANNEL-ROLLBACK, case `version-went-back`
@@ -3267,7 +3695,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROL
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-ROLLBACK]: the channel offered manifest version 5; this project has already seen 7
+idris2x: error[E-CHANNEL-ROLLBACK]: the channel offered an older manifest version than this project has already seen
     manifest: https://channel.example.org/v1.json
     lock-has-seen: 7
     now-offered: 5
@@ -3282,7 +3710,7 @@ idris2x: error[E-CHANNEL-ROLLBACK]: the channel offered manifest version 5; this
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered manifest version 5; this project has already seen 7
+idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered an older manifest version than this project has already seen
     manifest: https://channel.example.org/v1.json
     lock-has-seen: 7
     now-offered: 5
@@ -3297,7 +3725,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-ROLLBACK]<ESC>[0m: the channel offered manif
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"version-went-back","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the channel offered manifest version 5; this project has already seen 7","context":{"url":"https://channel.example.org/v1.json","seen":"7","offered":"5","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifest versions only go up. An older one usually means a mirror that has not caught up. It can also be an attempt to hide a newer release.","fix":{"command":"idris2x pin 0.8.0","note":"If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-ROLLBACK","case":"version-went-back","exit":22,"title":"the channel offered an older manifest than one already seen","summary":"the channel offered an older manifest version than this project has already seen","context":{"url":"https://channel.example.org/v1.json","seen":"7","offered":"5","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifest versions only go up. An older one usually means a mirror that has not caught up. It can also be an attempt to hide a newer release.","fix":{"command":"idris2x pin 0.8.0","note":"If it is still older tomorrow, report it using the runbook below. There is no flag that accepts an older manifest.","auto":"none"},"explain":"idris2x explain E-CHANNEL-ROLLBACK","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-ROLLBACK.adoc"}
 ----
 
 == E-CHANNEL-EXPIRED
@@ -3363,7 +3791,7 @@ https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXP
 .Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
 [source,text]
 ----
-idris2x: error[E-CHANNEL-EXPIRED]: the channel manifest expired at 2026-10-01T00:00:00Z
+idris2x: error[E-CHANNEL-EXPIRED]: the channel manifest has expired
     manifest: https://channel.example.org/v1.json
     expired-at: 2026-10-01T00:00:00Z
     this-clock-says: 2026-11-16T09:30:00Z
@@ -3378,7 +3806,7 @@ idris2x: error[E-CHANNEL-EXPIRED]: the channel manifest expired at 2026-10-01T00
 .Style B, interactive terminal
 [source,text]
 ----
-idris2x: <ESC>[1;31merror[E-CHANNEL-EXPIRED]<ESC>[0m: the channel manifest expired at 2026-10-01T00:00:00Z
+idris2x: <ESC>[1;31merror[E-CHANNEL-EXPIRED]<ESC>[0m: the channel manifest has expired
     manifest: https://channel.example.org/v1.json
     expired-at: 2026-10-01T00:00:00Z
     this-clock-says: 2026-11-16T09:30:00Z
@@ -3393,7 +3821,7 @@ idris2x: <ESC>[1;31merror[E-CHANNEL-EXPIRED]<ESC>[0m: the channel manifest expir
 .--json (both styles)
 [source,text]
 ----
-{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-EXPIRED","case":"expired","exit":23,"title":"the channel manifest is past its expiry time","summary":"the channel manifest expired at 2026-10-01T00:00:00Z","context":{"url":"https://channel.example.org/v1.json","expires":"2026-10-01T00:00:00Z","now":"2026-11-16T09:30:00Z","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifests are re-signed regularly, so a stale one means a mirror is serving an old copy, the channel is no longer maintained, or this machine's clock is wrong.","fix":{"command":"idris2x pin 0.8.0","note":"To pin from the expired manifest anyway, set IDRIS2X_ALLOW_EXPIRED=1. That gives up protection against being shown an outdated list of releases, so use it only when you know why the manifest is old.","auto":"none"},"explain":"idris2x explain E-CHANNEL-EXPIRED","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXPIRED.adoc"}
+{"schema":1,"tool":"idris2x","level":"error","id":"E-CHANNEL-EXPIRED","case":"expired","exit":23,"title":"the channel manifest is past its expiry time","summary":"the channel manifest has expired","context":{"url":"https://channel.example.org/v1.json","expires":"2026-10-01T00:00:00Z","now":"2026-11-16T09:30:00Z","version":"0.8.0"},"state":"The lock file was not changed. Everything already pinned still runs.","why":"Manifests are re-signed regularly, so a stale one means a mirror is serving an old copy, the channel is no longer maintained, or this machine's clock is wrong.","fix":{"command":"idris2x pin 0.8.0","note":"To pin from the expired manifest anyway, set IDRIS2X_ALLOW_EXPIRED=1. That gives up protection against being shown an outdated list of releases, so use it only when you know why the manifest is old.","auto":"none"},"explain":"idris2x explain E-CHANNEL-EXPIRED","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-CHANNEL-EXPIRED.adoc"}
 ----
 
 == E-STORE-IO
@@ -3644,6 +4072,88 @@ idris2x: <ESC>[1;31merror[E-STORE-IO]<ESC>[0m: cannot move the unpacked capsule 
 [source,text]
 ----
 {"schema":1,"tool":"idris2x","level":"error","id":"E-STORE-IO","case":"rename-failed","exit":24,"title":"the store could not be written","summary":"cannot move the unpacked capsule into place","context":{"path":"/home/ada/.cache/idris2x/store/sha256-0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21"},"state":"Nothing was installed. The unpacked files were removed.","why":"The final step is a single rename, so that a capsule is either complete or absent. The rename fails when the store and its staging area are on different filesystems, or the store is read-only.","fix":{"command":"","note":"Check that the store directory is on one writable filesystem, then run the same command again.","auto":"none"},"explain":"idris2x explain E-STORE-IO","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc"}
+----
+
+=== E-STORE-IO, case `no-cache-dir`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-STORE-IO (exit 24)
+
+IDRIS2X_CACHE, XDG_CACHE_HOME and HOME are all unset, so I cannot tell where the
+store should be.
+
+Nothing was downloaded or changed.
+
+idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in
+HOME/.cache/idris2x. It does not fall back to the current directory, which would
+put a separate store in each project.
+
+Choose a directory for the store, then run the same command again:
+
+    export IDRIS2X_CACHE=<directory>
+
+The store path must not contain spaces if you compile programs with the Chez
+backend.
+
+More: idris2x explain E-STORE-IO
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-STORE-IO (exit 24) ------------------------------------------------ idris2x<ESC>[0m
+
+IDRIS2X_CACHE, XDG_CACHE_HOME and HOME are all unset, so I cannot tell where the
+store should be.
+
+Nothing was downloaded or changed.
+
+idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in
+HOME/.cache/idris2x. It does not fall back to the current directory, which would
+put a separate store in each project.
+
+Choose a directory for the store, then run the same command again:
+
+    <ESC>[1mexport IDRIS2X_CACHE=<directory><ESC>[0m
+
+The store path must not contain spaces if you compile programs with the Chez
+backend.
+
+More: idris2x explain E-STORE-IO
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-STORE-IO]: cannot tell where the store should be
+  state: Nothing was downloaded or changed.
+  why: idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in HOME/.cache/idris2x. It does not fall back to the current directory, which would put a separate store in each project.
+  fix: export IDRIS2X_CACHE=<directory>
+  note: The store path must not contain spaces if you compile programs with the Chez backend.
+  see: idris2x explain E-STORE-IO
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-STORE-IO]<ESC>[0m: cannot tell where the store should be
+  <ESC>[1mstate<ESC>[0m: Nothing was downloaded or changed.
+  <ESC>[1mwhy<ESC>[0m: idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in HOME/.cache/idris2x. It does not fall back to the current directory, which would put a separate store in each project.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1mexport IDRIS2X_CACHE=<directory><ESC>[0m
+  <ESC>[1mnote<ESC>[0m: The store path must not contain spaces if you compile programs with the Chez backend.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-STORE-IO
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-STORE-IO","case":"no-cache-dir","exit":24,"title":"the store could not be written","summary":"cannot tell where the store should be","context":{},"state":"Nothing was downloaded or changed.","why":"idris2x keeps capsules in IDRIS2X_CACHE, else in XDG_CACHE_HOME/idris2x, else in HOME/.cache/idris2x. It does not fall back to the current directory, which would put a separate store in each project.","fix":{"command":"export IDRIS2X_CACHE=<directory>","note":"The store path must not contain spaces if you compile programs with the Chez backend.","auto":"placeholder"},"explain":"idris2x explain E-STORE-IO","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-STORE-IO.adoc"}
 ----
 
 == E-OUTPUT

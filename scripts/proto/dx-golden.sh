@@ -18,6 +18,7 @@ E-USAGE|missing-argument|command=pin|what=a version to pin|usage=idris2x pin <ve
 E-USAGE|no-such-file|path=capsule.tar.gz|dir=/home/ada/proofs
 E-USAGE|no-such-id|word=E-HASH
 E-USAGE|prototype-setting|variable=IDRIS2X_CHANNEL_URL|what=the address of the channel manifest
+E-USAGE|bad-setting|variable=IDRIS2X_LOCK_TIMEOUT|what=a whole number of seconds|value=ten
 E-PIN-NOT-FOUND|no-lock|lock=idris2x.lock|dir=/home/ada/proofs
 E-PIN-NOT-FOUND|no-target|lock=idris2x.lock|target=aarch64-unknown-linux-gnu|covered=x86_64-apple-darwin, x86_64-unknown-linux-gnu|version=0.8.0
 E-PIN-NOT-FOUND|no-version|lock=idris2x.lock|version=0.9.0|available=0.7.0, 0.8.0
@@ -25,6 +26,7 @@ E-PIN-NOT-FOUND|not-installed|digest=sha256:$A
 E-PIN-NOT-FOUND|no-idris2|name=chez-10.4.1-x86_64-unknown-linux-gnu
 E-PIN-NOT-FOUND|no-urls|lock=idris2x.lock|digest=sha256:$A|version=0.8.0
 E-PIN-NOT-FOUND|malformed-lock|lock=idris2x.lock|target=x86_64-unknown-linux-gnu|field=digest
+E-PIN-NOT-FOUND|unreadable-lock|lock=idris2x.lock|problem=expected value at line 1 column 1
 E-HASH-MISMATCH|download|lock=idris2x.lock|want=sha256:$A|got=sha256:$B|bytes=17706495 bytes (the lock says 35412990)|source=https://mirror.example.org/idris2-0.8.0-x86_64-unknown-linux-gnu-chez10.4.1.tar.gz
 E-HASH-MISMATCH|bundle|lock=idris2x.lock|want=sha256:$A|got=sha256:$B|bytes=35412990 bytes (the lock says 35412990)|source=/media/usb/capsule.tar.gz
 E-HASH-MISMATCH|store-modified|digest=sha256:$A|dir=/home/ada/.cache/idris2x/store/sha256-$A
@@ -37,6 +39,7 @@ E-NETWORK|all-mirrors-failed|digest=sha256:$A|tried=https://mirror.example.org/i
 E-NETWORK|manifest-unreachable|url=https://channel.example.org/v1.json|tried=https://channel.example.org/v1.json: (28) Connection timed out after 10002 milliseconds|log=/home/ada/.cache/idris2x/staging/fetch.log|version=0.8.0
 E-LOCK-TIMEOUT|held|digest=sha256:$A|seconds=600|lockfile=/home/ada/.cache/idris2x/locks/sha256-$A.lock|holder=process 48213 (still running)
 E-GLIBC-FLOOR|too-old|host=2.17|needs=2.28|digest=sha256:$A
+E-GLIBC-FLOOR|unknown|needs=2.28|digest=sha256:$A
 E-PROBE-CODEGEN|chez-failed|probe=pure_eval|output=error while loading shared libraries: libtinfo.so.6: cannot open shared object file
 E-PROBE-CODEGEN|idris2-failed|probe=version_match|output=Exception: (while loading libidris2_support.so) cannot open shared object file
 E-PROBE-CODEGEN|version-mismatch|want=0.8.0|got=Idris 2, version 0.7.0
@@ -50,11 +53,14 @@ E-OFFLINE|no-manifest|cache=/home/ada/.cache/idris2x/manifests/v1.json|mode=IDRI
 E-CAPSULE-INVALID|unsafe-path|digest=sha256:$A
 E-CAPSULE-INVALID|no-metadata|digest=sha256:$A
 E-CAPSULE-INVALID|tree-mismatch|digest=sha256:$A
+E-CAPSULE-INVALID|bad-metadata|digest=sha256:$A
+E-CAPSULE-INVALID|pin-mismatch|digest=sha256:$A|version=0.8.0|found=0.7.0
 E-CHANNEL-ROLLBACK|version-went-back|url=https://channel.example.org/v1.json|seen=7|offered=5|version=0.8.0
 E-CHANNEL-EXPIRED|expired|url=https://channel.example.org/v1.json|expires=2026-10-01T00:00:00Z|now=2026-11-16T09:30:00Z|version=0.8.0
 E-STORE-IO|cannot-create|path=/opt/shared/idris2x
 E-STORE-IO|write-failed|detail=downloading the capsule ((23) Failure writing output to destination)|path=/home/ada/.cache/idris2x
 E-STORE-IO|rename-failed|path=/home/ada/.cache/idris2x/store/sha256-$A
+E-STORE-IO|no-cache-dir
 E-OUTPUT|write-failed|detail=No space left on device (os error 28)
 E-INTERNAL|bug|detail=no advice called gc-warning|version=0.1.0
 E-INTERNAL|missing-tool|tool=flock

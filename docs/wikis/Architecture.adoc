@@ -9,7 +9,7 @@ Three pieces, only one of which is code:
 [cols="1,2,3",options="header"]
 |===
 | Piece | What | Changes how often
-| Launcher | Rust, one static binary, < 1,000 lines | Rarely (monthly engine train at most)
+| Launcher | Rust, one static binary, < 2,000 lines | Rarely (monthly engine train at most)
 | Capsule factory | CI recipes driving upstream Makefiles in manylinux_2_28 containers and native macOS runners | Per upstream release
 | Channel | One signed JSON document | Whenever data changes; a fix is a JSON diff plus `channel_version + 1`
 |===

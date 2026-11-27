@@ -100,7 +100,7 @@ pages, so check each one against its URL before quoting it outside this reposito
 
 | W1
 | Every word a user reads lives in `errors.toml`. Call sites pass an ID, a case name and context values only.
-| ADR 0009; the launcher's 1,000-line budget.
+| ADR 0009; the launcher's 2,000-line budget.
 | tested (`render.jq` has no message text)
 
 | W2

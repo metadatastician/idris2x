@@ -36,6 +36,8 @@
 //! let _: Fact = check_digest(&lock("0d7a4c1e9b52f6a83c07d1e45b9a2f6c8e13d7b0a5942c6f1e8d3b7a094c5e21")).unwrap().into();
 //! let _: Prose = host("/home/ada/proofs").into();
 //! assert!(check_version(&lock("0.8.0; curl x | sh")).is_none());
+//! assert!(check_version(&lock("9999999999999999999.0")).is_some());
+//! assert!(check_version(&lock("18446744073709551616.0")).is_none());
 //! ```
 
 use std::io::{IsTerminal, Write};
@@ -51,6 +53,18 @@ pub enum Checked {}
 pub struct Txt<P>(String, PhantomData<P>);
 fn txt<P>(s: impl Into<String>) -> Txt<P> {
     Txt(s.into(), PhantomData)
+}
+/// A copy keeps its label.
+impl<P> Clone for Txt<P> {
+    fn clone(&self) -> Self {
+        txt(&*self.0)
+    }
+}
+/// Comparing text gives a yes or no, never a `Txt` with another label.
+impl<P> PartialEq<str> for Txt<P> {
+    fn eq(&self, s: &str) -> bool {
+        self.0 == s
+    }
 }
 /// Launcher constants. Only text compiled into the binary is `'static`.
 pub fn embedded(s: &'static str) -> Txt<Embedded> {
@@ -69,10 +83,11 @@ pub fn check_digest(t: &Txt<Lock>) -> Option<Txt<Checked>> {
     let hex = |b: u8| matches!(b, b'0'..=b'9' | b'a'..=b'f');
     (t.0.len() == 64 && t.0.bytes().all(hex)).then(|| txt(&*t.0))
 }
-/// A version of two to four runs of decimal digits separated by dots. Trusted by inspection.
+/// A version of two to four runs of one to 19 decimal digits separated by dots. Trusted by inspection. Every run fits
+/// in 64 bits, so two versions always compare: a run too long to compare is refused here, never read as 0.
 pub fn check_version(t: &Txt<Lock>) -> Option<Txt<Checked>> {
     let runs: Vec<&str> = t.0.split('.').collect();
-    let digits = |r: &&str| !r.is_empty() && r.bytes().all(|b| b.is_ascii_digit());
+    let digits = |r: &&str| (1..=19).contains(&r.len()) && r.bytes().all(|b| b.is_ascii_digit());
     ((2..=4).contains(&runs.len()) && runs.iter().all(digits)).then(|| txt(&*t.0))
 }
 
@@ -374,12 +389,19 @@ pub fn advise(a: Advice) -> R<()> {
         return Ok(());
     }
     let text = fill(d.text, &ctx, false);
+    let get = |key: &str| ctx.iter().find(|p| p.0 == key).map_or("", |p| p.1);
+    let facts: String = d
+        .facts
+        .iter()
+        .map(|(l, k)| format!("    {l}: {}\n", get(k)))
+        .collect();
     out(&format!(
-        "note: {text}\nnote: silence this note with {}=0\n",
+        "note: {text}\n{facts}note: silence this note with {}=0\n",
         d.silence
     ))
 }
-fn bug(detail: String) -> Fail {
+/// A launcher bug, E-INTERNAL.
+pub fn bug(detail: String) -> Fail {
     let version = embedded(env!("CARGO_PKG_VERSION")).into();
     Fail::InternalBug {
         detail: host(detail).into(),

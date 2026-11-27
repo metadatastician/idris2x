@@ -16,7 +16,7 @@ Phase 1 not started. Nothing is released.
 * [x] Fact-check the plan against primary sources; record ADRs
 
 === Phase 1 — MVP (Rust launcher + factory)
-* [ ] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 1,000 lines)
+* [ ] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 2,000 lines of our own code; the cap was 1,000 until the owner raised it on 2026-11-26)
 * [ ] Chaos suite as the launcher's CI gate
 * [ ] Factory CI for idris2@0.8.0 × four Tier 1 targets (manylinux_2_28, native macOS), signed channel
 * [ ] Error-message and DX design system applied to every output (parallel DX thread)

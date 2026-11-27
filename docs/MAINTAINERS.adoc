@@ -22,7 +22,7 @@ The design splits into three pieces, and only one of them is code:
 | Piece | What it is | Why it outlives the maintainer
 | Capsules | Immutable `idris2-<v>-<triple>-chez<v>.tar.gz` on GitHub Releases, mirrored to object storage | Content-addressed by sha256 in every lockfile; never rewritten; a dead maintainer cannot change them
 | Channel | One signed JSON document (`channel/v1.json` + detached Ed25519 signature) | Pure data: no scripts. The *last* signed version stays valid for resolution until its `expires` date and is never required to *execute* an existing pin
-| Launcher | One static binary (Rust, vendored audited crates), under 1,000 lines of our own code | Old digests run under new launchers (I4). The binary itself is pinned by sha256 in each estate repo's CI
+| Launcher | One static binary (Rust, vendored audited crates), under 2,000 lines of our own code | Old digests run under new launchers (I4). The binary itself is pinned by sha256 in each estate repo's CI
 |===
 
 Invariant to protect above all others: `idris2x install --locked` and `idris2x exec --locked` need *only* the lockfile and the capsule bytes.
@@ -62,7 +62,7 @@ Monthly: engine train if needed. Quarterly: chaos drill (`scripts/proto/chaos.sh
 
 * Channel patches: PR against `channel/v1.json`; CI validates against `src/contracts/channel-v1.schema.json`, checks `channel_version` is exactly +1, re-resolves every example lock, and runs the full canary matrix on three targets before any merge.
 * Capsule changes: a new revision (`idris2@0.8.0-2`), never a rewrite of an existing asset.
-* Launcher changes: keep under 1,000 lines of our own code, dependencies vendored and allow-listed in `deny.toml`, every failure typed (`src/errors/errors.toml`), every error with a runbook. Property tests for the pure core (resolution, verification, lock parsing).
+* Launcher changes: keep under 2,000 lines of our own code, dependencies vendored and allow-listed in `deny.toml`, every failure typed (`src/errors/errors.toml`), every error with a runbook. Property tests for the pure core (resolution, verification, lock parsing).
 * Zero-fork policy: we never patch Idris 2 or Chez Scheme. Problems go upstream as well-formed reports (see link:status/UPSTREAM-NOTES.adoc[]).
 
 == Decision making
