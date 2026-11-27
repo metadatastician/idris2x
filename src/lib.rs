@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 pub mod capsule;
+pub mod civil;
 pub mod doctor;
 pub mod gc;
 pub mod lock;

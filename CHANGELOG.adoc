@@ -75,6 +75,12 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * The launcher's source is laid out with `use_small_heuristics = "Max"` (`src/rustfmt.toml`, owner ruling,
   2026-11-26), which puts a short item on one line up to the 100-column width. Milestone 4 brings the launcher to
   1,812 of 2,000 lines; with the default layout the same code is 2,164.
+* The date arithmetic of `pin` and `store` moves to `src/civil.rs`, and Creusot, with Pearlite contracts on that
+  file, proves it (DATE-1 in `docs/status/PROOF-STATUS.adoc`): `days` and `civil` are inverse on real dates, with no
+  overflow, for every value `pin` and `store` pass them. A normal build drops the contracts, so the launcher gains no
+  dependency. The proof crate `verification/proofs/creusot/` is built apart from the launcher, and
+  `scripts/check-creusot.sh` (`just proof-check-creusot`) also checks that three broken copies fail. It was run by
+  hand on 2026-11-27; CI does not run it yet. Verus has not been run on this code.
 
 ==== Not yet
 

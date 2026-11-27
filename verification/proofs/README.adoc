@@ -16,6 +16,9 @@ this page only maps it onto this directory.
 |*Creusot* with *Pearlite* contracts, and *Verus* (policy §1.2)
 |On the Rust code itself (contracts in the crate), not in this directory.
 Pearlite is Creusot's specification language, not a third verifier.
+`creusot/` holds only what those contracts are stated in: a proof crate
+with the logic functions, lemmas and `ASSUMED` `std` specifications. It
+includes the launcher's files by path, unchanged.
 
 |Ada code
 |*SPARK*
@@ -94,6 +97,7 @@ carries its own verification. This is a preference, not a gate.
 [source]
 ----
 proofs/
+├── creusot/         # Rust: the proof crate for the contracts in src/civil.rs
 ├── idris2/          # Engineering: ABI and interface contracts
 │   ├── ABI/         # ABI-specific proofs (mandatory)
 │   │   ├── Pointers.idr    # Non-null pointer safety
@@ -112,7 +116,8 @@ proofs/
     └── StateMachine.tla
 ----
 
-Each prover directory carries a `MANIFEST` read by `scripts/check-proofs.sh`.
+Each prover directory but `creusot/` carries a `MANIFEST` read by
+`scripts/check-proofs.sh`. `creusot/` is checked by `scripts/check-creusot.sh`.
 
 The files the template ships in these directories (`Properties.agda`,
 `TypeSafety.v`, `ApiTypes.lean`, `Types.idr`, the `ABI/` modules,
@@ -131,7 +136,10 @@ just proof-check-idris2    # Idris2 only
 just proof-check-lean4     # Lean4 only
 just proof-check-agda      # Agda only
 just proof-check-coq       # Coq only
+just proof-check-creusot   # Creusot: src/civil.rs, and three broken copies that must fail
 ----
+
+`proof-check-all` does not include Creusot yet.
 
 == Banned patterns
 
