@@ -164,7 +164,7 @@ pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
     let (c, d) = (cache()?, &pin.digest);
     let dir = c.join(format!("store/sha256-{d}"));
     if dir.join(".complete").is_file() {
-        return Ok(dir);
+        return cached(pin, dir);
     }
     for sub in ["locks", "staging", "store"] {
         fs::create_dir_all(c.join(sub))
@@ -179,9 +179,20 @@ pub fn install(pin: &Pin, from: Option<&Path>) -> R<PathBuf> {
         })?;
     // Another process may have finished while this one waited.
     let done = dir.join(".complete").is_file();
-    let r = if done { Ok(dir) } else { fill(pin, from, offline, &c, dir) };
+    let r = if done { cached(pin, dir) } else { fill(pin, from, offline, &c, dir) };
     _ = fs::remove_file(&holder);
     r
+}
+/// A finished entry is reused only for the pin that installed it: the digest must still name the version in the lock.
+fn cached(pin: &Pin, dir: PathBuf) -> R<PathBuf> {
+    match capsule::holds(&dir, &pin.version) {
+        true => Ok(dir),
+        false => Err(Fail::CapsuleInvalidPinMismatch {
+            digest: sha(&pin.digest),
+            version: pin.version.clone().into(),
+            found: lock(capsule::meta(&dir, "idris2")).into(),
+        }),
+    }
 }
 /// The work under the lock: get the archive, unpack and check it in staging, then rename it into the store.
 fn fill(pin: &Pin, from: Option<&Path>, offline: bool, c: &Path, dir: PathBuf) -> R<PathBuf> {
