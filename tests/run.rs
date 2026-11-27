@@ -24,6 +24,7 @@ case "$1" in
         mkdir -p build/exec && printf '#!/bin/sh\necho chez_codegen ok\n' > "build/exec/$2" && chmod +x "build/exec/$2" ;;
       *) echo "idris2 $* prefix=$IDRIS2_PREFIX pkg=$IDRIS2_PACKAGE_PATH" ;;
     esac ;;
+  hold) : > "$2"; exec sleep 30 ;;
   *) echo "chez $* prefix=$IDRIS2_PREFIX pkg=$IDRIS2_PACKAGE_PATH" ;;
 esac
 "#;
@@ -409,7 +410,7 @@ fn gc_lists_first_and_removes_only_what_it_wrote_under_each_lock() {
     let done = ok(&run(&t, &["gc", "--keep-last", "1", "--yes"], &[]));
     assert!(
         done.contains(&format!(
-            "idris2x: kept sha256:{}…: an install holds its lock\n",
+            "idris2x: kept sha256:{}…: in use (its lock is held)\n",
             &digests[0][..12]
         )),
         "{done}"
@@ -429,6 +430,57 @@ fn gc_lists_first_and_removes_only_what_it_wrote_under_each_lock() {
         "missing-argument",
         2,
     );
+}
+
+#[test]
+fn gc_keeps_a_capsule_while_a_program_started_by_exec_runs() {
+    let t = Tmp::new("gc-exec");
+    let other = installed(&t, &capsule(CHEZ, &[("extra", b"newer")]), &[]);
+    let tgz = capsule(CHEZ, &[]);
+    let root = installed(&t, &tgz, &[]); // the lock now pins this capsule
+                                         // The pinned capsule is the older one, so `gc --keep-last 1` would remove it.
+    File::options()
+        .write(true)
+        .open(root.join(".complete"))
+        .unwrap()
+        .set_modified(SystemTime::now() - Duration::from_secs(86_400))
+        .unwrap();
+    let mark = t.p("started");
+    let mut prog = Command::new(env!("CARGO_BIN_EXE_idris2x"));
+    prog.env_clear()
+        .current_dir(&t.0)
+        .args(["run", "hold"])
+        .arg(&mark);
+    prog.env("PATH", "/usr/bin:/bin")
+        .env("IDRIS2X_CACHE", t.p("cache"));
+    let mut prog = prog.spawn().unwrap();
+    let t0 = std::time::Instant::now();
+    while !mark.exists() {
+        assert!(
+            t0.elapsed() < Duration::from_secs(20),
+            "the program never started"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    // The launcher is gone (execve), and the program it became still holds the capsule's lock.
+    let done = ok(&run(&t, &["gc", "--keep-last", "1", "--yes"], &[]));
+    let kept = format!(
+        "idris2x: kept sha256:{}…: in use (its lock is held)\n",
+        &sha(&tgz)[..12]
+    );
+    assert!(done.contains(&kept), "{done}");
+    assert!(
+        root.join(".complete").is_file(),
+        "the running capsule is whole"
+    );
+    prog.kill().unwrap();
+    prog.wait().unwrap();
+    let done = ok(&run(&t, &["gc", "--keep-last", "1", "--yes"], &[]));
+    assert!(
+        done.contains("idris2x: removed 1 capsule and freed "),
+        "{done}"
+    );
+    assert!(!root.exists() && other.join(".complete").is_file());
 }
 
 #[test]
