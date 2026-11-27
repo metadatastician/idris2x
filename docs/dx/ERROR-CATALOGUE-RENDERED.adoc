@@ -3726,6 +3726,92 @@ idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: /home/ada/proofs/idris2x.toml na
 {"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"channel-changed","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"/home/ada/proofs/idris2x.toml named another channel while this pin was running","context":{"file":"/home/ada/proofs/idris2x.toml","checked":"https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE","now":"https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE","version":"0.8.0"},"state":"The lock file was not changed. Nothing reached the cache.","why":"The manifest was checked against the channel and key that idris2x.toml named when pin started. A lock written from it would record a channel the project no longer names, and the next pin would lose its check against older manifests.","fix":{"command":"idris2x pin 0.8.0","note":"If you did not change idris2x.toml, find out what did before you pin.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
 ----
 
+=== E-PIN-DRIFT, case `other-version`
+
+.Style A, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: E-PIN-DRIFT (exit 19)
+
+idris2x.toml asks for a different version of Idris 2, so I did not pin 0.9.0.
+
+    idris2x.toml  0.8.0
+    asked         0.9.0
+
+The lock file was not changed. Nothing reached the cache.
+
+install refuses a lock whose version differs from idris2x.toml, so that lock
+could not be used.
+
+Pin the version idris2x.toml asks for:
+
+    idris2x pin 0.8.0
+
+To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style A, interactive terminal
+[source,text]
+----
+<ESC>[36m-- E-PIN-DRIFT (exit 19) ----------------------------------------------- idris2x<ESC>[0m
+
+idris2x.toml asks for a different version of Idris 2, so I did not pin 0.9.0.
+
+    idris2x.toml  0.8.0
+    asked         0.9.0
+
+The lock file was not changed. Nothing reached the cache.
+
+install refuses a lock whose version differs from idris2x.toml, so that lock
+could not be used.
+
+Pin the version idris2x.toml asks for:
+
+    <ESC>[1midris2x pin 0.8.0<ESC>[0m
+
+To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+
+More: idris2x explain E-PIN-DRIFT
+https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, plain (not a terminal, NO_COLOR set, or TERM=dumb)
+[source,text]
+----
+idris2x: error[E-PIN-DRIFT]: idris2x.toml asks for a different idris2 version than 0.9.0
+    idris2x.toml: 0.8.0
+    asked: 0.9.0
+  state: The lock file was not changed. Nothing reached the cache.
+  why: install refuses a lock whose version differs from idris2x.toml, so that lock could not be used.
+  fix: idris2x pin 0.8.0
+  note: To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+  see: idris2x explain E-PIN-DRIFT
+  see: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.Style B, interactive terminal
+[source,text]
+----
+idris2x: <ESC>[1;31merror[E-PIN-DRIFT]<ESC>[0m: idris2x.toml asks for a different idris2 version than 0.9.0
+    idris2x.toml: 0.8.0
+    asked: 0.9.0
+  <ESC>[1mstate<ESC>[0m: The lock file was not changed. Nothing reached the cache.
+  <ESC>[1mwhy<ESC>[0m: install refuses a lock whose version differs from idris2x.toml, so that lock could not be used.
+  <ESC>[1mfix<ESC>[0m: <ESC>[1midris2x pin 0.8.0<ESC>[0m
+  <ESC>[1mnote<ESC>[0m: To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.
+  <ESC>[1msee<ESC>[0m: idris2x explain E-PIN-DRIFT
+  <ESC>[1msee<ESC>[0m: https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc
+----
+
+.--json (both styles)
+[source,text]
+----
+{"schema":1,"tool":"idris2x","level":"error","id":"E-PIN-DRIFT","case":"other-version","exit":19,"title":"idris2x.toml and idris2x.lock disagree","summary":"idris2x.toml asks for a different idris2 version than 0.9.0","context":{"toml":"0.8.0","version":"0.9.0"},"state":"The lock file was not changed. Nothing reached the cache.","why":"install refuses a lock whose version differs from idris2x.toml, so that lock could not be used.","fix":{"command":"idris2x pin 0.8.0","note":"To move to 0.9.0, change toolchain.idris2 in idris2x.toml first, then pin it.","auto":"none"},"explain":"idris2x explain E-PIN-DRIFT","docs":"https://github.com/metadatastician/idris2x/blob/main/docs/runbooks/E-PIN-DRIFT.adoc"}
+----
+
 == E-OFFLINE
 
 === E-OFFLINE, case `capsule-missing`

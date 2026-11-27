@@ -56,6 +56,7 @@ E-CHANNEL-SCHEMA|malformed-manifest|url=https://channel.example.org/v1.json|fiel
 E-PIN-DRIFT|toml-vs-lock|toml=0.8.1|locked=0.8.0
 E-PIN-DRIFT|bad-toml|file=/home/ada/proofs/idris2x.toml|at=line 4|problem=it sets a key that idris2x does not read
 E-PIN-DRIFT|channel-changed|file=/home/ada/proofs/idris2x.toml|checked=https://example.org/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE|now=https://mirror.example.net/idris2x/channel.json with key RWQf6LRCGA9i59SLOFxz6NxvASXDJeRtuZykwQepbDEGt87ig1BNpWaE|version=0.8.0
+E-PIN-DRIFT|other-version|toml=0.8.0|version=0.9.0
 E-OFFLINE|capsule-missing|digest=sha256:$A|store=/home/ada/.cache/idris2x/store|mode=IDRIS2X_OFFLINE=1|lock=idris2x.lock
 E-OFFLINE|no-manifest|cache=/home/ada/.cache/idris2x/manifests/v1.json|mode=IDRIS2X_OFFLINE=1|version=0.8.0
 E-CAPSULE-INVALID|unsafe-path|digest=sha256:$A

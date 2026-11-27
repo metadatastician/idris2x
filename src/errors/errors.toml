@@ -700,6 +700,19 @@ fix_note = "If you did not change idris2x.toml, find out what did before you pin
 auto = "none"
 
 [[case]]
+error = "E-PIN-DRIFT"
+case = "other-version"
+summary = "idris2x.toml asks for a different idris2 version than {version}"
+story = "idris2x.toml asks for a different version of Idris 2, so I did not pin {version}."
+facts = "idris2x.toml=toml asked=version"
+state = "The lock file was not changed. Nothing reached the cache."
+why = "install refuses a lock whose version differs from idris2x.toml, so that lock could not be used."
+fix_lead = "Pin the version idris2x.toml asks for:"
+fix_cmd = "idris2x pin {toml}"
+fix_note = "To move to {version}, change toolchain.idris2 in idris2x.toml first, then pin it."
+auto = "none"
+
+[[case]]
 error = "E-CAPSULE-INVALID"
 case = "unsafe-path"
 summary = "the capsule archive has a member that would be written outside the store"
