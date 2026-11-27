@@ -75,8 +75,13 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 * The launcher's source is laid out with `use_small_heuristics = "Max"` (`src/rustfmt.toml`, owner ruling,
   2026-11-26), which puts a short item on one line up to the 100-column width. Milestone 4 brings the launcher to
   1,812 of 2,000 lines; with the default layout the same code is 2,164.
+* The chaos suite drives the Rust launcher as well as the prototype (`IDRIS2X_BIN`): 128 checks on each, in both
+  message styles. `.github/workflows/chaos.yml` builds Chez Scheme 10.4.1 and Idris 2 v0.8.0 from the pinned
+  sources and runs `scripts/proto/chaos-gate.sh`, which fails unless all four runs pass with equal counts. The job
+  passed on GitHub on 2026-11-27. The prototype's `exec` now takes the program name, and the prototype refuses an
+  empty `min_glibc`, as the Rust launcher does.
 
 ==== Not yet
 
-* The chaos suite as the Rust launcher's CI gate, `cargo vendor` and `cargo deny`, the capsule factory CI and
-  published capsules (Phase 1).
+* The chaos job as a required check, `cargo vendor` and `cargo deny`, the capsule factory CI and published
+  capsules (Phase 1).

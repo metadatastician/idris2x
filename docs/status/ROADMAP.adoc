@@ -8,9 +8,10 @@ Phase 0 complete (2026-11-16): design pinned in ADRs 0004–0011 and tested on r
 Phase 1 in progress (2026-11-27): the Rust launcher is being built in four milestones. Milestones 1 to 3 are merged;
 milestone 4 (pin, channel trust and the exec map) is merged into the branch of the open PR #9, built and tested with
 `cargo test`. The chaos suite now drives the Rust launcher too (128 of 128 on each launcher, both styles, 2026-11-27,
-run by hand through `scripts/proto/chaos-gate.sh`). The CI job that makes it the gate (`.github/workflows/chaos.yml`)
-has run once on GitHub. It built both toolchains and failed one check, because the suite passed the job's
-`IDRIS2_PREFIX` on to its drills. That is fixed, and the job has not yet passed.
+run by hand through `scripts/proto/chaos-gate.sh`). The CI job `.github/workflows/chaos.yml` runs the same four
+runs on GitHub. Its first run failed one check, because the suite passed the job's `IDRIS2_PREFIX` on to its drills.
+With that fixed, it passed on 2026-11-27 (run 45932797650 at 5f53e0c: four runs of 128 passed, 0 failed, in 16
+minutes). It is not yet a required check, so a red run would not block a merge.
 Nothing is released, and no capsule is published.
 
 == Milestones
@@ -23,7 +24,8 @@ Nothing is released, and no capsule is published.
 
 === Phase 1 — MVP (Rust launcher + factory)
 * [ ] Rust launcher: resolve, fetch, verify, store, exec, doctor, selftest, gc, lockfile (< 2,000 lines of our own code; the cap was 1,000 until the owner raised it on 2026-11-26)
-* [ ] Chaos suite as the launcher's CI gate
+* [ ] Chaos suite as the launcher's CI gate (the job passes on GitHub; it gates once it is a required check, an
+  owner setting)
 * [ ] Factory CI for idris2@0.8.0 × four Tier 1 targets (manylinux_2_28, native macOS), signed channel
 * [ ] Error-message and DX design system applied to every output (parallel DX thread)
 * [ ] Dogfood in estate proof lanes

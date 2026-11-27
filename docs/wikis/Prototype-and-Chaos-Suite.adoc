@@ -20,7 +20,10 @@ FIXTURE_SERVER=target/release/examples/fixture_server IDRIS2X_BIN=target/release
   scripts/proto/chaos.sh <chez-prefix> <idris2-prefix> <chez-src> <idris2-src>
 ----
 
-== What is drilled (128 checks, all passing on both launchers on 2026-11-27; the CI job has run once and not yet passed)
+In CI, `.github/workflows/chaos.yml` builds both toolchains from the pinned sources and runs `scripts/proto/chaos-gate.sh`:
+four runs (the prototype and the Rust launcher, each in message styles a and b), which must all pass with equal counts.
+
+== What is drilled (128 checks, all passing on both launchers on 2026-11-27, by hand and in CI)
 
 404 on the primary mirror, flipped byte, truncation and resume (asserting a 206), four concurrent installs, a disk-full analogue,
 tampered manifest, wrong key, rollback, expiry with and without override, offline cache miss, air-gap bundle, lock contention,
