@@ -75,9 +75,16 @@ resolve() { # prints: digest size urls... for this host, from the lock only (no 
   local d; d=$(lock_get ".capsules[\"$t\"].sha256 // empty")
   [ -n "$d" ] || fail E-PIN-NOT-FOUND no-target lock="$LOCK" target="$t" covered="$(lock_get '.capsules|keys|join(", ")')" version="$v"
   [[ "$d" =~ ^[0-9a-f]{64}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field=digest
-  local needs host; needs=$(lock_get ".capsules[\"$t\"].min_glibc // empty"); host=$(getconf GNU_LIBC_VERSION 2>/dev/null | cut -d' ' -f2)
-  if [ -n "$needs" ] && [ -n "$host" ] && [ "$(printf '%s\n%s\n' "$needs" "$host" | sort -V | head -1)" != "$needs" ]; then   # ADR 0006: refuse before downloading
-    fail E-GLIBC-FLOOR too-old host="$host" needs="$needs" digest="sha256:$d"; fi
+  local needs host; needs=$(lock_get ".capsules[\"$t\"].min_glibc | if . == null then \"\" elif type == \"string\" then . else \"!\" end")
+  host=$(getconf GNU_LIBC_VERSION 2>/dev/null | cut -d' ' -f2)
+  # ADR 0006: refuse before downloading. The floor has the version's form and limits; on Linux it is checked, never skipped.
+  if [ -n "$needs" ]; then
+    [[ "$needs" =~ ^[0-9]{1,19}(\.[0-9]{1,19}){1,3}$ ]] || fail E-PIN-NOT-FOUND malformed-lock lock="$LOCK" target="$t" field="glibc floor"
+    if [ "$(uname -s)" = Linux ] && ! [[ "$host" =~ ^[0-9]{1,19}(\.[0-9]{1,19})*$ ]]; then
+      fail E-GLIBC-FLOOR unknown needs="$needs" digest="sha256:$d"; fi
+    if [ -n "$host" ] && [ "$(printf '%s\n%s\n' "$needs" "$host" | sort -V | head -1)" != "$needs" ]; then
+      fail E-GLIBC-FLOOR too-old host="$host" needs="$needs" digest="sha256:$d"; fi
+  fi
   echo "$d $(lock_get ".capsules[\"$t\"].size")"; lock_get ".capsules[\"$t\"].urls[]"
 }
 
